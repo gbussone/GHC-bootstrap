@@ -1,0 +1,20 @@
+--- a/rts/Sanity.h
++++ b/rts/Sanity.h
+@@ -11,7 +11,7 @@
+ 
+ #ifdef DEBUG
+ 
+-BEGIN_RTS_PRIVATE
++#include "BeginPrivate.h"
+ 
+ # if defined(PAR)
+ # define PVM_PE_MASK    0xfffc0000
+@@ -36,7 +36,7 @@ void checkMutableLists ( rtsBool checkTSOs );
+ 
+ void checkBQ (StgTSO *bqe, StgClosure *closure);
+ 
+-END_RTS_PRIVATE
++#include "EndPrivate.h"
+ 
+ #endif /* DEBUG */
+  

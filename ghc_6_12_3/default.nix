@@ -26,11 +26,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
       ];
       hash = "sha256-WsRV5CAGt5kNiGlUwiC2Rrll6pltfJhuYM6yOREJQQ8=";
     })
+    ./rts_private.patch
   ];
-  prePatch = ''
-    sed -i 's/BEGIN_RTS_PRIVATE/#include "BeginPrivate.h"/' rts/Sanity.h
-    sed -i 's/END_RTS_PRIVATE/#include "EndPrivate.h"/' rts/Sanity.h
-  '';
   nativeBuildInputs = [
     perl
     gcc
