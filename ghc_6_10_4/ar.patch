@@ -1,0 +1,22 @@
+--- a/configure
++++ b/configure
+@@ -5300,7 +5300,7 @@ else
+ # object files with the same name if you use the 's' modifier, but
+ # simple 'ar q' works fine, and doesn't need a separate ranlib.
+ if test $fp_prog_ar_is_gnu = yes; then
+-  fp_cv_prog_ar_args="q"
++  fp_cv_prog_ar_args=""
+ else
+   touch conftest.dummy
+   for fp_var in clqsZ clqs cqs clq cq ; do
+--- a/mk/target.mk
++++ b/mk/target.mk
+@@ -273,7 +273,7 @@ all :: $(LIBRARY)
+ ifneq "$(way)" "i"
+ define BUILD_STATIC_LIB
+ $(RM) $@
+-$(AR) $(AR_OPTS) $@ $(STUBOBJS) $(LIBOBJS)
++$(AR) q$(AR_OPTS) $@ $(STUBOBJS) $(LIBOBJS)
+ $(RANLIB) $@
+ endef
+ else

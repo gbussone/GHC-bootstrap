@@ -15,10 +15,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     url = "https://downloads.haskell.org/~ghc/${finalAttrs.version}/ghc-${finalAttrs.version}-src.tar.bz2";
     hash = "sha256-1mqOUlcvT/gZ/lxONMbdHoSndj4lw/rcwiJFPAvYU00=";
   };
-  prePatch = ''
-    substituteInPlace configure --replace-fail 'fp_cv_prog_ar_args="q"' 'fp_cv_prog_ar_args=""'
-    substituteInPlace mk/target.mk --replace-fail '$(AR) $(AR_OPTS) $@ $(STUBOBJS) $(LIBOBJS)' '$(AR) q$(AR_OPTS) $@ $(STUBOBJS) $(LIBOBJS)'
-  '';
+  patches = [ ./ar.patch ];
   nativeBuildInputs = [
     perl
     gcc
