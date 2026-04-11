@@ -113,7 +113,22 @@
         ghc_6_4_2 = throw "todo";
         ghc_6_6 = throw "todo";
         ghc_6_6_1 = throw "todo";
-        ghc_6_8_3 = throw "todo";
+
+        ghc_6_8_3 =
+          let
+            pkgs24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
+            pkgs23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
+            pkgs21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
+            pkgs18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
+          in
+          pkgs.callPackage ./ghc_6_8_3 {
+            gcc = pkgs18_03.gcc;
+            ghc = pkgs.callPackage ghc_6_8_3/binary.nix {
+              gmp = pkgs24_11.gmp4;
+              readline = pkgs21_11.readline5;
+            };
+            gmp = pkgs23_05.gmp;
+          };
 
         ghc_6_10_4 =
           let
