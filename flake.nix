@@ -94,6 +94,7 @@
     }:
     let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      lib = pkgs.lib;
     in
     {
       packages.x86_64-linux = {
@@ -128,57 +129,72 @@
             pkgs_0_14 = import nixpkgs_0_14 { system = "x86_64-linux"; };
           in
           pkgs.callPackage ./ghc_6_6_1 {
-            perl = pkgs_last_glibc_2_13.stdenv.mkDerivation {
-              name = pkgs_last_glibc_2_13.perl58.name;
-              phases = pkgs_last_glibc_2_13.perl58.phases;
-              phase = pkgs_last_glibc_2_13.perl58.phase;
-              src = pkgs_last_glibc_2_13.perl58.src;
-              patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [
-                (pkgs.fetchurl {
-                  url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                  sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                })
-              ];
-              setupHook = pkgs_last_glibc_2_13.perl58.setupHook;
-            };
-            gcc = pkgs20_03.wrapCCWith {
-              cc = pkgs_last_glibc_2_13.gcc;
-              bintools = pkgs20_03.wrapBintoolsWith {
-                bintools =
-                  let
-                    name = "binutils-2.20.1";
-                  in
-                  pkgs_0_14.stdenv.mkDerivation {
-                    name = name;
-                    src = pkgs.fetchurl {
-                      url = "mirror://gnu/binutils/${name}.tar.bz2";
-                      hash = "sha256-cdN8lkUTM8XAuEsXAWn9yxOLuyc5fcBigZBdlxfI7WQ=";
-                    };
-                    patches = pkgs_0_14.binutils.patches;
-                    buildInputs = pkgs_0_14.binutils.buildInputs;
-                    noSysDirs = pkgs_0_14.binutils.noSysDirs;
-                    preConfigure = pkgs_0_14.binutils.preConfigure;
-                    NIX_CFLAGS_COMPILE = pkgs_0_14.binutils.NIX_CFLAGS_COMPILE;
-                    configureFlags = pkgs_0_14.binutils.configureFlags;
-                    enableParallelBuilding = pkgs_0_14.binutils.enableParallelBuilding;
-                  };
-                libc = pkgs15_09.glibc;
-              };
-            };
-            ghc = pkgs.callPackage ghc_6_6_1/binary.nix {
-              perl = pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                name = pkgs_last_glibc_2_13.perl58.name;
-                phases = pkgs_last_glibc_2_13.perl58.phases;
-                phase = pkgs_last_glibc_2_13.perl58.phase;
-                src = pkgs_last_glibc_2_13.perl58.src;
-                patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [
+            perl =
+              with pkgs_last_glibc_2_13.perl58;
+              pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                patches = [
+                  (lib.lists.elemAt patches 0)
+                  (lib.lists.elemAt patches 1)
                   (pkgs.fetchurl {
                     url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
                     sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
                   })
                 ];
-                setupHook = pkgs_last_glibc_2_13.perl58.setupHook;
+                inherit
+                  name
+                  phase
+                  phases
+                  setupHook
+                  src
+                  ;
               };
+            gcc = pkgs20_03.wrapCCWith {
+              cc = pkgs_last_glibc_2_13.gcc;
+              bintools = pkgs20_03.wrapBintoolsWith {
+                bintools =
+                  with pkgs_0_14.binutils;
+                  let
+                    version = "2.20.1";
+                  in
+                  pkgs_0_14.stdenv.mkDerivation {
+                    name = "binutils-${version}";
+                    src = pkgs.fetchurl {
+                      url = "mirror://gnu/binutils/binutils-${version}.tar.bz2";
+                      hash = "sha256-cdN8lkUTM8XAuEsXAWn9yxOLuyc5fcBigZBdlxfI7WQ=";
+                    };
+                    inherit
+                      buildInputs
+                      configureFlags
+                      enableParallelBuilding
+                      NIX_CFLAGS_COMPILE
+                      noSysDirs
+                      patches
+                      preConfigure
+                      ;
+                  };
+                libc = pkgs15_09.glibc;
+              };
+            };
+            ghc = pkgs.callPackage ghc_6_6_1/binary.nix {
+              perl =
+                with pkgs_last_glibc_2_13.perl58;
+                pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                  patches = [
+                    (lib.lists.elemAt patches 0)
+                    (lib.lists.elemAt patches 1)
+                    (pkgs.fetchurl {
+                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                    })
+                  ];
+                  inherit
+                    name
+                    phase
+                    phases
+                    setupHook
+                    src
+                    ;
+                };
               gmp = pkgs24_11.gmp4;
               readline = pkgs21_11.readline5;
             };
