@@ -133,7 +133,12 @@
               phases = pkgs_last_glibc_2_13.perl58.phases;
               phase = pkgs_last_glibc_2_13.perl58.phase;
               src = pkgs_last_glibc_2_13.perl58.src;
-              patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [ ghc_6_6_1/perl.patch ];
+              patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [
+                (pkgs.fetchurl {
+                  url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                  sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                })
+              ];
               setupHook = pkgs_last_glibc_2_13.perl58.setupHook;
             };
             gcc = pkgs20_03.wrapCCWith {
@@ -166,7 +171,12 @@
                 phases = pkgs_last_glibc_2_13.perl58.phases;
                 phase = pkgs_last_glibc_2_13.perl58.phase;
                 src = pkgs_last_glibc_2_13.perl58.src;
-                patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [ ghc_6_6_1/perl.patch ];
+                patches = pkgs.lib.lists.dropEnd 1 pkgs_last_glibc_2_13.perl58.patches ++ [
+                  (pkgs.fetchurl {
+                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                  })
+                ];
                 setupHook = pkgs_last_glibc_2_13.perl58.setupHook;
               };
               gmp = pkgs24_11.gmp4;
