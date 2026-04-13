@@ -3,25 +3,22 @@
   buildFHSEnv,
   writeShellScriptBin,
   stdenvNoCC,
+  stdenv,
   fetchurl,
   perl,
-  gcc,
   binutils,
   gmp,
   ncurses5,
 }:
 
-stdenvNoCC.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (finalAttrs: {
   pname = "ghc-binary";
   version = "6.10.4";
   src = fetchurl {
     url = "https://downloads.haskell.org/~ghc/${finalAttrs.version}/ghc-${finalAttrs.version}-x86_64-unknown-linux-n.tar.bz2";
     hash = "sha256-tuhpYC3D7tJbkmYxw/iMrHALjNmSe+UCpx8CprfgzGg=";
   };
-  nativeBuildInputs = [
-    perl
-    gcc
-  ];
+  nativeBuildInputs = [ perl ];
   postPatch = ''
     patchelf --set-interpreter ${binutils.dynamicLinker} --add-rpath ${
       lib.strings.makeLibraryPath [ gmp ]
