@@ -115,8 +115,66 @@
         ghc_6_0_1 = throw "todo";
         ghc_6_2 = throw "todo";
         ghc_6_2_2 = throw "todo";
-        ghc_6_4 = throw "todo";
-        ghc_6_4_2 = throw "todo";
+
+        ghc_6_4_2 =
+          let
+            pkgs24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
+            pkgs21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
+            pkgs20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
+            pkgs17_09 = (import nixpkgs_17_09 { system = "x86_64-linux"; }).pkgs;
+            pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13 { system = "x86_64-linux"; }).pkgs;
+          in
+          pkgs.callPackage ./ghc_6_4_2 {
+            perl =
+              with pkgs_last_glibc_2_13.perl58;
+              pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                patches = [
+                  (lib.lists.elemAt patches 0)
+                  (lib.lists.elemAt patches 1)
+                  (pkgs.fetchurl {
+                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                  })
+                ];
+                inherit
+                  name
+                  phase
+                  phases
+                  setupHook
+                  src
+                  ;
+              };
+            gcc = pkgs20_03.wrapCCWith {
+              cc = pkgs17_09.gcc.cc;
+              bintools = pkgs20_03.wrapBintoolsWith {
+                bintools = pkgs.binutils.bintools;
+                libc = pkgs.libc;
+              };
+            };
+            ghc = pkgs.callPackage ghc_6_4_2/binary.nix {
+              perl =
+                with pkgs_last_glibc_2_13.perl58;
+                pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                  patches = [
+                    (lib.lists.elemAt patches 0)
+                    (lib.lists.elemAt patches 1)
+                    (pkgs.fetchurl {
+                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                    })
+                  ];
+                  inherit
+                    name
+                    phase
+                    phases
+                    setupHook
+                    src
+                    ;
+                };
+              gmp = pkgs24_11.gmp4;
+              readline = pkgs21_11.readline5;
+            };
+          };
 
         ghc_6_6_1 =
           let
