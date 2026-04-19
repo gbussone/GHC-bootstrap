@@ -94,7 +94,87 @@
     }:
     let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      lib = pkgs.lib;
+      pkgs32 = nixpkgs.legacyPackages.i686-linux;
+      pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
+      pkgs32_25_11 = nixpkgs_25_11.legacyPackages.i686-linux;
+      pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
+      pkgs32_25_05 = nixpkgs_25_05.legacyPackages.i686-linux;
+      pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
+      pkgs32_24_11 = nixpkgs_24_11.legacyPackages.i686-linux;
+      pkgs_24_05 = nixpkgs_24_05.legacyPackages.x86_64-linux;
+      pkgs32_24_05 = nixpkgs_24_05.legacyPackages.i686-linux;
+      pkgs_23_11 = nixpkgs_23_11.legacyPackages.x86_64-linux;
+      pkgs32_23_11 = nixpkgs_23_11.legacyPackages.i686-linux;
+      pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
+      pkgs32_23_05 = nixpkgs_23_05.legacyPackages.i686-linux;
+      pkgs_22_11 = nixpkgs_22_11.legacyPackages.x86_64-linux;
+      pkgs32_22_11 = nixpkgs_22_11.legacyPackages.i686-linux;
+      pkgs_22_05 = nixpkgs_22_05.legacyPackages.x86_64-linux;
+      pkgs32_22_05 = nixpkgs_22_05.legacyPackages.i686-linux;
+      pkgs_21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
+      pkgs32_21_11 = nixpkgs_21_11.legacyPackages.i686-linux;
+      pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
+      pkgs32_21_05 = nixpkgs_21_05.legacyPackages.i686-linux;
+      pkgs_20_09 = nixpkgs_20_09.legacyPackages.x86_64-linux;
+      pkgs32_20_09 = nixpkgs_20_09.legacyPackages.i686-linux;
+      pkgs_20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_20_03 = (import nixpkgs_20_03 { system = "i686-linux"; }).pkgs;
+      pkgs_19_09 = (import nixpkgs_19_09 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_19_09 = (import nixpkgs_19_09 { system = "i686-linux"; }).pkgs;
+      pkgs_19_03 = (import nixpkgs_19_03 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_19_03 = (import nixpkgs_19_03 { system = "i686-linux"; }).pkgs;
+      pkgs_18_09 = (import nixpkgs_18_09 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_18_09 = (import nixpkgs_18_09 { system = "i686-linux"; }).pkgs;
+      pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_18_03 = (import nixpkgs_18_03 { system = "i686-linux"; }).pkgs;
+      pkgs_17_09 = (import nixpkgs_17_09 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_17_09 = (import nixpkgs_17_09 { system = "i686-linux"; }).pkgs;
+      pkgs_17_03 = (import nixpkgs_17_03 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_17_03 = (import nixpkgs_17_03 { system = "i686-linux"; }).pkgs;
+      pkgs_16_09 = (import nixpkgs_16_09 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_16_09 = (import nixpkgs_16_09 { system = "i686-linux"; }).pkgs;
+      pkgs_16_03 = (import nixpkgs_16_03 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_16_03 = (import nixpkgs_16_03 { system = "i686-linux"; }).pkgs;
+      pkgs_15_09 = (import nixpkgs_15_09 { system = "x86_64-linux"; }).pkgs;
+      pkgs32_15_09 = (import nixpkgs_15_09 { system = "i686-linux"; }).pkgs;
+      nixpkgs_last_glibc_2_13' = pkgs.applyPatches {
+        name = "nixpkgs";
+        src = nixpkgs_last_glibc_2_13;
+        patches = [ ./nixpkgs_last_glibc_2_13/perl_5_8.patch ];
+        prePatch = ''
+          cp ${
+            pkgs.fetchurl {
+              url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+              sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+            }
+          } pkgs/development/interpreters/perl/5.8/111427.patch
+        '';
+      };
+      pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13' { system = "x86_64-linux"; }).pkgs;
+      pkgs32_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13' { system = "i686-linux"; }).pkgs;
+      pkgs_0_14 = import nixpkgs_0_14 { system = "x86_64-linux"; };
+      pkgs32_0_14 = import nixpkgs_0_14 { system = "i686-linux"; };
+      binutils_2_20_1 =
+        with pkgs_0_14.binutils;
+        let
+          version = "2.20.1";
+        in
+        pkgs_0_14.stdenv.mkDerivation {
+          name = "binutils-${version}";
+          src = pkgs.fetchurl {
+            url = "mirror://gnu/binutils/binutils-${version}.tar.bz2";
+            hash = "sha256-cdN8lkUTM8XAuEsXAWn9yxOLuyc5fcBigZBdlxfI7WQ=";
+          };
+          inherit
+            buildInputs
+            configureFlags
+            enableParallelBuilding
+            NIX_CFLAGS_COMPILE
+            noSysDirs
+            patches
+            preConfigure
+            ;
+        };
     in
     {
       packages.x86_64-linux = {
@@ -109,408 +189,192 @@
         ghc_4_8_2 = throw "todo";
         ghc_5_0_2 = throw "todo";
         ghc_5_2_3 = throw "todo";
-        ghc_5_4 = throw "todo";
         ghc_5_4_3 = throw "todo";
-        ghc_6_0 = throw "todo";
         ghc_6_0_1 = throw "todo";
 
-        ghc_6_2_2 =
-          let
-            pkgs = nixpkgs.legacyPackages.i686-linux;
-            pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13 { system = "i686-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_6_2_2 {
-            perl =
-              with pkgs_last_glibc_2_13.perl58;
-              pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                patches = [
-                  (lib.lists.elemAt patches 0)
-                  (lib.lists.elemAt patches 1)
-                  (pkgs.fetchurl {
-                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                  })
-                ];
-                inherit
-                  name
-                  phase
-                  phases
-                  setupHook
-                  src
-                  ;
-              };
-            gcc = pkgs_last_glibc_2_13.gcc34;
-            ghc = pkgs.callPackage ghc_6_2_2/binary.nix {
-              perl =
-                with pkgs_last_glibc_2_13.perl58;
-                pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                  patches = [
-                    (lib.lists.elemAt patches 0)
-                    (lib.lists.elemAt patches 1)
-                    (pkgs.fetchurl {
-                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                    })
-                  ];
-                  inherit
-                    name
-                    phase
-                    phases
-                    setupHook
-                    src
-                    ;
-                };
-              readline = pkgs_last_glibc_2_13.readline4;
+        ghc_6_2_2 = pkgs32.callPackage ./ghc_6_2_2 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_last_glibc_2_13.gcc34;
+          ghc = pkgs32.callPackage ./ghc_6_2_2/binary.nix {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            readline = pkgs32_last_glibc_2_13.readline4;
+          };
+        };
+
+        ghc_6_4_2 = pkgs.callPackage ./ghc_6_4_2 {
+          perl = pkgs_last_glibc_2_13.perl58;
+          gcc = pkgs_20_03.wrapCCWith {
+            cc = pkgs_17_09.gcc.cc;
+            bintools = pkgs_20_03.wrapBintoolsWith {
+              bintools = pkgs.binutils.bintools;
+              libc = pkgs.libc;
             };
           };
-
-        ghc_6_4_2 =
-          let
-            pkgs24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
-            pkgs20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
-            pkgs17_09 = (import nixpkgs_17_09 { system = "x86_64-linux"; }).pkgs;
-            pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_6_4_2 {
-            perl =
-              with pkgs_last_glibc_2_13.perl58;
-              pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                patches = [
-                  (lib.lists.elemAt patches 0)
-                  (lib.lists.elemAt patches 1)
-                  (pkgs.fetchurl {
-                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                  })
-                ];
-                inherit
-                  name
-                  phase
-                  phases
-                  setupHook
-                  src
-                  ;
-              };
-            gcc = pkgs20_03.wrapCCWith {
-              cc = pkgs17_09.gcc.cc;
-              bintools = pkgs20_03.wrapBintoolsWith {
-                bintools = pkgs.binutils.bintools;
-                libc = pkgs.libc;
-              };
-            };
-            ghc = pkgs.callPackage ghc_6_4_2/binary.nix {
-              perl =
-                with pkgs_last_glibc_2_13.perl58;
-                pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                  patches = [
-                    (lib.lists.elemAt patches 0)
-                    (lib.lists.elemAt patches 1)
-                    (pkgs.fetchurl {
-                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                    })
-                  ];
-                  inherit
-                    name
-                    phase
-                    phases
-                    setupHook
-                    src
-                    ;
-                };
-              gmp = pkgs24_11.gmp4;
-              readline = pkgs21_11.readline5;
-            };
-          };
-
-        ghc_6_6_1 =
-          let
-            pkgs24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
-            pkgs20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
-            pkgs15_09 = (import nixpkgs_15_09 { system = "x86_64-linux"; }).pkgs;
-            pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13 { system = "x86_64-linux"; }).pkgs;
-            pkgs_0_14 = import nixpkgs_0_14 { system = "x86_64-linux"; };
-          in
-          pkgs.callPackage ./ghc_6_6_1 {
-            perl =
-              with pkgs_last_glibc_2_13.perl58;
-              pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                patches = [
-                  (lib.lists.elemAt patches 0)
-                  (lib.lists.elemAt patches 1)
-                  (pkgs.fetchurl {
-                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                  })
-                ];
-                inherit
-                  name
-                  phase
-                  phases
-                  setupHook
-                  src
-                  ;
-              };
-            gcc = pkgs20_03.wrapCCWith {
-              cc = pkgs_last_glibc_2_13.gcc;
-              bintools = pkgs20_03.wrapBintoolsWith {
-                bintools =
-                  with pkgs_0_14.binutils;
-                  let
-                    version = "2.20.1";
-                  in
-                  pkgs_0_14.stdenv.mkDerivation {
-                    name = "binutils-${version}";
-                    src = pkgs.fetchurl {
-                      url = "mirror://gnu/binutils/binutils-${version}.tar.bz2";
-                      hash = "sha256-cdN8lkUTM8XAuEsXAWn9yxOLuyc5fcBigZBdlxfI7WQ=";
-                    };
-                    inherit
-                      buildInputs
-                      configureFlags
-                      enableParallelBuilding
-                      NIX_CFLAGS_COMPILE
-                      noSysDirs
-                      patches
-                      preConfigure
-                      ;
-                  };
-                libc = pkgs15_09.glibc;
-              };
-            };
-            ghc = pkgs.callPackage ghc_6_6_1/binary.nix {
-              perl =
-                with pkgs_last_glibc_2_13.perl58;
-                pkgs_last_glibc_2_13.stdenv.mkDerivation {
-                  patches = [
-                    (lib.lists.elemAt patches 0)
-                    (lib.lists.elemAt patches 1)
-                    (pkgs.fetchurl {
-                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-                    })
-                  ];
-                  inherit
-                    name
-                    phase
-                    phases
-                    setupHook
-                    src
-                    ;
-                };
-              gmp = pkgs24_11.gmp4;
-              readline = pkgs21_11.readline5;
-            };
-            gmp = pkgs23_05.gmp;
-          };
-
-        ghc_6_8_3 =
-          let
-            pkgs24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
-            pkgs18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_6_8_3 {
-            gcc = pkgs18_03.gcc;
-            ghc = pkgs.callPackage ghc_6_8_3/binary.nix {
-              gmp = pkgs24_11.gmp4;
-              readline = pkgs21_11.readline5;
-            };
-            gmp = pkgs23_05.gmp;
-          };
-
-        ghc_6_10_4 =
-          let
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
-            pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_6_10_4 {
-            gcc = pkgs_18_03.gcc;
-            ghc = pkgs.callPackage ghc_6_10_4/binary.nix { gmp = pkgs_24_11.gmp4; };
-            gmp = pkgs_23_05.gmp;
-            ncurses = pkgs_21_05.ncurses;
-          };
-
-        ghc_6_12_3 =
-          let
-            pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
-            pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_6_12_3 {
-            gcc = pkgs_18_03.gcc;
-            ghc = pkgs.callPackage ghc_6_12_3/binary.nix {
-              gcc = pkgs_25_05.gcc;
-              gmp = pkgs_24_11.gmp4;
-            };
-            gmp = pkgs_23_05.gmp;
-            ncurses = pkgs_21_05.ncurses;
-          };
-
-        ghc_7_0_4 =
-          let
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
-            pkgs_20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
-            pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_7_0_4 {
-            gcc = pkgs_18_03.gcc;
-            ghc = pkgs.callPackage ghc_7_0_4/binary.nix {
-              gcc = pkgs_20_03.gcc;
-              gmp = pkgs_24_11.gmp4;
-            };
-            gmp = pkgs_23_05.gmp;
-            ncurses = pkgs_21_05.ncurses;
-          };
-
-        ghc_7_2_2 =
-          let
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
-            pkgs_20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
-            pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-          in
-          pkgs.callPackage ./ghc_7_2_2 {
-            gcc = pkgs_18_03.gcc;
-            ghc = pkgs.callPackage ghc_7_2_2/binary.nix {
-              gcc = pkgs_20_03.gcc;
-              gmp = pkgs_24_11.gmp4;
-            };
-            gmp = pkgs_23_05.gmp;
-            ncurses = pkgs_21_05.ncurses;
-          };
-
-        ghc_7_4_2 =
-          let
-            pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
-            pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-          in
-          pkgs.callPackage ./ghc_7_4_2 {
-            gcc = pkgs_24_11.gcc;
-            ghc = pkgs.callPackage ghc_7_4_2/binary.nix {
-              gcc = pkgs_25_05.gcc;
-              gmp = pkgs_24_11.gmp4;
-            };
+          ghc = pkgs.callPackage ./ghc_6_4_2/binary.nix {
+            perl = pkgs_last_glibc_2_13.perl58;
             gmp = pkgs_24_11.gmp4;
-            ncurses = pkgs_25_11.ncurses5;
+            readline = pkgs_21_11.readline5;
           };
+        };
 
-        ghc_7_6_3 =
-          let
-            pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
-            pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-          in
-          pkgs.callPackage ./ghc_7_6_3 {
-            gcc = pkgs_24_11.gcc;
-            ghc = pkgs.callPackage ghc_7_6_3/binary.nix {
-              gcc = pkgs_25_05.gcc;
-              gmp = pkgs_24_11.gmp4;
+        ghc_6_6_1 = pkgs.callPackage ./ghc_6_6_1 {
+          perl = pkgs_last_glibc_2_13.perl58;
+          gcc = pkgs_20_03.wrapCCWith {
+            cc = pkgs_last_glibc_2_13.gcc;
+            bintools = pkgs_20_03.wrapBintoolsWith {
+              bintools = binutils_2_20_1;
+              libc = pkgs_15_09.glibc;
             };
+          };
+          ghc = pkgs.callPackage ./ghc_6_6_1/binary.nix {
+            perl = pkgs_last_glibc_2_13.perl58;
             gmp = pkgs_24_11.gmp4;
-            ncurses = pkgs_25_11.ncurses;
+            readline = pkgs_21_11.readline5;
           };
+          gmp = pkgs_23_05.gmp;
+        };
 
-        ghc_7_8_4 =
-          let
-            pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
-            pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-          in
-          pkgs.callPackage ./ghc_7_8_4 {
-            gcc = pkgs_24_11.gcc;
-            ghc = pkgs.callPackage ghc_7_8_4/binary.nix { gcc = pkgs_25_05.gcc; };
-            ncurses = pkgs_25_11.ncurses;
+        ghc_6_8_3 = pkgs.callPackage ./ghc_6_8_3 {
+          gcc = pkgs_18_03.gcc;
+          ghc = pkgs.callPackage ./ghc_6_8_3/binary.nix {
+            gmp = pkgs_24_11.gmp4;
+            readline = pkgs_21_11.readline5;
           };
+          gmp = pkgs_23_05.gmp;
+        };
 
-        ghc_7_10_3 =
-          let
-            pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
-            pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-            pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-            pkgs_21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
-          in
-          pkgs.callPackage ./ghc_7_10_3 {
+        ghc_6_10_4 = pkgs.callPackage ./ghc_6_10_4 {
+          gcc = pkgs_18_03.gcc;
+          ghc = pkgs.callPackage ./ghc_6_10_4/binary.nix { gmp = pkgs_24_11.gmp4; };
+          gmp = pkgs_23_05.gmp;
+          ncurses = pkgs_21_05.ncurses;
+        };
+
+        ghc_6_12_3 = pkgs.callPackage ./ghc_6_12_3 {
+          gcc = pkgs_18_03.gcc;
+          ghc = pkgs.callPackage ./ghc_6_12_3/binary.nix {
+            gcc = pkgs_25_05.gcc;
+            gmp = pkgs_24_11.gmp4;
+          };
+          gmp = pkgs_23_05.gmp;
+          ncurses = pkgs_21_05.ncurses;
+        };
+
+        ghc_7_0_4 = pkgs.callPackage ./ghc_7_0_4 {
+          gcc = pkgs_18_03.gcc;
+          ghc = pkgs.callPackage ./ghc_7_0_4/binary.nix {
+            gcc = pkgs_20_03.gcc;
+            gmp = pkgs_24_11.gmp4;
+          };
+          gmp = pkgs_23_05.gmp;
+          ncurses = pkgs_21_05.ncurses;
+        };
+
+        ghc_7_2_2 = pkgs.callPackage ./ghc_7_2_2 {
+          gcc = pkgs_18_03.gcc;
+          ghc = pkgs.callPackage ./ghc_7_2_2/binary.nix {
+            gcc = pkgs_20_03.gcc;
+            gmp = pkgs_24_11.gmp4;
+          };
+          gmp = pkgs_23_05.gmp;
+          ncurses = pkgs_21_05.ncurses;
+        };
+
+        ghc_7_4_2 = pkgs.callPackage ./ghc_7_4_2 {
+          gcc = pkgs_24_11.gcc;
+          ghc = pkgs.callPackage ./ghc_7_4_2/binary.nix {
+            gcc = pkgs_25_05.gcc;
+            gmp = pkgs_24_11.gmp4;
+          };
+          gmp = pkgs_24_11.gmp4;
+          ncurses = pkgs_25_11.ncurses5;
+        };
+
+        ghc_7_6_3 = pkgs.callPackage ./ghc_7_6_3 {
+          gcc = pkgs_24_11.gcc;
+          ghc = pkgs.callPackage ./ghc_7_6_3/binary.nix {
+            gcc = pkgs_25_05.gcc;
+            gmp = pkgs_24_11.gmp4;
+          };
+          gmp = pkgs_24_11.gmp4;
+          ncurses = pkgs_25_11.ncurses;
+        };
+
+        ghc_7_8_4 = pkgs.callPackage ./ghc_7_8_4 {
+          gcc = pkgs_24_11.gcc;
+          ghc = pkgs.callPackage ./ghc_7_8_4/binary.nix { gcc = pkgs_25_05.gcc; };
+          ncurses = pkgs_25_11.ncurses;
+        };
+
+        ghc_7_10_3 = pkgs.callPackage ./ghc_7_10_3 {
+          gcc = pkgs_24_11.gcc;
+          ghc = pkgs.callPackage ./ghc_7_10_3 {
             gcc = pkgs_24_11.gcc;
-            ghc = pkgs.callPackage ./ghc_7_10_3 {
-              gcc = pkgs_24_11.gcc;
-              ghc = pkgs.callPackage ghc_7_10_3/binary.nix { gcc = pkgs_21_11.gcc; };
-              gmp = pkgs_23_05.gmp;
-              ncurses = pkgs_25_11.ncurses;
-            };
+            ghc = pkgs.callPackage ./ghc_7_10_3/binary.nix { gcc = pkgs_21_11.gcc; };
+            gmp = pkgs_23_05.gmp;
             ncurses = pkgs_25_11.ncurses;
           };
+          ncurses = pkgs_25_11.ncurses;
+        };
 
         ghc_8_0_2 = pkgs.callPackage ./ghc_8_0_2 {
           gcc = pkgs.gcc13;
-          ghc = pkgs.callPackage ghc_8_0_2/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_0_2/binary.nix { };
         };
 
         ghc_8_2_2 = pkgs.callPackage ./ghc_8_2_2 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_8_2_2/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_2_2/binary.nix { };
         };
 
         ghc_8_4_4 = pkgs.callPackage ./ghc_8_4_4 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_8_4_4/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_4_4/binary.nix { };
         };
 
         ghc_8_6_5 = pkgs.callPackage ./ghc_8_6_5 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_8_6_5/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_6_5/binary.nix { };
         };
 
         ghc_8_8_4 = pkgs.callPackage ./ghc_8_8_4 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_8_8_4/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_8_4/binary.nix { };
         };
 
         ghc_8_10_7 = pkgs.callPackage ./ghc_8_10_7 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_8_10_7/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_8_10_7/binary.nix { };
         };
 
         ghc_9_0_2 = pkgs.callPackage ./ghc_9_0_2 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_9_0_2/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_9_0_2/binary.nix { };
         };
 
         ghc_9_2_8 = pkgs.callPackage ./ghc_9_2_8 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_9_2_8/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_9_2_8/binary.nix { };
         };
 
         ghc_9_4_8 = pkgs.callPackage ./ghc_9_4_8 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_9_4_8/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_9_4_8/binary.nix { };
         };
 
         ghc_9_6_7 = pkgs.callPackage ./ghc_9_6_7 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_9_6_7/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_9_6_7/binary.nix { };
         };
 
         ghc_9_8_4 = pkgs.callPackage ./ghc_9_8_4 {
           gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ghc_9_8_4/binary.nix { };
+          ghc = pkgs.callPackage ./ghc_9_8_4/binary.nix { };
         };
 
-        ghc_9_10_3 = pkgs.callPackage ./ghc_9_10_3 { ghc = pkgs.callPackage ghc_9_10_3/binary.nix { }; };
+        ghc_9_10_3 = pkgs.callPackage ./ghc_9_10_3 { ghc = pkgs.callPackage ./ghc_9_10_3/binary.nix { }; };
 
-        ghc_9_12_3 = pkgs.callPackage ./ghc_9_12_3 { ghc = pkgs.callPackage ghc_9_12_3/binary.nix { }; };
+        ghc_9_12_3 = pkgs.callPackage ./ghc_9_12_3 { ghc = pkgs.callPackage ./ghc_9_12_3/binary.nix { }; };
       };
     };
 }

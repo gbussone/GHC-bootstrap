@@ -1,0 +1,14 @@
+--- a/pkgs/development/interpreters/perl/5.8/default.nix
++++ b/pkgs/development/interpreters/perl/5.8/default.nix
+@@ -55,10 +55,7 @@ genericBuild
+     # Fix for "SysV.xs:7:25: error: asm/page.h: No such file or
+     # directory" on recent kernel headers.  From
+     # http://bugs.gentoo.org/show_bug.cgi?id=168312.
+-    (fetchurl {
+-      url = http://bugs.gentoo.org/attachment.cgi?id=111427;
+-      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+-    })
++    ./111427.patch
+   ];
+ 
+   setupHook = ./setup-hook.sh;
