@@ -113,8 +113,56 @@
         ghc_5_4_3 = throw "todo";
         ghc_6_0 = throw "todo";
         ghc_6_0_1 = throw "todo";
-        ghc_6_2 = throw "todo";
-        ghc_6_2_2 = throw "todo";
+
+        ghc_6_2_2 =
+          let
+            pkgs = nixpkgs.legacyPackages.i686-linux;
+            pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13 { system = "i686-linux"; }).pkgs;
+          in
+          pkgs.callPackage ./ghc_6_2_2 {
+            perl =
+              with pkgs_last_glibc_2_13.perl58;
+              pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                patches = [
+                  (lib.lists.elemAt patches 0)
+                  (lib.lists.elemAt patches 1)
+                  (pkgs.fetchurl {
+                    url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                    sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                  })
+                ];
+                inherit
+                  name
+                  phase
+                  phases
+                  setupHook
+                  src
+                  ;
+              };
+            gcc = pkgs_last_glibc_2_13.gcc34;
+            ghc = pkgs.callPackage ghc_6_2_2/binary.nix {
+              perl =
+                with pkgs_last_glibc_2_13.perl58;
+                pkgs_last_glibc_2_13.stdenv.mkDerivation {
+                  patches = [
+                    (lib.lists.elemAt patches 0)
+                    (lib.lists.elemAt patches 1)
+                    (pkgs.fetchurl {
+                      url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
+                      sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
+                    })
+                  ];
+                  inherit
+                    name
+                    phase
+                    phases
+                    setupHook
+                    src
+                    ;
+                };
+              readline = pkgs_last_glibc_2_13.readline4;
+            };
+          };
 
         ghc_6_4_2 =
           let
