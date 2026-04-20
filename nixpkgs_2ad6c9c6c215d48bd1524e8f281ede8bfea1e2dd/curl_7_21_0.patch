@@ -1,0 +1,14 @@
+--- a/pkgs/tools/networking/curl/default.nix
++++ b/pkgs/tools/networking/curl/default.nix
+@@ -12,10 +12,7 @@ assert scpSupport -> libssh2 != null;
+ stdenv.mkDerivation rec {
+   name = "curl-7.21.0";
+ 
+-  src = fetchurl {
+-    url = "http://curl.haxx.se/download/${name}.tar.bz2";
+-    sha256 = "1fl7sh38i746b57aqjqjaykwq4rhm2p1phzrgnc2h6wm2k2b95gy";
+-  };
++  src = ./curl-7.21.0.tar.gz;
+ 
+   # Zlib and OpenSSL must be propagated because `libcurl.la' contains
+   # "-lz -lssl", which aren't necessary direct build inputs of

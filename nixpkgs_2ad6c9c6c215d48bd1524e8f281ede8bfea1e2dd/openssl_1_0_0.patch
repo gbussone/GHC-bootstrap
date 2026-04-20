@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/openssl/default.nix
++++ b/pkgs/development/libraries/openssl/default.nix
+@@ -9,10 +9,7 @@ in
+ stdenv.mkDerivation rec {
+   name = "openssl-1.0.0c";
+ 
+-  src = fetchurl {
+-    url = "http://www.openssl.org/source/${name}.tar.gz";
+-    sha256 = "1sq4sswyjxnr08lyjcafwdha6j5jd2b48vxfg48kdapdwdnv6cgp";
+-  };
++  src = ./openssl-1.0.0c.tar.gz;
+ 
+   patches = stdenv.lib.optional stdenv.isDarwin ./darwin-arch.patch;
+ 

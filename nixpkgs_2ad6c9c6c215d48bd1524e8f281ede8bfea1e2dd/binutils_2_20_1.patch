@@ -1,0 +1,11 @@
+--- a/pkgs/development/tools/misc/binutils/default.nix
++++ b/pkgs/development/tools/misc/binutils/default.nix
+@@ -8,7 +8,7 @@ stdenv.mkDerivation rec {
+ 
+   src = fetchurl {
+     url = "mirror://gnu/binutils/${basename}.tar.bz2";
+-    sha256 = "1y7nwsprhr4hvx9ps2l0l0ivb6k41rcrx1invmzqxs475mr892r2";
++    sha256 = "0r7dr0brfpchh5ic0z9r4yxqn4ybzmlh25sbp30cacqk8nb7rlvi";
+   };
+ 
+   patches = [

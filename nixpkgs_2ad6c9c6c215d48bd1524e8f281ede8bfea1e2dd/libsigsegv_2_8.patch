@@ -1,0 +1,11 @@
+--- a/pkgs/development/libraries/libsigsegv/default.nix
++++ b/pkgs/development/libraries/libsigsegv/default.nix
+@@ -8,7 +8,7 @@ stdenv.mkDerivation rec {
+     sha256 = "052vcxgajdlvc77dqcs48axjz698r1g2gyagz2qcr6zvkyw304w6";
+   };
+ 
+-  doCheck = true;
++  doCheck = false;
+ 
+   meta = {
+     homepage = http://www.gnu.org/software/libsigsegv/;

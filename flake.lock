@@ -379,6 +379,23 @@
         "type": "github"
       }
     },
+    "nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1292196910,
+        "narHash": "sha256-TLuwKeZp6ElbBb42JHEzCVtgDPv7O+7TqJZHjBnzftU=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd",
+        "type": "github"
+      }
+    },
     "nixpkgs_last_glibc_2_13": {
       "flake": false,
       "locked": {
@@ -421,6 +438,7 @@
         "nixpkgs_24_11": "nixpkgs_24_11",
         "nixpkgs_25_05": "nixpkgs_25_05",
         "nixpkgs_25_11": "nixpkgs_25_11",
+        "nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd": "nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd",
         "nixpkgs_last_glibc_2_13": "nixpkgs_last_glibc_2_13"
       }
     }

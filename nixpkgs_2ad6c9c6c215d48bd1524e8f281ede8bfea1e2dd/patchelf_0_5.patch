@@ -1,0 +1,14 @@
+--- a/pkgs/development/tools/misc/patchelf/default.nix
++++ b/pkgs/development/tools/misc/patchelf/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation rec {
+   name = "patchelf-0.5";
+   
+-  src = fetchurl {
+-    url = "http://nixos.org/releases/patchelf/${name}/${name}.tar.bz2";
+-    sha256 = "24b9a850af45e1a277e234b9eb090b52305a2e1c6b02addeb3ae98b4b49d37ce";
+-  };
++  src = ./patchelf-0.5.tar.bz2;
+ 
+   meta = {
+     homepage = http://nixos.org/patchelf.html;

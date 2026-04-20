@@ -1,0 +1,14 @@
+--- a/pkgs/development/tools/misc/binutils/snapshot.nix
++++ b/pkgs/development/tools/misc/binutils/snapshot.nix
+@@ -6,10 +6,7 @@ in
+ stdenv.mkDerivation rec {
+   name = basename + stdenv.lib.optionalString (cross != null) "-${cross.config}";
+ 
+-  src = fetchurl {
+-    url = http://nixos.org/tarballs/binutils-2.20.51-pre-20100901.tar.bz2;
+-    sha256 = "1872fdnbnq5z5svq7mvc0vyyad8pknwvx2glxq1bbk0xv7arp72y";
+-  };
++  src = ./binutils-2.20.51-pre-20100901.tar.bz2;
+ 
+   patches = [
+     # Turn on --enable-new-dtags by default to make the linker set

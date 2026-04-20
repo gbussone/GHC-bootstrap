@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/cloog-ppl/default.nix
++++ b/pkgs/development/libraries/cloog-ppl/default.nix
+@@ -14,10 +14,7 @@ in
+ stdenv.mkDerivation rec {
+   name = "cloog-ppl-0.15.9";
+ 
+-  src = fetchurl {
+-    url = "mirror://gcc/infrastructure/${name}.tar.gz";
+-    sha256 = "19a2n75k3d3n8llng25f2g88lpvd4zn0lm073rkndjw6l6yd8m4c";
+-  };
++  src = ./cloog-ppl-0.15.9.tar.gz;
+ 
+   propagatedBuildInputs = [ ppl ];
+ 

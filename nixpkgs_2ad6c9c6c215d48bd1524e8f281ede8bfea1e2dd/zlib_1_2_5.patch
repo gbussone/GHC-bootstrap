@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/zlib/default.nix
++++ b/pkgs/development/libraries/zlib/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation (rec {
+   name = "zlib-1.2.5";
+   
+-  src = fetchurl {
+-    url = "http://www.zlib.net/${name}.tar.gz";
+-    sha256 = "0n7rlgvjn73pyil3s1l6p77m7wkc809n934rnzxv1b1za4pfar30";
+-  };
++  src = ./zlib-1.2.5.tar.gz;
+ 
+   configureFlags = if static then "" else "--shared";
+ 
