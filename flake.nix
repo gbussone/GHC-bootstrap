@@ -100,151 +100,202 @@
     let
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       pkgs32 = nixpkgs.legacyPackages.i686-linux;
-      pkgs_25_11 = nixpkgs_25_11.legacyPackages.x86_64-linux;
-      pkgs32_25_11 = nixpkgs_25_11.legacyPackages.i686-linux;
-      pkgs_25_05 = nixpkgs_25_05.legacyPackages.x86_64-linux;
-      pkgs32_25_05 = nixpkgs_25_05.legacyPackages.i686-linux;
-      pkgs_24_11 = nixpkgs_24_11.legacyPackages.x86_64-linux;
-      pkgs32_24_11 = nixpkgs_24_11.legacyPackages.i686-linux;
-      pkgs_24_05 = nixpkgs_24_05.legacyPackages.x86_64-linux;
-      pkgs32_24_05 = nixpkgs_24_05.legacyPackages.i686-linux;
-      pkgs_23_11 = nixpkgs_23_11.legacyPackages.x86_64-linux;
-      pkgs32_23_11 = nixpkgs_23_11.legacyPackages.i686-linux;
-      pkgs_23_05 = nixpkgs_23_05.legacyPackages.x86_64-linux;
-      pkgs32_23_05 = nixpkgs_23_05.legacyPackages.i686-linux;
-      pkgs_22_11 = nixpkgs_22_11.legacyPackages.x86_64-linux;
-      pkgs32_22_11 = nixpkgs_22_11.legacyPackages.i686-linux;
-      pkgs_22_05 = nixpkgs_22_05.legacyPackages.x86_64-linux;
-      pkgs32_22_05 = nixpkgs_22_05.legacyPackages.i686-linux;
-      pkgs_21_11 = nixpkgs_21_11.legacyPackages.x86_64-linux;
-      pkgs32_21_11 = nixpkgs_21_11.legacyPackages.i686-linux;
-      pkgs_21_05 = nixpkgs_21_05.legacyPackages.x86_64-linux;
-      pkgs32_21_05 = nixpkgs_21_05.legacyPackages.i686-linux;
-      pkgs_20_09 = nixpkgs_20_09.legacyPackages.x86_64-linux;
-      pkgs32_20_09 = nixpkgs_20_09.legacyPackages.i686-linux;
-      pkgs_20_03 = (import nixpkgs_20_03 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_20_03 = (import nixpkgs_20_03 { system = "i686-linux"; }).pkgs;
-      pkgs_19_09 = (import nixpkgs_19_09 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_19_09 = (import nixpkgs_19_09 { system = "i686-linux"; }).pkgs;
-      pkgs_19_03 = (import nixpkgs_19_03 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_19_03 = (import nixpkgs_19_03 { system = "i686-linux"; }).pkgs;
-      pkgs_18_09 = (import nixpkgs_18_09 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_18_09 = (import nixpkgs_18_09 { system = "i686-linux"; }).pkgs;
-      pkgs_18_03 = (import nixpkgs_18_03 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_18_03 = (import nixpkgs_18_03 { system = "i686-linux"; }).pkgs;
-      pkgs_17_09 = (import nixpkgs_17_09 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_17_09 = (import nixpkgs_17_09 { system = "i686-linux"; }).pkgs;
-      pkgs_17_03 = (import nixpkgs_17_03 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_17_03 = (import nixpkgs_17_03 { system = "i686-linux"; }).pkgs;
-      pkgs_16_09 = (import nixpkgs_16_09 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_16_09 = (import nixpkgs_16_09 { system = "i686-linux"; }).pkgs;
-      pkgs_16_03 = (import nixpkgs_16_03 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_16_03 = (import nixpkgs_16_03 { system = "i686-linux"; }).pkgs;
-      pkgs_15_09 = (import nixpkgs_15_09 { system = "x86_64-linux"; }).pkgs;
-      pkgs32_15_09 = (import nixpkgs_15_09 { system = "i686-linux"; }).pkgs;
-      nixpkgs_last_glibc_2_13' = pkgs.applyPatches {
-        name = "nixpkgs";
-        src = nixpkgs_last_glibc_2_13;
-        patches = [ ./nixpkgs_last_glibc_2_13/perl_5_8.patch ];
-        prePatch = ''
-          cp ${
-            pkgs.fetchurl {
-              url = "http://bugs.gentoo.org/attachment.cgi?id=111427";
-              sha256 = "017pj0nbqb7kwj3cs727c2l2d8c45l9cwxf71slgb807kn3ppgmn";
-            }
-          } pkgs/development/interpreters/perl/5.8/111427.patch
-        '';
+      pkgs_25_11 = pkgs.callPackage ./nixpkgs_25_11 {
+        src = nixpkgs_25_11;
+        system = "x86_64-linux";
       };
-      pkgs_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13' { system = "x86_64-linux"; }).pkgs;
-      pkgs32_last_glibc_2_13 = (import nixpkgs_last_glibc_2_13' { system = "i686-linux"; }).pkgs;
-      pkgs_0_14 = import nixpkgs_0_14 { system = "x86_64-linux"; };
-      pkgs32_0_14 = import nixpkgs_0_14 { system = "i686-linux"; };
-      nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd' = pkgs.applyPatches {
-        name = "nixpkgs";
-        src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
-        patches = [
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/binutils_2_20_1.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/binutils_2_20_51.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/bootstrap_tools.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/cloog_ppl_0_15_9.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/curl_7_21_0.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/libsigsegv_2_8.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/libssh2_1_2_6.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/mpc_0_8_2.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/openssl_1_0_0.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/patchelf_0_5.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/xz_5_0_0.patch
-          ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd/zlib_1_2_5.patch
-        ];
-        prePatch = ''
-          cp ${
-            pkgs.fetchurl {
-              url = "http://nixos.org/tarballs/binutils-2.20.51-pre-20100901.tar.bz2";
-              sha256 = "1872fdnbnq5z5svq7mvc0vyyad8pknwvx2glxq1bbk0xv7arp72y";
-            }
-          } pkgs/development/tools/misc/binutils/binutils-2.20.51-pre-20100901.tar.bz2
-          cp ${
-            pkgs.fetchurl {
-              url = "http://nixos.org/tarballs/stdenv-linux/x86_64/r23302/bootstrap-tools.cpio.bz2";
-              sha256 = "0w89kqhx47yl0jifp2vffp073pyrqha5f312kp971smi4h41drna";
-            }
-          } pkgs/stdenv/linux/bootstrap/x86_64/bootstrap-tools.cpio.bz2
-          cp ${
-            pkgs.fetchurl {
-              url = "https://ftp2.osuosl.org/pub/clfs/conglomeration/cloog-ppl/cloog-ppl-0.15.9.tar.gz";
-              sha256 = "19a2n75k3d3n8llng25f2g88lpvd4zn0lm073rkndjw6l6yd8m4c";
-            }
-          } pkgs/development/libraries/cloog-ppl/cloog-ppl-0.15.9.tar.gz
-          cp ${
-            pkgs.fetchurl {
-              url = "https://curl.se/download/archeology/curl-7.21.0.tar.gz";
-              hash = "sha256-s+IEfG9w6zIVV6+YCpVU8KmPsSLZY28cmIMyYu7Y3h0=";
-            }
-          } pkgs/tools/networking/curl/curl-7.21.0.tar.gz
-          cp ${
-            pkgs.fetchurl {
-              url = "http://www.libssh2.org/download/libssh2-1.2.6.tar.gz";
-              sha256 = "00f6hw972v7jd0rrdr6kx5cn7pa1spyx8xgc7vhjydksgsig3f8b";
-            }
-          } pkgs/development/libraries/libssh2/libssh2-1.2.6.tar.gz
-          cp ${
-            pkgs.fetchurl {
-              url = "https://www.multiprecision.org/downloads/mpc-0.8.2.tar.gz";
-              sha256 = "1iw0ag28l5r88k7kpn6i89rqn3yhk2irqzk0d1mlb1la3paghydf";
-            }
-          } pkgs/development/libraries/mpc/mpc-0.8.2.tar.gz
-          cp ${
-            pkgs.fetchurl {
-              url = "http://www.openssl.org/source/openssl-1.0.0c.tar.gz";
-              sha256 = "1sq4sswyjxnr08lyjcafwdha6j5jd2b48vxfg48kdapdwdnv6cgp";
-            }
-          } pkgs/development/libraries/openssl/openssl-1.0.0c.tar.gz
-          cp ${
-            pkgs.fetchurl {
-              url = "http://nixos.org/releases/patchelf/patchelf-0.5/patchelf-0.5.tar.bz2";
-              sha256 = "24b9a850af45e1a277e234b9eb090b52305a2e1c6b02addeb3ae98b4b49d37ce";
-            }
-          } pkgs/development/tools/misc/patchelf/patchelf-0.5.tar.bz2
-          cp ${
-            pkgs.fetchurl {
-              url = "http://tukaani.org/xz/xz-5.0.0.tar.bz2";
-              sha256 = "1n2nc00d83di0jl5d9qwpngkmlk3wqhs4w9q2ah680v9qijrxa27";
-            }
-          } pkgs/tools/compression/xz/xz-5.0.0.tar.bz2
-          cp ${
-            pkgs.fetchurl {
-              url = "https://zlib.net/fossils/zlib-1.2.5.tar.gz";
-              sha256 = "0n7rlgvjn73pyil3s1l6p77m7wkc809n934rnzxv1b1za4pfar30";
-            }
-          } pkgs/development/libraries/zlib/zlib-1.2.5.tar.gz
-        '';
+      pkgs32_25_11 = pkgs.callPackage ./nixpkgs_25_11 {
+        src = nixpkgs_25_11;
+        system = "i686-linux";
+      };
+      pkgs_25_05 = pkgs.callPackage ./nixpkgs_25_05 {
+        src = nixpkgs_25_05;
+        system = "x86_64-linux";
+      };
+      pkgs32_25_05 = pkgs.callPackage ./nixpkgs_25_05 {
+        src = nixpkgs_25_05;
+        system = "i686-linux";
+      };
+      pkgs_24_11 = pkgs.callPackage ./nixpkgs_24_11 {
+        src = nixpkgs_24_11;
+        system = "x86_64-linux";
+      };
+      pkgs32_24_11 = pkgs.callPackage ./nixpkgs_24_11 {
+        src = nixpkgs_24_11;
+        system = "i686-linux";
+      };
+      pkgs_24_05 = pkgs.callPackage ./nixpkgs_24_05 {
+        src = nixpkgs_24_05;
+        system = "x86_64-linux";
+      };
+      pkgs32_24_05 = pkgs.callPackage ./nixpkgs_24_05 {
+        src = nixpkgs_24_05;
+        system = "i686-linux";
+      };
+      pkgs_23_11 = pkgs.callPackage ./nixpkgs_23_11 {
+        src = nixpkgs_23_11;
+        system = "x86_64-linux";
+      };
+      pkgs32_23_11 = pkgs.callPackage ./nixpkgs_23_11 {
+        src = nixpkgs_23_11;
+        system = "i686-linux";
+      };
+      pkgs_23_05 = pkgs.callPackage ./nixpkgs_23_05 {
+        src = nixpkgs_23_05;
+        system = "x86_64-linux";
+      };
+      pkgs32_23_05 = pkgs.callPackage ./nixpkgs_23_05 {
+        src = nixpkgs_23_05;
+        system = "i686-linux";
+      };
+      pkgs_22_11 = pkgs.callPackage ./nixpkgs_22_11 {
+        src = nixpkgs_22_11;
+        system = "x86_64-linux";
+      };
+      pkgs32_22_11 = pkgs.callPackage ./nixpkgs_22_11 {
+        src = nixpkgs_22_11;
+        system = "i686-linux";
+      };
+      pkgs_22_05 = pkgs.callPackage ./nixpkgs_22_05 {
+        src = nixpkgs_22_05;
+        system = "x86_64-linux";
+      };
+      pkgs32_22_05 = pkgs.callPackage ./nixpkgs_22_05 {
+        src = nixpkgs_22_05;
+        system = "i686-linux";
+      };
+      pkgs_21_11 = pkgs.callPackage ./nixpkgs_21_11 {
+        src = nixpkgs_21_11;
+        system = "x86_64-linux";
+      };
+      pkgs32_21_11 = pkgs.callPackage ./nixpkgs_21_11 {
+        src = nixpkgs_21_11;
+        system = "i686-linux";
+      };
+      pkgs_21_05 = pkgs.callPackage ./nixpkgs_21_05 {
+        src = nixpkgs_21_05;
+        system = "x86_64-linux";
+      };
+      pkgs32_21_05 = pkgs.callPackage ./nixpkgs_21_05 {
+        src = nixpkgs_21_05;
+        system = "i686-linux";
+      };
+      pkgs_20_09 = pkgs.callPackage ./nixpkgs_20_09 {
+        src = nixpkgs_20_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_20_09 = pkgs.callPackage ./nixpkgs_20_09 {
+        src = nixpkgs_20_09;
+        system = "i686-linux";
+      };
+      pkgs_20_03 = pkgs.callPackage ./nixpkgs_20_03 {
+        src = nixpkgs_20_03;
+        system = "x86_64-linux";
+      };
+      pkgs32_20_03 = pkgs.callPackage ./nixpkgs_20_03 {
+        src = nixpkgs_20_03;
+        system = "i686-linux";
+      };
+      pkgs_19_09 = pkgs.callPackage ./nixpkgs_19_09 {
+        src = nixpkgs_19_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_19_09 = pkgs.callPackage ./nixpkgs_19_09 {
+        src = nixpkgs_19_09;
+        system = "i686-linux";
+      };
+      pkgs_19_03 = pkgs.callPackage ./nixpkgs_19_03 {
+        src = nixpkgs_19_03;
+        system = "x86_64-linux";
+      };
+      pkgs32_19_03 = pkgs.callPackage ./nixpkgs_19_03 {
+        src = nixpkgs_19_03;
+        system = "i686-linux";
+      };
+      pkgs_18_09 = pkgs.callPackage ./nixpkgs_18_09 {
+        src = nixpkgs_18_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_18_09 = pkgs.callPackage ./nixpkgs_18_09 {
+        src = nixpkgs_18_09;
+        system = "i686-linux";
+      };
+      pkgs_18_03 = pkgs.callPackage ./nixpkgs_18_03 {
+        src = nixpkgs_18_03;
+        system = "x86_64-linux";
+      };
+      pkgs32_18_03 = pkgs.callPackage ./nixpkgs_18_03 {
+        src = nixpkgs_18_03;
+        system = "i686-linux";
+      };
+      pkgs_17_09 = pkgs.callPackage ./nixpkgs_17_09 {
+        src = nixpkgs_17_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_17_09 = pkgs.callPackage ./nixpkgs_17_09 {
+        src = nixpkgs_17_09;
+        system = "i686-linux";
+      };
+      pkgs_17_03 = pkgs.callPackage ./nixpkgs_17_03 {
+        src = nixpkgs_17_03;
+        system = "x86_64-linux";
+      };
+      pkgs32_17_03 = pkgs.callPackage ./nixpkgs_17_03 {
+        src = nixpkgs_17_03;
+        system = "i686-linux";
+      };
+      pkgs_16_09 = pkgs.callPackage ./nixpkgs_16_09 {
+        src = nixpkgs_16_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_16_09 = pkgs.callPackage ./nixpkgs_16_09 {
+        src = nixpkgs_16_09;
+        system = "i686-linux";
+      };
+      pkgs_16_03 = pkgs.callPackage ./nixpkgs_16_03 {
+        src = nixpkgs_16_03;
+        system = "x86_64-linux";
+      };
+      pkgs32_16_03 = pkgs.callPackage ./nixpkgs_16_03 {
+        src = nixpkgs_16_03;
+        system = "i686-linux";
+      };
+      pkgs_15_09 = pkgs.callPackage ./nixpkgs_15_09 {
+        src = nixpkgs_15_09;
+        system = "x86_64-linux";
+      };
+      pkgs32_15_09 = pkgs.callPackage ./nixpkgs_15_09 {
+        src = nixpkgs_15_09;
+        system = "i686-linux";
+      };
+      pkgs_last_glibc_2_13 = pkgs.callPackage ./nixpkgs_last_glibc_2_13 {
+        src = nixpkgs_last_glibc_2_13;
+        system = "x86_64-linux";
+      };
+      pkgs32_last_glibc_2_13 = pkgs.callPackage ./nixpkgs_last_glibc_2_13 {
+        src = nixpkgs_last_glibc_2_13;
+        system = "i686-linux";
+      };
+      pkgs_0_14 = pkgs.callPackage ./nixpkgs_0_14 {
+        src = nixpkgs_0_14;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_14 = pkgs.callPackage ./nixpkgs_0_14 {
+        src = nixpkgs_0_14;
+        system = "i686-linux";
       };
       pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
-        import nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd'
-          { system = "x86_64-linux"; };
+        pkgs.callPackage ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
+          {
+            src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
+            system = "x86_64-linux";
+          };
       pkgs32_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
-        import nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd'
-          { system = "i686-linux"; };
+        pkgs.callPackage ./nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
+          {
+            src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
+            system = "i686-linux";
+          };
     in
     {
       packages.x86_64-linux = {
