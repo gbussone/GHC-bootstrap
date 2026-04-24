@@ -1,0 +1,14 @@
+--- a/pkgs/tools/compression/xz/default.nix
++++ b/pkgs/tools/compression/xz/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation rec {
+   name = "xz-5.0.3";
+ 
+-  src = fetchurl {
+-    url = "http://tukaani.org/xz/${name}.tar.bz2";
+-    sha256 = "1sgaq4gdh8llz3gnlgvd65x610fwc8h4m32skhqn5npwgghvj4as";
+-  };
++  src = ./xz-5.0.3.tar.bz2;
+ 
+   doCheck = true;
+ 

@@ -1,0 +1,25 @@
+--- a/pkgs/stdenv/linux/bootstrap/i686/default.nix
++++ b/pkgs/stdenv/linux/bootstrap/i686/default.nix
+@@ -7,7 +7,6 @@
+   curl = ./curl.bz2;
+ 
+   bootstrapTools = {
+-    url = http://nixos.org/tarballs/stdenv-linux/i686/r24519/bootstrap-tools.cpio.bz2;
+-    sha256 = "0imypaxy6piwbk8ff2y1nr7yk49pqmdgdbv6g8miq1zs5yfip6ij";
++    tarball = ./bootstrap-tools.cpio.bz2;
+   };
+ }
+--- a/pkgs/stdenv/linux/default.nix
++++ b/pkgs/stdenv/linux/default.nix
+@@ -63,9 +63,9 @@ rec {
+     
+     inherit (bootstrapFiles) bzip2 mkdir curl cpio;
+     
+-    tarball = download {
++    tarball = bootstrapFiles.bootstrapTools.tarball or (download {
+       inherit (bootstrapFiles.bootstrapTools) url sha256;
+-    };
++    });
+     
+     inherit system;
+     

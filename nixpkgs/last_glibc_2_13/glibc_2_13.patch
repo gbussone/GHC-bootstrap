@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/glibc/2.13/common.nix
++++ b/pkgs/development/libraries/glibc/2.13/common.nix
+@@ -86,7 +86,10 @@ stdenv.mkDerivation ({
+   ++ [
+     /* Without this patch many KDE binaries crash. */
+     ./glibc-elf-localscope.patch
+-  ] ++ stdenv.lib.optional installLocales ./catalan-firstdays.patch;
++  ] ++ stdenv.lib.optional installLocales ./catalan-firstdays.patch
++  ++ [
++    ./ctype.patch
++  ];
+ 
+   postPatch = ''
+     # Needed for glibc to build with the gnumake 3.82

@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/mpc/default.nix
++++ b/pkgs/development/libraries/mpc/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation rec {
+   name = "mpc-0.9";
+ 
+-  src = fetchurl {
+-    url = "http://www.multiprecision.org/mpc/download/${name}.tar.gz";
+-    sha1 = "229722d553030734d49731844abfef7617b64f1a";
+-  };
++  src = ./mpc-0.9.tar.gz;
+ 
+   buildInputs = [ gmp mpfr ];
+ 

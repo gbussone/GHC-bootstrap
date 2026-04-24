@@ -276,6 +276,14 @@
         src = nixpkgs_last_glibc_2_13;
         system = "i686-linux";
       };
+      pkgs_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
+        src = nixpkgs_last_glibc_2_13;
+        system = "i686-linux";
+      };
+      pkgs32_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
+        src = nixpkgs_last_glibc_2_13;
+        system = "i686-linux";
+      };
       pkgs_0_14 = pkgs.callPackage ./nixpkgs/0_14 {
         src = nixpkgs_0_14;
         system = "x86_64-linux";
@@ -311,7 +319,19 @@
         ghc_5_0_2 = throw "todo";
         ghc_5_2_3 = throw "todo";
         ghc_5_4_3 = throw "todo";
-        ghc_6_0_1 = throw "todo";
+
+        ghc_6_0_1 = pkgs32.callPackage ./ghc/6_0_1 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_last_glibc_2_13.gcc33;
+          ghc = pkgs32.callPackage ./ghc/6_0_1 {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32_last_glibc_2_13_glibc.gcc33;
+            ghc = pkgs32.callPackage ./ghc/6_0_1/binary.nix {
+              perl = pkgs32_last_glibc_2_13.perl58;
+              readline = pkgs32_last_glibc_2_13.readline4;
+            };
+          };
+        };
 
         ghc_6_2_2 = pkgs32.callPackage ./ghc/6_2_2 {
           perl = pkgs32_last_glibc_2_13.perl58;

@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/ppl/default.nix
++++ b/pkgs/development/libraries/ppl/default.nix
+@@ -5,10 +5,7 @@ let version = "0.11.2"; in
+ stdenv.mkDerivation rec {
+   name = "ppl-${version}";
+ 
+-  src = fetchurl {
+-    url = "http://bugseng.com/products/ppl/download/ftp/releases/${version}/ppl-${version}.tar.bz2";
+-    sha256 = "1sxviip4yk6gp453pid5scy1ba66dzdpr02i1416yk7lkv0x3yz3";
+-  };
++  src = ./ppl-0.11.2.tar.gz;
+ 
+   buildNativeInputs = [ perl gnum4 ];
+   propagatedBuildInputs = [ gmpxx ];

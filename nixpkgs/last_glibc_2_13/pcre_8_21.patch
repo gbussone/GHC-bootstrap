@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/pcre/default.nix
++++ b/pkgs/development/libraries/pcre/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation rec {
+   name = "pcre-8.21";
+ 
+-  src = fetchurl {
+-    url = "ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/${name}.tar.bz2";
+-    sha256 = "1qwrqldbwszbmr4cw4f0xmcl889cmmjbf58l9vxn89zw26fm1f54";
+-  };
++  src = ./pcre-8.21.tar.bz2;
+ 
+   # The compiler on Darwin crashes with an internal error while building the
+   # C++ interface. Disabling optimizations on that platform remedies the

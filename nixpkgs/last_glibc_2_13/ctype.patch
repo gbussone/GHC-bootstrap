@@ -1,0 +1,20 @@
+--- a/ctype/ctype-info.c
++++ b/ctype/ctype-info.c
+@@ -56,7 +56,6 @@ const __int32_t *__ctype_toupper = b (__int32_t, toupper, 128);
+ const __uint32_t *__ctype32_tolower = b (__uint32_t, tolower, 128);
+ const __uint32_t *__ctype32_toupper = b (__uint32_t, toupper, 128);
+ 
+-compat_symbol (libc, __ctype_b, __ctype_b, GLIBC_2_0);
+ compat_symbol (libc, __ctype_tolower, __ctype_tolower, GLIBC_2_0);
+ compat_symbol (libc, __ctype_toupper, __ctype_toupper, GLIBC_2_0);
+ compat_symbol (libc, __ctype32_b, __ctype32_b, GLIBC_2_0);
+--- a/locale/lc-ctype.c
++++ b/locale/lc-ctype.c
+@@ -95,7 +95,6 @@ _nl_postload_ctype (void)
+      We need those relocations so that a versioned definition with a COPY
+      reloc in an executable will override the libc.so definition.  */
+ 
+-compat_symbol (libc, __ctype_b, __ctype_b, GLIBC_2_0);
+ compat_symbol (libc, __ctype_tolower, __ctype_tolower, GLIBC_2_0);
+ compat_symbol (libc, __ctype_toupper, __ctype_toupper, GLIBC_2_0);
+ compat_symbol (libc, __ctype32_b, __ctype32_b, GLIBC_2_0);
