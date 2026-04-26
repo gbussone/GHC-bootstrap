@@ -1,0 +1,30 @@
+--- a/libraries/network/Network/Socket.hsc
++++ b/libraries/network/Network/Socket.hsc
+@@ -59,7 +59,6 @@ module Network.Socket (
+ 
+ #ifdef SO_PEERCRED
+ 	-- get the credentials of our domain socket peer.
+-    getPeerCred,         -- :: Socket -> IO (CUInt{-pid-}, CUInt{-uid-}, CUInt{-gid-})
+ #endif
+ 
+     socketPort,		-- :: Socket -> IO PortNumber
+@@ -815,19 +814,6 @@ getSocketOption (MkSocket s _ _ _ _) so = do
+ -- | Returns the processID, userID and groupID of the socket's peer.
+ --
+ -- Only available on platforms that support SO_PEERCRED on domain sockets.
+-getPeerCred :: Socket -> IO (CUInt, CUInt, CUInt)
+-getPeerCred sock = do
+-  let fd = fdSocket sock
+-  let sz = (fromIntegral (#const sizeof(struct ucred)))
+-  withObject sz $ \ ptr_cr -> 
+-   alloca       $ \ ptr_sz -> do
+-     poke ptr_sz sz
+-     throwErrnoIfMinus1 "getPeerCred" $
+-       c_getsockopt fd (#const SOL_SOCKET) (#const SO_PEERCRED) ptr_cr ptr_sz
+-     pid <- (#peek struct ucred, pid) ptr_cr
+-     uid <- (#peek struct ucred, uid) ptr_cr
+-     gid <- (#peek struct ucred, gid) ptr_cr
+-     return (pid, uid, gid)
+ #endif
+ 
+ #if defined(DOMAIN_SOCKET_SUPPORT)

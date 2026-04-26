@@ -1,0 +1,10 @@
+--- a/libraries/base/System/CPUTime.hsc
++++ b/libraries/base/System/CPUTime.hsc
+@@ -24,6 +24,7 @@ import Foreign
+ import Foreign.C
+ 
+ import Data.Ratio
++import System.IO.Unsafe ( unsafePerformIO )
+ 
+ #include "HsBase.h"
+ 
