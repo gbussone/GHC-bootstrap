@@ -403,10 +403,10 @@
 
         ghc_5_04_3 = pkgs32.callPackage ./ghc/5_04_3 {
           perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_last_glibc_2_13.gcc33;
+          gcc = pkgs32_0_10.gcc295;
           ghc = pkgs32.callPackage ./ghc/5_04_3 {
             perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_last_glibc_2_13_glibc.gcc33;
+            gcc = pkgs32_0_10_glibc.gcc295;
             ghc = pkgs32.callPackage ./ghc/5_04_3/binary.nix {
               perl = pkgs32_last_glibc_2_13.perl58;
               gcc = pkgs32.gcc13;
