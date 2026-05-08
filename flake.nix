@@ -62,6 +62,22 @@
       url = "github:NixOS/nixpkgs/0.14";
       flake = false;
     };
+    nixpkgs_0_13 = {
+      url = "github:NixOS/nixpkgs/0.13";
+      flake = false;
+    };
+    nixpkgs_0_12 = {
+      url = "github:NixOS/nixpkgs/0.12";
+      flake = false;
+    };
+    nixpkgs_0_11 = {
+      url = "github:NixOS/nixpkgs/0.11";
+      flake = false;
+    };
+    nixpkgs_0_10 = {
+      url = "github:NixOS/nixpkgs/0.10";
+      flake = false;
+    };
     nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd = {
       url = "github:NixOS/nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd";
       flake = false;
@@ -95,6 +111,10 @@
       nixpkgs_15_09,
       nixpkgs_last_glibc_2_13,
       nixpkgs_0_14,
+      nixpkgs_0_13,
+      nixpkgs_0_12,
+      nixpkgs_0_11,
+      nixpkgs_0_10,
       nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd,
     }:
     let
@@ -292,6 +312,46 @@
         src = nixpkgs_0_14;
         system = "i686-linux";
       };
+      pkgs_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
+        src = nixpkgs_0_13;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
+        src = nixpkgs_0_13;
+        system = "i686-linux";
+      };
+      pkgs_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
+        src = nixpkgs_0_12;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
+        src = nixpkgs_0_12;
+        system = "i686-linux";
+      };
+      pkgs_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
+        src = nixpkgs_0_11;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
+        src = nixpkgs_0_11;
+        system = "i686-linux";
+      };
+      pkgs_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
+        src = nixpkgs_0_10;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
+        src = nixpkgs_0_10;
+        system = "i686-linux";
+      };
+      pkgs_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
+        src = nixpkgs_0_10;
+        system = "x86_64-linux";
+      };
+      pkgs32_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
+        src = nixpkgs_0_10;
+        system = "i686-linux";
+      };
       pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
         pkgs.callPackage ./nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
           {
@@ -317,7 +377,29 @@
         ghc_4_6 = throw "todo";
         ghc_4_8_2 = throw "todo";
         ghc_5_0_2 = throw "todo";
-        ghc_5_2_3 = throw "todo";
+
+        ghc_5_02_3 = pkgs32.callPackage ./ghc/5_02_3 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_0_10.gcc295;
+          ghc = pkgs32.callPackage ./ghc/5_02_3 {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32_0_10_glibc.gcc295;
+            ghc = pkgs32.callPackage ./ghc/5_02_3/binary.nix {
+              perl = pkgs32_last_glibc_2_13.perl58;
+              gcc = pkgs32.gcc13;
+              ncurses = pkgs.linkFarm "ncurses" {
+                "lib/libncurses.so.4" = "${pkgs32.ncurses5}/lib/libncurses.so.5";
+              };
+              readline = pkgs.linkFarm "readline" {
+                "lib/libreadline.so.3" = "${pkgs32_last_glibc_2_13.readline4}/lib/libreadline.so.4";
+              };
+            };
+            ncurses = pkgs32_16_03.ncurses;
+            readline = pkgs32_16_03.readline;
+          };
+          ncurses = pkgs32_16_03.ncurses;
+          readline = pkgs32_16_03.readline;
+        };
 
         ghc_5_04_3 = pkgs32.callPackage ./ghc/5_04_3 {
           perl = pkgs32_last_glibc_2_13.perl58;

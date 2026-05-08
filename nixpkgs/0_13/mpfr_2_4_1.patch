@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/mpfr/default.nix
++++ b/pkgs/development/libraries/mpfr/default.nix
+@@ -3,10 +3,7 @@
+ stdenv.mkDerivation {
+   name = "mpfr-2.4.1";
+ 
+-  src = fetchurl {
+-    url = http://www.mpfr.org/mpfr-2.4.1/mpfr-2.4.1.tar.bz2;
+-    sha256 = "0pj879vbwbik8xkgnxy2ll32ljq3bgqjsqapqasq9rkfbkl90a34";
+-  };
++  src = ./mpfr-2.4.1.tar.bz2;
+ 
+   buildInputs = [gmp];
+ 

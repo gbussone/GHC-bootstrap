@@ -1,0 +1,14 @@
+--- a/pkgs/development/libraries/glibc-2.9/default.nix
++++ b/pkgs/development/libraries/glibc-2.9/default.nix
+@@ -8,10 +8,7 @@ stdenv.mkDerivation rec {
+ 
+   builder = ./builder.sh;
+ 
+-  src = fetchurl {
+-    url = http://nixos.org/tarballs/glibc-2.9-20081208.tar.bz2;
+-    sha256 = "0zhxbgcsl97pf349m0lz8d5ljvvzrcqc23yf08d888xlk4ms8m3h";
+-  };
++  src = ./glibc-2.9-20081208.tar.bz2;
+ 
+   inherit kernelHeaders installLocales;
+ 

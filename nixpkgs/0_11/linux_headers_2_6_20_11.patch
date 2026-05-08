@@ -1,0 +1,14 @@
+--- a/pkgs/os-specific/linux/kernel-headers/default.nix
++++ b/pkgs/os-specific/linux/kernel-headers/default.nix
+@@ -5,10 +5,7 @@ assert stdenv.isLinux;
+ stdenv.mkDerivation {
+   name = "linux-headers-2.6.20.11";
+   builder = ./builder.sh;
+-  src = fetchurl {
+-    url = "mirror://kernel/linux/kernel/v2.6/linux-2.6.20.11.tar.bz2";
+-    sha256 = "1n0xgqckj64ga3l53l8lk1591lfcn6zcrqg3phz2m0y841ck5qlk";
+-  };
++  src = ./linux-2.6.20.tar.bz2;
+ 
+   platform = 
+     if stdenv.system == "i686-linux" then "i386" else
