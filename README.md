@@ -2,7 +2,7 @@
 
 ## Current state
 
-For each major release of GHC since 5.02, its latest patch version X.Y.Z can be built by running `nix build .#ghc_X_Y_Z` on an x86-64 Linux machine (except for 9.12.3 being packaged instead of 9.12.4 and 9.14.1 not being packaged).
+For each major release of GHC since 5.00, its latest patch version X.Y.Z can be built by running `nix build .#ghc_X_Y_Z` on an x86-64 Linux machine (except for 9.12.3 being packaged instead of 9.12.4 and 9.14.1 not being packaged).
 Running `nix build` without arguments defaults to 9.12.3, the latest packaged version.
 
 For each packaged version, the official source distribution is built against the official binary distribution of the same version.

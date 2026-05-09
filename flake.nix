@@ -376,7 +376,22 @@
         ghc_4_4 = throw "todo";
         ghc_4_6 = throw "todo";
         ghc_4_8_2 = throw "todo";
-        ghc_5_0_2 = throw "todo";
+
+        ghc_5_00_2 = pkgs32.callPackage ./ghc/5_00_2 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_0_10.gcc295;
+          ghc = pkgs32.callPackage ./ghc/5_00_2/binary.nix {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32.gcc13;
+            ncurses = pkgs.linkFarm "ncurses" {
+              "lib/libncurses.so.4" = "${pkgs32.ncurses5}/lib/libncurses.so.5";
+            };
+            readline = pkgs.linkFarm "readline" {
+              "lib/libreadline.so.3" = "${pkgs32_last_glibc_2_13.readline4}/lib/libreadline.so.4";
+            };
+          };
+          readline = pkgs32_16_03.readline;
+        };
 
         ghc_5_02_3 = pkgs32.callPackage ./ghc/5_02_3 {
           perl = pkgs32_last_glibc_2_13.perl58;
