@@ -374,7 +374,58 @@
         ghc_3_2 = throw "todo";
         ghc_4_2 = throw "todo";
         ghc_4_4 = throw "todo";
-        ghc_4_6 = throw "todo";
+
+        ghc_4_06 = pkgs32.callPackage ./ghc/4_06 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_0_10_glibc.gcc295;
+          ghc = pkgs32.callPackage ./ghc/4_06/binary.nix {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32.gcc13;
+            gmp = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+              pname = "gmp";
+              version = "2.0.2";
+              src = pkgs.fetchurl {
+                url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
+                hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
+              };
+              nativeBuildInputs = [ pkgs.rpmextract ];
+              sourceRoot = ".";
+              unpackCmd = "rpmextract $curSrc";
+              postPatch = ''
+                ln -s libgmp.so.2 usr/lib/libgmp.so
+              '';
+              installPhase = ''
+                runHook preInstall
+
+                mv usr $out
+
+                runHook postInstall
+              '';
+            });
+          };
+          gmp = # TODO
+            pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+              pname = "gmp";
+              version = "2.0.2";
+              src = pkgs.fetchurl {
+                url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
+                hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
+              };
+              nativeBuildInputs = [ pkgs.rpmextract ];
+              sourceRoot = ".";
+              unpackCmd = "rpmextract $curSrc";
+              postPatch = ''
+                ln -s libgmp.so.2 usr/lib/libgmp.so
+              '';
+              installPhase = ''
+                runHook preInstall
+
+                mv usr $out
+
+                runHook postInstall
+              '';
+            });
+        };
 
         ghc_4_08_2 = pkgs32.callPackage ./ghc/4_08_2 {
           perl = pkgs32_last_glibc_2_13.perl58;
