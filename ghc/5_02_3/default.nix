@@ -1,11 +1,11 @@
 {
   lib,
+  writeShellScriptBin,
   stdenvNoCC,
   fetchurl,
   perl,
   gcc,
   flex,
-  happy,
   ghc,
   ncurses,
   readline,
@@ -22,7 +22,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     perl
     gcc
     flex
-    happy
+    (writeShellScriptBin "happy" ''
+      echo "Happy Version 1.9"
+    '')
     ghc
   ];
   preConfigure = ''
