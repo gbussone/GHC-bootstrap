@@ -1,11 +1,12 @@
 {
-  writeScriptBin,
   stdenvNoCC,
   fetchurl,
   autoconf,
   automake,
   python3,
   gcc,
+  alex,
+  happy,
   ghc,
   gmp,
   ncurses,
@@ -23,8 +24,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     automake
     python3
     gcc
-    (writeScriptBin "alex" "")
-    (writeScriptBin "happy" "")
+    alex
+    happy
     ghc
   ];
   buildInputs = [
