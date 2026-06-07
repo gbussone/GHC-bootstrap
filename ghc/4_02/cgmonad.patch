@@ -1,0 +1,13 @@
+--- a/ghc/compiler/codeGen/CgMonad.lhs
++++ b/ghc/compiler/codeGen/CgMonad.lhs
+@@ -607,8 +607,8 @@ lookupBindC name info_down@(MkCgInfoDown _ static_binds srt _)
+ 		hsep [ptext SLIT("for:"), ppr name],
+ 		ptext SLIT("(probably: data dependencies broken by an optimisation pass)"),
+ 		ptext SLIT("static binds for:"),
+-		vcat [ ppr i | (MkCgIdInfo i _ _ _) <- rngVarEnv static_binds ],
++		vcat [],
+ 		ptext SLIT("local binds for:"),
+-		vcat [ ppr i | (MkCgIdInfo i _ _ _) <- rngVarEnv local_binds ]
++		vcat []
+ 	      ])
+ \end{code}

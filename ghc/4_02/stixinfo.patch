@@ -1,0 +1,13 @@
+--- a/ghc/compiler/nativeGen/StixInfo.lhs
++++ b/ghc/compiler/nativeGen/StixInfo.lhs
+@@ -24,6 +24,10 @@ import BitSet		( intBS )
+ 
+ import Bits
+ import Word
++
++#if __GLASGOW_HASKELL__ >= 404
++import GlaExts		( fromInt )
++#endif
+ \end{code}
+ 
+ Generating code for info tables (arrays of data).

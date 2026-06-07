@@ -1,0 +1,20 @@
+--- a/ghc/compiler/parser/hsparser.y
++++ b/ghc/compiler/parser/hsparser.y
+@@ -785,7 +785,7 @@ constr	:  forall constr_context DARROW constr_after_context	{ $$ = mkconstrex (
+         |  forall constr_after_context	                        { $$ = mkconstrex ( $1, Lnil, $2 ); }
+ 	;
+ 
+-forall :                                                { $$ = Lnil }
++forall :                                                { $$ = Lnil; }
+        | FORALL tyvars1 DOT                             { $$ = $2; }
+        ;
+ 
+@@ -1105,7 +1105,7 @@ rbind  	: qvar					{ punningNowIllegal();	       }
+ 	;	
+ 
+ texps	:  exp					{ $$ = lsing($1); }
+-	|  exp COMMA texps			{ $$ = mklcons($1, $3) }
++	|  exp COMMA texps			{ $$ = mklcons($1, $3); }
+ 	/* right recursion? WDP */
+ 	;
+ 
