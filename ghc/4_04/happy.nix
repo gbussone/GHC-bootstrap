@@ -8,7 +8,6 @@
   happy,
   ghc,
   gmp,
-  bootstrap ? false,
 }:
 
 stdenvNoCC.mkDerivation {
@@ -31,9 +30,6 @@ stdenvNoCC.mkDerivation {
   '';
   sourceRoot = "fptools/happy";
   dontMakeSourcesWritable = true;
-  prePatch = lib.strings.optionalString bootstrap ''
-    rm src/Parser.ly
-  '';
   nativeBuildInputs = [
     perl
     gcc
@@ -54,7 +50,7 @@ stdenvNoCC.mkDerivation {
     rm ../ghc/driver/ghc
   '';
   preInstall = ''
-    make -C .. glafp-utils
+    make -C ../glafp-utils/mkdirhier
   '';
   env.LIBRARY_PATH = lib.strings.makeLibraryPath [ gmp ];
 }

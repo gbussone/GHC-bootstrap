@@ -8,15 +8,14 @@
   happy,
   ghc,
   gmp,
-  bootstrap ? false,
 }:
 
 stdenvNoCC.mkDerivation {
   pname = "happy";
   version = "unstable";
   src = fetchurl {
-    url = "https://downloads.haskell.org/~ghc/4.06/ghc-4.06-src.tar.gz";
-    hash = "sha256-zksvEM87OafEHCt37DbPYyqjIysHLnoYSw9mhNrQZDg=";
+    url = "https://downloads.haskell.org/~ghc/4.02/ghc-4.02-src.tar.gz";
+    hash = "sha256-KeNUkV5ecjlmzyNm/hsWRoaS3G1oSl9wel8xmoHN/ZU=";
   };
   postUnpack = ''
     cp -r ${
@@ -31,21 +30,24 @@ stdenvNoCC.mkDerivation {
   '';
   sourceRoot = "fptools/happy";
   dontMakeSourcesWritable = true;
-  prePatch = lib.strings.optionalString bootstrap ''
-    rm src/Parser.ly
-  '';
   nativeBuildInputs = [
     perl
     gcc
-  ]
-  ++ lib.lists.optional (!bootstrap) happy
-  ++ [ ghc ];
+    happy
+    ghc
+  ];
   preConfigure = ''
     export NIX_CFLAGS_COMPILE=
     cd ..
   '';
   postConfigure = ''
     cd happy
+  '';
+  preBuild = ''
+    ln -s ${ghc}/bin/ghc ../ghc/driver/ghc
+  '';
+  postBuild = ''
+    rm ../ghc/driver/ghc
   '';
   preInstall = ''
     make -C ../glafp-utils/mkdirhier

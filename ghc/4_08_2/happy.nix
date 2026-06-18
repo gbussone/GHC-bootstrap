@@ -47,6 +47,6 @@ stdenvNoCC.mkDerivation {
     cd happy
   '';
   preInstall = ''
-    make -C .. glafp-utils
+    make -C ../glafp-utils/mkdirhier
   '';
 }
