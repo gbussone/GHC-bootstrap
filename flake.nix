@@ -447,8 +447,10 @@
             ghc = pkgs32.callPackage ./ghc/4_02 {
               perl = pkgs32_last_glibc_2_13.perl58;
               gcc = pkgs32_0_10_glibc.gcc295;
-              happy = happy;
-              ghc = self.packages.x86_64-linux.ghc_4_04;
+              happy = pkgs32.writeShellScriptBin "happy" ''
+                echo "Happy Version 1.4"
+              '';
+              ghc = throw "ghc";
               gmp = # TODO
                 pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
                   pname = "gmp";
