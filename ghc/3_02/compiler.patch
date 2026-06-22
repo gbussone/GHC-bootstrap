@@ -1,0 +1,11 @@
+--- a/ghc/compiler/Makefile
++++ b/ghc/compiler/Makefile
+@@ -126,7 +126,7 @@ SRC_HC_OPTS += \
+ 
+ SRC_CC_OPTS += -Iparser -I. -I$(TOP)/includes -O
+ 
+-SRC_HC_OPTS += -recomp $(GhcHcOpts)
++SRC_HC_OPTS += -H10000m -recomp $(GhcHcOpts)
+ 
+ # 	Special flags for particular modules
+ #	The standard suffix rule for compiling a Haskell file

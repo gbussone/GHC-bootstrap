@@ -371,7 +371,23 @@
 
         ghc_0_29 = throw "todo";
         ghc_2_10 = throw "todo";
-        ghc_3_2 = throw "todo";
+
+        ghc_3_02 = pkgs32.callPackage ./ghc/3_02 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_0_10.gcc295;
+          happy = pkgs32.writeShellScriptBin "happy" ''
+            echo "Happy Version 1.4"
+          '';
+          ghc = pkgs32.callPackage ./ghc/3_02 {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32_0_10.gcc295;
+            happy = pkgs32.writeShellScriptBin "happy" ''
+              echo "Happy Version 1.4"
+            '';
+            ghc = throw "ghc";
+            bootstrap = true;
+          };
+        };
 
         ghc_4_02 =
           let

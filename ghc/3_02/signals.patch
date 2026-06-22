@@ -1,0 +1,11 @@
+--- a/ghc/runtime/main/Signals.lc
++++ b/ghc/runtime/main/Signals.lc
+@@ -133,7 +133,7 @@ segv_handler(int sig,
+ #    if defined(aix_TARGET_OS)
+ 	int code, struct sigcontext *scp)
+ #    else /* linux */
+-	struct sigcontext_struct scp)
++	struct sigcontext scp)
+ #    endif 
+ #  endif
+ {

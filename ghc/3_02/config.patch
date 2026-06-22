@@ -1,0 +1,11 @@
+--- a/mk/config.mk.in
++++ b/mk/config.mk.in
+@@ -167,7 +167,7 @@ GhcProjectPatchLevel   = 0
+ #		       	     HC_ROJEMO_NHC
+ #		       	     HC_UNSPECIFIED
+ 
+-WithGhcHc = ghc-2.10
++WithGhcHc = ghc
+ 
+ # Extra ways in which to build the compiler (for example, you might want to
+ # build a profiled compiler so you can see where it spends its time)
