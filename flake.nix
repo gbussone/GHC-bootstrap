@@ -369,7 +369,17 @@
       packages.x86_64-linux = {
         default = self.packages.x86_64-linux.ghc_9_12_3;
 
-        ghc_0_29 = throw "todo";
+        ghc_0_29 = pkgs32.callPackage ./ghc/0_29 {
+          perl = pkgs32_last_glibc_2_13.perl58;
+          gcc = pkgs32_0_10.gcc295;
+          ghc = pkgs32.callPackage ./ghc/0_29 {
+            perl = pkgs32_last_glibc_2_13.perl58;
+            gcc = pkgs32_0_10.gcc295;
+            ghc = throw "ghc";
+            bootstrap = true;
+          };
+        };
+
         ghc_2_10 = throw "todo";
 
         ghc_3_02 = pkgs32.callPackage ./ghc/3_02 {

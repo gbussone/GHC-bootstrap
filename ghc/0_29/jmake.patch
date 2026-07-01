@@ -1,0 +1,10 @@
+--- a/mkworld/jmake.c
++++ b/mkworld/jmake.c
+@@ -180,7 +180,6 @@ extern int	errno;
+ #include "jmakemdep.h"
+ 
+ #ifndef DontDeclareSysErrlist
+-extern char	*sys_errlist[];
+ #endif
+ 
+ #define	TRUE		1

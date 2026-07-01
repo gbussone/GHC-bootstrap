@@ -1,0 +1,31 @@
+--- a/ghc/lib/haskell-1.3/LibTime.lhs
++++ b/ghc/lib/haskell-1.3/LibTime.lhs
+@@ -187,7 +187,6 @@ toCalendarTime :: ClockTime -> CalendarTime
+ toCalendarTime (TOD sec@(J# a# s# d#) psec) = unsafePerformPrimIO (
+     allocWords (``sizeof(struct tm)''::Int) `thenPrimIO` \ res ->
+     allocChars 32			    `thenPrimIO` \ zoneNm ->
+-    _casm_ ``SETZONE((struct tm *)%0,(char *)%1); '' res zoneNm	  `thenPrimIO` \ () ->
+     _ccall_ toLocalTime (I# s#) (_ByteArray (error "toCalendarTime") d#) res
+ 						    `thenPrimIO` \ tm ->
+     if tm == (``NULL''::_Addr) then
+@@ -211,19 +210,14 @@ toCalendarTime (TOD sec@(J# a# s# d#) psec) = unsafePerformPrimIO (
+ 						    `thenPrimIO` \ yday ->
+ 	_casm_ ``%r = ((struct tm *)%0)->tm_isdst;'' tm
+ 						    `thenPrimIO` \ isdst ->
+-	_ccall_ ZONE tm 			    `thenPrimIO` \ zone ->
+-	_ccall_ GMTOFF tm 			    `thenPrimIO` \ tz ->
+-        _ccall_ strlen zone			    `thenPrimIO` \ len ->
+-        _packCBytesST len zone			    `thenStrictlyST` \ tzname ->
+         returnPrimIO (CalendarTime (1900+year) mon mday hour min sec psec 
+-                      wday yday (_unpackPS tzname) tz (isdst /= 0))
++                      wday yday "UTC" 0 (isdst /= 0))
+     )
+ 
+ toUTCTime :: ClockTime -> CalendarTime
+ toUTCTime  (TOD sec@(J# a# s# d#) psec) = unsafePerformPrimIO (
+ 	allocWords (``sizeof(struct tm)''::Int) 		    `thenPrimIO` \ res ->
+         allocChars 32			    			    `thenPrimIO` \ zoneNm ->
+-        _casm_ ``SETZONE((struct tm *)%0,(char *)%1); '' res zoneNm `thenPrimIO` \ () ->
+         _ccall_ toUTCTime (I# s#) (_ByteArray (error "toCalendarTime") d#) res
+ 						    `thenPrimIO` \ tm ->
+     if tm == (``NULL''::_Addr) then

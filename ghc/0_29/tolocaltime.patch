@@ -1,0 +1,11 @@
+--- a/ghc/runtime/io/toLocalTime.lc
++++ b/ghc/runtime/io/toLocalTime.lc
+@@ -61,8 +61,6 @@ StgByteArray res;
+     
+     */
+ #if HAVE_TM_ZONE
+-    strcpy(tmp->tm_zone,tm->tm_zone);
+-    tmp->tm_gmtoff = tm->tm_gmtoff;
+ #endif
+ 
+     return (StgAddr)res;

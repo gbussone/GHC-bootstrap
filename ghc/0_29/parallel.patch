@@ -1,0 +1,11 @@
+--- a/ghc/utils/parallel/Jmakefile
++++ b/ghc/utils/parallel/Jmakefile
+@@ -40,7 +40,7 @@ MsubProgramScriptTarget(PerlCmd,gr2pe,gr2pe.pl,,)
+ MsubProgramScriptTarget(PerlCmd,gr2java,gr2java.pl,,)
+ MsubProgramScriptTarget(/usr/local/bin/bash,gr2jv,gr2jv.bash,,)
+ MsubProgramScriptTarget(/usr/local/bin/bash,gr2ap,gr2ap.bash,,)
+-MsubProgramScriptTarget(PerlCmd,qp2ap.pl,qp2ap.pl,,)
++MsubProgramScriptTarget(PerlCmd,qp2ap,qp2ap.pl,,)
+ 
+ MsubProgramScriptTarget(/usr/local/bin/bash,gr2gran,gr2gran.bash,,)
+ MsubProgramScriptTarget(PerlCmd,gr2RTS,gr2RTS.pl,,)

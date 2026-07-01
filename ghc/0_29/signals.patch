@@ -1,0 +1,28 @@
+--- a/ghc/runtime/main/Signals.lc
++++ b/ghc/runtime/main/Signals.lc
+@@ -45,6 +45,7 @@ much pain.
+ 
+ #if defined(HAVE_SYS_TYPES_H)
+ # include <sys/types.h>
++typedef __caddr_t caddr_t;
+ #endif
+ 
+ #if defined(HAVE_SIGNAL_H)
+@@ -53,7 +54,7 @@ much pain.
+ 
+ #if defined(linux_TARGET_OS) || defined(linuxaout_TARGET_OS)
+     /* to look *inside* sigcontext... */
+-# include <asm/signal.h>
++# include <asm/sigcontext.h>
+ #endif
+ 
+ #if defined(HAVE_SIGINFO_H)
+@@ -96,7 +97,7 @@ segv_handler(int sig,
+ #  if defined(sunos4_TARGET_OS) || defined(freebsd_TARGET_OS)
+ 	int code, struct sigcontext *scp, caddr_t addr)
+ #  else /* linux */
+-	struct sigcontext_struct scp)
++	struct sigcontext scp)
+ #  endif /* linux */
+ {
+     extern void StackOverflow(STG_NO_ARGS) STG_NORETURN;

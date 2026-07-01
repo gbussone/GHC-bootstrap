@@ -1,0 +1,11 @@
+--- a/ghc/lib/Jmakefile
++++ b/ghc/lib/Jmakefile
+@@ -1091,7 +1091,7 @@ CompilePreludishly(haskell-1.3/LibPosixErr,lhs,      -fhaskell-1.3 -split-objs L
+ CompilePreludishly(haskell-1.3/LibPosixFiles,lhs,      -fhaskell-1.3 -split-objs LibPosixFiles -H12m '-#include"stgio.h"' '-#include"libposix.h"')
+ CompilePreludishly(haskell-1.3/LibPosixIO,lhs,      -fhaskell-1.3 -split-objs LibPosixIO -H12m '-#include"stgio.h"' '-#include"libposix.h"' -monly-4-regs)
+ CompilePreludishly(haskell-1.3/LibPosixProcEnv,lhs,      -fhaskell-1.3 -split-objs LibPosixProcEnv -H12m '-#include"stgio.h"' '-#include"libposix.h"')
+-CompilePreludishly(haskell-1.3/LibPosixProcPrim,lhs,      -fhaskell-1.3 -split-objs LibPosixProcPrim -H16m '-#include"stgio.h"' '-#include"libposix.h"')
++CompilePreludishly(haskell-1.3/LibPosixProcPrim,lhs,      -fhaskell-1.3 -split-objs LibPosixProcPrim -H16m '-#include"stgio.h"' '-#include"libposix.h"' -monly-2-regs)
+ CompilePreludishly(haskell-1.3/LibPosixTTY,lhs,      -fhaskell-1.3 -split-objs LibPosixTTY -H12m '-#include"stgio.h"' '-#include"libposix.h"' -monly-2-regs)
+ CompilePreludishly(haskell-1.3/LibPosixUtil,lhs,      -fhaskell-1.3 -split-objs LibPosixUtil '-#include"stgio.h"' '-#include"libposix.h"' -monly-3-regs)
+ 
