@@ -29,10 +29,8 @@ stdenvNoCC.mkDerivation {
     } fptools/happy
     chmod -R u+w fptools/happy
   '';
-  sourceRoot = "fptools/happy";
-  dontMakeSourcesWritable = true;
   prePatch = lib.strings.optionalString bootstrap ''
-    rm src/Parser.ly
+    rm happy/src/Parser.ly
   '';
   nativeBuildInputs = [
     perl
@@ -42,13 +40,13 @@ stdenvNoCC.mkDerivation {
   ++ [ ghc ];
   preConfigure = ''
     export NIX_CFLAGS_COMPILE=
-    cd ..
   '';
-  postConfigure = ''
-    cd happy
-  '';
+  makeFlags = [
+    "-C"
+    "happy"
+  ];
   preInstall = ''
-    make -C ../glafp-utils/mkdirhier
+    make -C glafp-utils/mkdirhier
   '';
   env.LIBRARY_PATH = lib.strings.makeLibraryPath [ gmp ];
 }

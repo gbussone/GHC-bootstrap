@@ -28,10 +28,8 @@ stdenvNoCC.mkDerivation {
     } ghc-4.08.2/happy
     chmod -R u+w ghc-4.08.2/happy
   '';
-  sourceRoot = "ghc-4.08.2/happy";
-  dontMakeSourcesWritable = true;
   prePatch = lib.strings.optionalString bootstrap ''
-    rm src/Parser.ly
+    rm happy/src/Parser.ly
   '';
   nativeBuildInputs = [
     perl
@@ -41,12 +39,12 @@ stdenvNoCC.mkDerivation {
   ++ [ ghc ];
   preConfigure = ''
     export NIX_CFLAGS_COMPILE=
-    cd ..
   '';
-  postConfigure = ''
-    cd happy
-  '';
+  makeFlags = [
+    "-C"
+    "happy"
+  ];
   preInstall = ''
-    make -C ../glafp-utils/mkdirhier
+    make -C glafp-utils/mkdirhier
   '';
 }

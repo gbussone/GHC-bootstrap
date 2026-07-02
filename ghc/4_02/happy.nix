@@ -28,8 +28,6 @@ stdenvNoCC.mkDerivation {
     } fptools/happy
     chmod -R u+w fptools/happy
   '';
-  sourceRoot = "fptools/happy";
-  dontMakeSourcesWritable = true;
   nativeBuildInputs = [
     perl
     gcc
@@ -38,19 +36,19 @@ stdenvNoCC.mkDerivation {
   ];
   preConfigure = ''
     export NIX_CFLAGS_COMPILE=
-    cd ..
   '';
-  postConfigure = ''
-    cd happy
-  '';
+  makeFlags = [
+    "-C"
+    "happy"
+  ];
   preBuild = ''
-    ln -s ${ghc}/bin/ghc ../ghc/driver/ghc
+    ln -s ${ghc}/bin/ghc ghc/driver/ghc
   '';
   postBuild = ''
-    rm ../ghc/driver/ghc
+    rm ghc/driver/ghc
   '';
   preInstall = ''
-    make -C ../glafp-utils/mkdirhier
+    make -C glafp-utils/mkdirhier
   '';
   env.LIBRARY_PATH = lib.strings.makeLibraryPath [ gmp ];
 }
