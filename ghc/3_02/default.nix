@@ -25,8 +25,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     } -C fptools
   '';
   patches =
-    lib.lists.optional (!bootstrap) ./compiler.patch
-    ++ lib.lists.optional (!bootstrap) ./config.patch
+    lib.lists.optional (!bootstrap) ./config.patch
     ++ lib.lists.optional bootstrap ./config_hc.patch
     ++ [
       ./lib.patch
@@ -42,6 +41,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   preConfigure = ''
     export NIX_CFLAGS_COMPILE=
   '';
+  buildFlags = lib.lists.optional (!bootstrap) "EXTRA_HC_OPTS=-H10000m";
   preBuild = ''
     make boot
   '';
@@ -49,7 +49,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     ./configure --prefix=$out
     make -C ghc/lib clean
     make -C ghc/lib boot
-    make -C ghc/lib
+    make -C ghc/lib EXTRA_HC_OPTS=-H10000m
   '';
   env.ac_cv_gnu_cpp = "${gcc.gcc}/lib/gcc-lib/i686-pc-linux-gnu/2.95.3/cpp0";
   env.NIX_GCC_NEEDS_GREP = true;

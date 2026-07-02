@@ -1,47 +1,5 @@
---- a/ghc/lib/concurrent/Makefile
-+++ b/ghc/lib/concurrent/Makefile
-@@ -22,7 +22,7 @@ HS_IFACES= $(HS_SRCS:.lhs=.$(way_)hi)
- #-----------------------------------------------------------------------------
- # 	Setting the GHC compile options
- 
--SRC_HC_OPTS += -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
-+SRC_HC_OPTS += -H1000m -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
- SRC_MKDEPENDHS_OPTS += -optdep--include-prelude
- 
- #
---- a/ghc/lib/exts/Makefile
-+++ b/ghc/lib/exts/Makefile
-@@ -25,7 +25,7 @@ HS_IFACES= $(HS_SRCS:.lhs=.$(way_)hi)
- #-----------------------------------------------------------------------------
- # 	Setting the GHC compile options
- 
--SRC_HC_OPTS += -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
-+SRC_HC_OPTS += -H10000m -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
- 
- #
- # Profiling options
---- a/ghc/lib/misc/Makefile
-+++ b/ghc/lib/misc/Makefile
-@@ -37,7 +37,7 @@ SRC_MKDEPENDHS_OPTS += -optdep--include-prelude
- #-----------------------------------------------------------------------------
- # 	Setting the GHC compile options
- 
--SRC_HC_OPTS += -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
-+SRC_HC_OPTS += -H1000m -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
- 
- #
- # Profiling options
 --- a/ghc/lib/posix/Makefile
 +++ b/ghc/lib/posix/Makefile
-@@ -27,7 +27,7 @@ SRC_MKDEPENDHS_OPTS += -optdep--include-prelude
- #-----------------------------------------------------------------------------
- # 	Setting the GHC compile options
- 
--SRC_HC_OPTS += -i../misc -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
-+SRC_HC_OPTS += -H10000m -i../misc -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
- 
- #
- # Profiling options
 @@ -50,7 +50,7 @@ PosixErr_HC_OPTS      ='-\#include"cbits/libposix.h"'
  PosixFiles_HC_OPTS    ='-\#include"cbits/libposix.h"'
  PosixIO_HC_OPTS       ='-\#include"cbits/libposix.h"'
@@ -53,15 +11,6 @@
  
 --- a/ghc/lib/std/Makefile
 +++ b/ghc/lib/std/Makefile
-@@ -32,7 +32,7 @@ HS_IFACES= $(HS_SRCS:.lhs=.$(way_)hi) PrelGHC.$(way_)hi
- #-----------------------------------------------------------------------------
- # 	Setting the GHC compile options
- 
--SRC_HC_OPTS += -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
-+SRC_HC_OPTS += -H10000m -recomp -cpp -fglasgow-exts -fvia-C -Rghc-timing $(GhcLibHcOpts)
- 
- #
- # Profiling options
 @@ -53,7 +53,7 @@ Time_HC_OPTS        += -monly-3-regs -H16m
  
  # Far too much heap is needed to compile PrelNum with -O at the
