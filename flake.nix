@@ -959,6 +959,15 @@
         ghc_9_10_3 = pkgs.callPackage ./ghc/9_10_3 { ghc = pkgs.callPackage ./ghc/9_10_3/binary.nix { }; };
 
         ghc_9_12_3 = pkgs.callPackage ./ghc/9_12_3 { ghc = pkgs.callPackage ./ghc/9_12_3/binary.nix { }; };
+
+        nhc98_1_22 = pkgs32.callPackage ./nhc98/1_22 {
+          gcc = pkgs32_last_glibc_2_13.gcc;
+          nhc98 = pkgs32.callPackage ./nhc98/1_22 {
+            gcc = pkgs32_last_glibc_2_13.gcc43;
+            nhc98 = throw "nhc98";
+            bootstrap = true;
+          };
+        };
       };
     };
 }
