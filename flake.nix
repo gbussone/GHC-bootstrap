@@ -408,28 +408,7 @@
                 echo "Happy Version 1.4"
               '';
               ghc = throw "ghc";
-              gmp = # TODO
-                pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                  pname = "gmp";
-                  version = "2.0.2";
-                  src = pkgs.fetchurl {
-                    url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                    hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                  };
-                  nativeBuildInputs = [ pkgs.rpmextract ];
-                  sourceRoot = ".";
-                  unpackCmd = "rpmextract $curSrc";
-                  postPatch = ''
-                    ln -s libgmp.so.2 usr/lib/libgmp.so
-                  '';
-                  installPhase = ''
-                    runHook preInstall
-
-                    mv usr $out
-
-                    runHook postInstall
-                  '';
-                });
+              gmp = self.packages.x86_64-linux.gmp_2_0_2;
               bootstrap = true;
             };
           in
@@ -443,52 +422,10 @@
                 echo "Happy Version 1.4"
               '';
               ghc = ghc;
-              gmp = # TODO
-                pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                  pname = "gmp";
-                  version = "2.0.2";
-                  src = pkgs.fetchurl {
-                    url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                    hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                  };
-                  nativeBuildInputs = [ pkgs.rpmextract ];
-                  sourceRoot = ".";
-                  unpackCmd = "rpmextract $curSrc";
-                  postPatch = ''
-                    ln -s libgmp.so.2 usr/lib/libgmp.so
-                  '';
-                  installPhase = ''
-                    runHook preInstall
-
-                    mv usr $out
-
-                    runHook postInstall
-                  '';
-                });
+              gmp = self.packages.x86_64-linux.gmp_2_0_2;
             };
             ghc = ghc;
-            gmp = # TODO
-              pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                pname = "gmp";
-                version = "2.0.2";
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                  hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                };
-                nativeBuildInputs = [ pkgs.rpmextract ];
-                sourceRoot = ".";
-                unpackCmd = "rpmextract $curSrc";
-                postPatch = ''
-                  ln -s libgmp.so.2 usr/lib/libgmp.so
-                '';
-                installPhase = ''
-                  runHook preInstall
-
-                  mv usr $out
-
-                  runHook postInstall
-                '';
-              });
+            gmp = self.packages.x86_64-linux.gmp_2_0_2;
           };
 
         ghc_4_04 =
@@ -496,27 +433,7 @@
             ghc = pkgs32.callPackage ./ghc/4_04/binary.nix {
               perl = pkgs32_last_glibc_2_13.perl58;
               gcc = pkgs32.gcc13;
-              gmp = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                pname = "gmp";
-                version = "2.0.2";
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                  hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                };
-                nativeBuildInputs = [ pkgs.rpmextract ];
-                sourceRoot = ".";
-                unpackCmd = "rpmextract $curSrc";
-                postPatch = ''
-                  ln -s libgmp.so.2 usr/lib/libgmp.so
-                '';
-                installPhase = ''
-                  runHook preInstall
-
-                  mv usr $out
-
-                  runHook postInstall
-                '';
-              });
+              gmp = self.packages.x86_64-linux.gmp_2_0_2;
             };
           in
           pkgs32.callPackage ./ghc/4_04 {
@@ -529,52 +446,10 @@
                 echo "Happy Version 1.6"
               '';
               ghc = ghc;
-              gmp = # TODO
-                pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                  pname = "gmp";
-                  version = "2.0.2";
-                  src = pkgs.fetchurl {
-                    url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                    hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                  };
-                  nativeBuildInputs = [ pkgs.rpmextract ];
-                  sourceRoot = ".";
-                  unpackCmd = "rpmextract $curSrc";
-                  postPatch = ''
-                    ln -s libgmp.so.2 usr/lib/libgmp.so
-                  '';
-                  installPhase = ''
-                    runHook preInstall
-
-                    mv usr $out
-
-                    runHook postInstall
-                  '';
-                });
+              gmp = self.packages.x86_64-linux.gmp_2_0_2;
             };
             ghc = ghc;
-            gmp = # TODO
-              pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                pname = "gmp";
-                version = "2.0.2";
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                  hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                };
-                nativeBuildInputs = [ pkgs.rpmextract ];
-                sourceRoot = ".";
-                unpackCmd = "rpmextract $curSrc";
-                postPatch = ''
-                  ln -s libgmp.so.2 usr/lib/libgmp.so
-                '';
-                installPhase = ''
-                  runHook preInstall
-
-                  mv usr $out
-
-                  runHook postInstall
-                '';
-              });
+            gmp = self.packages.x86_64-linux.gmp_2_0_2;
           };
 
         ghc_4_06 =
@@ -582,27 +457,7 @@
             ghc = pkgs32.callPackage ./ghc/4_06/binary.nix {
               perl = pkgs32_last_glibc_2_13.perl58;
               gcc = pkgs32.gcc13;
-              gmp = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                pname = "gmp";
-                version = "2.0.2";
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                  hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                };
-                nativeBuildInputs = [ pkgs.rpmextract ];
-                sourceRoot = ".";
-                unpackCmd = "rpmextract $curSrc";
-                postPatch = ''
-                  ln -s libgmp.so.2 usr/lib/libgmp.so
-                '';
-                installPhase = ''
-                  runHook preInstall
-
-                  mv usr $out
-
-                  runHook postInstall
-                '';
-              });
+              gmp = self.packages.x86_64-linux.gmp_2_0_2;
             };
             happy =
               let
@@ -611,28 +466,7 @@
                   gcc = pkgs32_0_10_glibc.gcc295;
                   happy = throw "happy";
                   ghc = ghc;
-                  gmp = # TODO
-                    pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                      pname = "gmp";
-                      version = "2.0.2";
-                      src = pkgs.fetchurl {
-                        url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                        hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                      };
-                      nativeBuildInputs = [ pkgs.rpmextract ];
-                      sourceRoot = ".";
-                      unpackCmd = "rpmextract $curSrc";
-                      postPatch = ''
-                        ln -s libgmp.so.2 usr/lib/libgmp.so
-                      '';
-                      installPhase = ''
-                        runHook preInstall
-
-                        mv usr $out
-
-                        runHook postInstall
-                      '';
-                    });
+                  gmp = self.packages.x86_64-linux.gmp_2_0_2;
                 };
               in
               happy.override { happy = happy.override { bootstrap = true; }; };
@@ -642,28 +476,7 @@
             gcc = pkgs32_0_10_glibc.gcc295;
             happy = happy;
             ghc = ghc;
-            gmp = # TODO
-              pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-                pname = "gmp";
-                version = "2.0.2";
-                src = pkgs.fetchurl {
-                  url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-                  hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
-                };
-                nativeBuildInputs = [ pkgs.rpmextract ];
-                sourceRoot = ".";
-                unpackCmd = "rpmextract $curSrc";
-                postPatch = ''
-                  ln -s libgmp.so.2 usr/lib/libgmp.so
-                '';
-                installPhase = ''
-                  runHook preInstall
-
-                  mv usr $out
-
-                  runHook postInstall
-                '';
-              });
+            gmp = self.packages.x86_64-linux.gmp_2_0_2;
           };
 
         ghc_4_08_2 =
@@ -959,6 +772,28 @@
         ghc_9_10_3 = pkgs.callPackage ./ghc/9_10_3 { ghc = pkgs.callPackage ./ghc/9_10_3/binary.nix { }; };
 
         ghc_9_12_3 = pkgs.callPackage ./ghc/9_12_3 { ghc = pkgs.callPackage ./ghc/9_12_3/binary.nix { }; };
+
+        gmp_2_0_2 = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+          pname = "gmp";
+          version = "2.0.2";
+          src = pkgs.fetchurl {
+            url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
+            hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
+          };
+          nativeBuildInputs = [ pkgs.rpmextract ];
+          sourceRoot = ".";
+          unpackCmd = "rpmextract $curSrc";
+          postPatch = ''
+            ln -s libgmp.so.2 usr/lib/libgmp.so
+          '';
+          installPhase = ''
+            runHook preInstall
+
+            mv usr $out
+
+            runHook postInstall
+          '';
+        });
 
         nhc98_1_22 = pkgs32.callPackage ./nhc98/1_22 {
           gcc = pkgs32_last_glibc_2_13.gcc;
