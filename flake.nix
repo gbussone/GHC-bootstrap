@@ -117,692 +117,698 @@
       nixpkgs_0_10,
       nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd,
     }:
-    let
-      pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      pkgs32 = nixpkgs.legacyPackages.i686-linux;
-      pkgs_25_11 = pkgs.callPackage ./nixpkgs/25_11 {
-        src = nixpkgs_25_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_25_11 = pkgs.callPackage ./nixpkgs/25_11 {
-        src = nixpkgs_25_11;
-        system = "i686-linux";
-      };
-      pkgs_25_05 = pkgs.callPackage ./nixpkgs/25_05 {
-        src = nixpkgs_25_05;
-        system = "x86_64-linux";
-      };
-      pkgs32_25_05 = pkgs.callPackage ./nixpkgs/25_05 {
-        src = nixpkgs_25_05;
-        system = "i686-linux";
-      };
-      pkgs_24_11 = pkgs.callPackage ./nixpkgs/24_11 {
-        src = nixpkgs_24_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_24_11 = pkgs.callPackage ./nixpkgs/24_11 {
-        src = nixpkgs_24_11;
-        system = "i686-linux";
-      };
-      pkgs_24_05 = pkgs.callPackage ./nixpkgs/24_05 {
-        src = nixpkgs_24_05;
-        system = "x86_64-linux";
-      };
-      pkgs32_24_05 = pkgs.callPackage ./nixpkgs/24_05 {
-        src = nixpkgs_24_05;
-        system = "i686-linux";
-      };
-      pkgs_23_11 = pkgs.callPackage ./nixpkgs/23_11 {
-        src = nixpkgs_23_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_23_11 = pkgs.callPackage ./nixpkgs/23_11 {
-        src = nixpkgs_23_11;
-        system = "i686-linux";
-      };
-      pkgs_23_05 = pkgs.callPackage ./nixpkgs/23_05 {
-        src = nixpkgs_23_05;
-        system = "x86_64-linux";
-      };
-      pkgs32_23_05 = pkgs.callPackage ./nixpkgs/23_05 {
-        src = nixpkgs_23_05;
-        system = "i686-linux";
-      };
-      pkgs_22_11 = pkgs.callPackage ./nixpkgs/22_11 {
-        src = nixpkgs_22_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_22_11 = pkgs.callPackage ./nixpkgs/22_11 {
-        src = nixpkgs_22_11;
-        system = "i686-linux";
-      };
-      pkgs_22_05 = pkgs.callPackage ./nixpkgs/22_05 {
-        src = nixpkgs_22_05;
-        system = "x86_64-linux";
-      };
-      pkgs32_22_05 = pkgs.callPackage ./nixpkgs/22_05 {
-        src = nixpkgs_22_05;
-        system = "i686-linux";
-      };
-      pkgs_21_11 = pkgs.callPackage ./nixpkgs/21_11 {
-        src = nixpkgs_21_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_21_11 = pkgs.callPackage ./nixpkgs/21_11 {
-        src = nixpkgs_21_11;
-        system = "i686-linux";
-      };
-      pkgs_21_05 = pkgs.callPackage ./nixpkgs/21_05 {
-        src = nixpkgs_21_05;
-        system = "x86_64-linux";
-      };
-      pkgs32_21_05 = pkgs.callPackage ./nixpkgs/21_05 {
-        src = nixpkgs_21_05;
-        system = "i686-linux";
-      };
-      pkgs_20_09 = pkgs.callPackage ./nixpkgs/20_09 {
-        src = nixpkgs_20_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_20_09 = pkgs.callPackage ./nixpkgs/20_09 {
-        src = nixpkgs_20_09;
-        system = "i686-linux";
-      };
-      pkgs_20_03 = pkgs.callPackage ./nixpkgs/20_03 {
-        src = nixpkgs_20_03;
-        system = "x86_64-linux";
-      };
-      pkgs32_20_03 = pkgs.callPackage ./nixpkgs/20_03 {
-        src = nixpkgs_20_03;
-        system = "i686-linux";
-      };
-      pkgs_19_09 = pkgs.callPackage ./nixpkgs/19_09 {
-        src = nixpkgs_19_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_19_09 = pkgs.callPackage ./nixpkgs/19_09 {
-        src = nixpkgs_19_09;
-        system = "i686-linux";
-      };
-      pkgs_19_03 = pkgs.callPackage ./nixpkgs/19_03 {
-        src = nixpkgs_19_03;
-        system = "x86_64-linux";
-      };
-      pkgs32_19_03 = pkgs.callPackage ./nixpkgs/19_03 {
-        src = nixpkgs_19_03;
-        system = "i686-linux";
-      };
-      pkgs_18_09 = pkgs.callPackage ./nixpkgs/18_09 {
-        src = nixpkgs_18_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_18_09 = pkgs.callPackage ./nixpkgs/18_09 {
-        src = nixpkgs_18_09;
-        system = "i686-linux";
-      };
-      pkgs_18_03 = pkgs.callPackage ./nixpkgs/18_03 {
-        src = nixpkgs_18_03;
-        system = "x86_64-linux";
-      };
-      pkgs32_18_03 = pkgs.callPackage ./nixpkgs/18_03 {
-        src = nixpkgs_18_03;
-        system = "i686-linux";
-      };
-      pkgs_17_09 = pkgs.callPackage ./nixpkgs/17_09 {
-        src = nixpkgs_17_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_17_09 = pkgs.callPackage ./nixpkgs/17_09 {
-        src = nixpkgs_17_09;
-        system = "i686-linux";
-      };
-      pkgs_17_03 = pkgs.callPackage ./nixpkgs/17_03 {
-        src = nixpkgs_17_03;
-        system = "x86_64-linux";
-      };
-      pkgs32_17_03 = pkgs.callPackage ./nixpkgs/17_03 {
-        src = nixpkgs_17_03;
-        system = "i686-linux";
-      };
-      pkgs_16_09 = pkgs.callPackage ./nixpkgs/16_09 {
-        src = nixpkgs_16_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_16_09 = pkgs.callPackage ./nixpkgs/16_09 {
-        src = nixpkgs_16_09;
-        system = "i686-linux";
-      };
-      pkgs_16_03 = pkgs.callPackage ./nixpkgs/16_03 {
-        src = nixpkgs_16_03;
-        system = "x86_64-linux";
-      };
-      pkgs32_16_03 = pkgs.callPackage ./nixpkgs/16_03 {
-        src = nixpkgs_16_03;
-        system = "i686-linux";
-      };
-      pkgs_15_09 = pkgs.callPackage ./nixpkgs/15_09 {
-        src = nixpkgs_15_09;
-        system = "x86_64-linux";
-      };
-      pkgs32_15_09 = pkgs.callPackage ./nixpkgs/15_09 {
-        src = nixpkgs_15_09;
-        system = "i686-linux";
-      };
-      pkgs_last_glibc_2_13 = pkgs.callPackage ./nixpkgs/last_glibc_2_13 {
-        src = nixpkgs_last_glibc_2_13;
-        system = "x86_64-linux";
-      };
-      pkgs32_last_glibc_2_13 = pkgs.callPackage ./nixpkgs/last_glibc_2_13 {
-        src = nixpkgs_last_glibc_2_13;
-        system = "i686-linux";
-      };
-      pkgs_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
-        src = nixpkgs_last_glibc_2_13;
-        system = "i686-linux";
-      };
-      pkgs32_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
-        src = nixpkgs_last_glibc_2_13;
-        system = "i686-linux";
-      };
-      pkgs_0_14 = pkgs.callPackage ./nixpkgs/0_14 {
-        src = nixpkgs_0_14;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_14 = pkgs.callPackage ./nixpkgs/0_14 {
-        src = nixpkgs_0_14;
-        system = "i686-linux";
-      };
-      pkgs_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
-        src = nixpkgs_0_13;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
-        src = nixpkgs_0_13;
-        system = "i686-linux";
-      };
-      pkgs_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
-        src = nixpkgs_0_12;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
-        src = nixpkgs_0_12;
-        system = "i686-linux";
-      };
-      pkgs_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
-        src = nixpkgs_0_11;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
-        src = nixpkgs_0_11;
-        system = "i686-linux";
-      };
-      pkgs_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
-        src = nixpkgs_0_10;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
-        src = nixpkgs_0_10;
-        system = "i686-linux";
-      };
-      pkgs_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
-        src = nixpkgs_0_10;
-        system = "x86_64-linux";
-      };
-      pkgs32_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
-        src = nixpkgs_0_10;
-        system = "i686-linux";
-      };
-      pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
-        pkgs.callPackage ./nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
-          {
-            src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
-            system = "x86_64-linux";
-          };
-      pkgs32_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
-        pkgs.callPackage ./nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
-          {
-            src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
+    {
+      packages.i686-linux =
+        let
+          pkgs = nixpkgs.legacyPackages.i686-linux;
+          pkgs_25_11 = pkgs.callPackage ./nixpkgs/25_11 {
+            src = nixpkgs_25_11;
             system = "i686-linux";
           };
-    in
-    {
-      packages.x86_64-linux = {
-        default = self.packages.x86_64-linux.ghc_9_12_3;
-
-        ghc_0_29 = pkgs32.callPackage ./ghc/0_29 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_0_10.gcc295;
-          ghc = pkgs32.callPackage ./ghc/0_29 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10.gcc295;
-            ghc = throw "ghc";
-            bootstrap = true;
+          pkgs_25_05 = pkgs.callPackage ./nixpkgs/25_05 {
+            src = nixpkgs_25_05;
+            system = "i686-linux";
           };
-        };
+          pkgs_24_11 = pkgs.callPackage ./nixpkgs/24_11 {
+            src = nixpkgs_24_11;
+            system = "i686-linux";
+          };
+          pkgs_24_05 = pkgs.callPackage ./nixpkgs/24_05 {
+            src = nixpkgs_24_05;
+            system = "i686-linux";
+          };
+          pkgs_23_11 = pkgs.callPackage ./nixpkgs/23_11 {
+            src = nixpkgs_23_11;
+            system = "i686-linux";
+          };
+          pkgs_23_05 = pkgs.callPackage ./nixpkgs/23_05 {
+            src = nixpkgs_23_05;
+            system = "i686-linux";
+          };
+          pkgs_22_11 = pkgs.callPackage ./nixpkgs/22_11 {
+            src = nixpkgs_22_11;
+            system = "i686-linux";
+          };
+          pkgs_22_05 = pkgs.callPackage ./nixpkgs/22_05 {
+            src = nixpkgs_22_05;
+            system = "i686-linux";
+          };
+          pkgs_21_11 = pkgs.callPackage ./nixpkgs/21_11 {
+            src = nixpkgs_21_11;
+            system = "i686-linux";
+          };
+          pkgs_21_05 = pkgs.callPackage ./nixpkgs/21_05 {
+            src = nixpkgs_21_05;
+            system = "i686-linux";
+          };
+          pkgs_20_09 = pkgs.callPackage ./nixpkgs/20_09 {
+            src = nixpkgs_20_09;
+            system = "i686-linux";
+          };
+          pkgs_20_03 = pkgs.callPackage ./nixpkgs/20_03 {
+            src = nixpkgs_20_03;
+            system = "i686-linux";
+          };
+          pkgs_19_09 = pkgs.callPackage ./nixpkgs/19_09 {
+            src = nixpkgs_19_09;
+            system = "i686-linux";
+          };
+          pkgs_19_03 = pkgs.callPackage ./nixpkgs/19_03 {
+            src = nixpkgs_19_03;
+            system = "i686-linux";
+          };
+          pkgs_18_09 = pkgs.callPackage ./nixpkgs/18_09 {
+            src = nixpkgs_18_09;
+            system = "i686-linux";
+          };
+          pkgs_18_03 = pkgs.callPackage ./nixpkgs/18_03 {
+            src = nixpkgs_18_03;
+            system = "i686-linux";
+          };
+          pkgs_17_09 = pkgs.callPackage ./nixpkgs/17_09 {
+            src = nixpkgs_17_09;
+            system = "i686-linux";
+          };
+          pkgs_17_03 = pkgs.callPackage ./nixpkgs/17_03 {
+            src = nixpkgs_17_03;
+            system = "i686-linux";
+          };
+          pkgs_16_09 = pkgs.callPackage ./nixpkgs/16_09 {
+            src = nixpkgs_16_09;
+            system = "i686-linux";
+          };
+          pkgs_16_03 = pkgs.callPackage ./nixpkgs/16_03 {
+            src = nixpkgs_16_03;
+            system = "i686-linux";
+          };
+          pkgs_15_09 = pkgs.callPackage ./nixpkgs/15_09 {
+            src = nixpkgs_15_09;
+            system = "i686-linux";
+          };
+          pkgs_last_glibc_2_13 = pkgs.callPackage ./nixpkgs/last_glibc_2_13 {
+            src = nixpkgs_last_glibc_2_13;
+            system = "i686-linux";
+          };
+          pkgs_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
+            src = nixpkgs_last_glibc_2_13;
+            system = "i686-linux";
+          };
+          pkgs_0_14 = pkgs.callPackage ./nixpkgs/0_14 {
+            src = nixpkgs_0_14;
+            system = "i686-linux";
+          };
+          pkgs_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
+            src = nixpkgs_0_13;
+            system = "i686-linux";
+          };
+          pkgs_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
+            src = nixpkgs_0_12;
+            system = "i686-linux";
+          };
+          pkgs_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
+            src = nixpkgs_0_11;
+            system = "i686-linux";
+          };
+          pkgs_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
+            src = nixpkgs_0_10;
+            system = "i686-linux";
+          };
+          pkgs_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
+            src = nixpkgs_0_10;
+            system = "i686-linux";
+          };
+          pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
+            pkgs.callPackage ./nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
+              {
+                src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
+                system = "i686-linux";
+              };
+        in
+        {
+          ghc_0_29 = pkgs.callPackage ./ghc/0_29 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_0_10.gcc295;
+            ghc = pkgs.callPackage ./ghc/0_29 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10.gcc295;
+              ghc = throw "ghc";
+              bootstrap = true;
+            };
+          };
 
-        ghc_2_10 = throw "todo";
+          ghc_2_10 = throw "todo";
 
-        ghc_3_02 = pkgs32.callPackage ./ghc/3_02 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_0_10.gcc295;
-          happy = pkgs32.writeShellScriptBin "happy" ''
-            echo "Happy Version 1.4"
-          '';
-          ghc = pkgs32.callPackage ./ghc/3_02 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10.gcc295;
-            happy = pkgs32.writeShellScriptBin "happy" ''
+          ghc_3_02 = pkgs.callPackage ./ghc/3_02 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_0_10.gcc295;
+            happy = pkgs.writeShellScriptBin "happy" ''
               echo "Happy Version 1.4"
             '';
-            ghc = throw "ghc";
-            bootstrap = true;
-          };
-        };
-
-        ghc_4_02 =
-          let
-            ghc = pkgs32.callPackage ./ghc/4_02 {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32_0_10_glibc.gcc295;
-              happy = pkgs32.writeShellScriptBin "happy" ''
+            ghc = pkgs.callPackage ./ghc/3_02 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10.gcc295;
+              happy = pkgs.writeShellScriptBin "happy" ''
                 echo "Happy Version 1.4"
               '';
               ghc = throw "ghc";
-              gmp = self.packages.x86_64-linux.gmp_2_0_2;
               bootstrap = true;
             };
-          in
-          pkgs32.callPackage ./ghc/4_02 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10_glibc.gcc295;
-            happy = pkgs32.callPackage ./ghc/4_02/happy.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32_0_10_glibc.gcc295;
-              happy = pkgs32.writeShellScriptBin "happy" ''
-                echo "Happy Version 1.4"
-              '';
+          };
+
+          ghc_4_02 =
+            let
+              ghc = pkgs.callPackage ./ghc/4_02 {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs_0_10_glibc.gcc295;
+                happy = pkgs.writeShellScriptBin "happy" ''
+                  echo "Happy Version 1.4"
+                '';
+                ghc = throw "ghc";
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+                bootstrap = true;
+              };
+            in
+            pkgs.callPackage ./ghc/4_02 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
+              happy = pkgs.callPackage ./ghc/4_02/happy.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs_0_10_glibc.gcc295;
+                happy = pkgs.writeShellScriptBin "happy" ''
+                  echo "Happy Version 1.4"
+                '';
+                ghc = ghc;
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+              };
               ghc = ghc;
-              gmp = self.packages.x86_64-linux.gmp_2_0_2;
+              gmp = self.packages.i686-linux.gmp_2_0_2;
             };
-            ghc = ghc;
-            gmp = self.packages.x86_64-linux.gmp_2_0_2;
-          };
 
-        ghc_4_04 =
-          let
-            ghc = pkgs32.callPackage ./ghc/4_04/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32.gcc13;
-              gmp = self.packages.x86_64-linux.gmp_2_0_2;
-            };
-          in
-          pkgs32.callPackage ./ghc/4_04 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10_glibc.gcc295;
-            happy = pkgs32.callPackage ./ghc/4_04/happy.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32_0_10_glibc.gcc295;
-              happy = pkgs32.writeShellScriptBin "happy" ''
-                echo "Happy Version 1.6"
-              '';
+          ghc_4_04 =
+            let
+              ghc = pkgs.callPackage ./ghc/4_04/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs.gcc13;
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+              };
+            in
+            pkgs.callPackage ./ghc/4_04 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
+              happy = pkgs.callPackage ./ghc/4_04/happy.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs_0_10_glibc.gcc295;
+                happy = pkgs.writeShellScriptBin "happy" ''
+                  echo "Happy Version 1.6"
+                '';
+                ghc = ghc;
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+              };
               ghc = ghc;
-              gmp = self.packages.x86_64-linux.gmp_2_0_2;
+              gmp = self.packages.i686-linux.gmp_2_0_2;
             };
-            ghc = ghc;
-            gmp = self.packages.x86_64-linux.gmp_2_0_2;
-          };
 
-        ghc_4_06 =
-          let
-            ghc = pkgs32.callPackage ./ghc/4_06/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32.gcc13;
-              gmp = self.packages.x86_64-linux.gmp_2_0_2;
-            };
-            happy =
-              let
-                happy = pkgs32.callPackage ./ghc/4_06/happy.nix {
-                  perl = pkgs32_last_glibc_2_13.perl58;
-                  gcc = pkgs32_0_10_glibc.gcc295;
-                  happy = throw "happy";
-                  ghc = ghc;
-                  gmp = self.packages.x86_64-linux.gmp_2_0_2;
-                };
-              in
-              happy.override { happy = happy.override { bootstrap = true; }; };
-          in
-          pkgs32.callPackage ./ghc/4_06 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10_glibc.gcc295;
-            happy = happy;
-            ghc = ghc;
-            gmp = self.packages.x86_64-linux.gmp_2_0_2;
-          };
-
-        ghc_4_08_2 =
-          let
-            ghc = pkgs32.callPackage ./ghc/4_08_2/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32.gcc13;
-            };
-            happy =
-              let
-                happy = pkgs32.callPackage ./ghc/4_08_2/happy.nix {
-                  perl = pkgs32_last_glibc_2_13.perl58;
-                  gcc = pkgs32_0_10_glibc.gcc295;
-                  happy = throw "happy";
-                  ghc = ghc;
-                };
-              in
-              happy.override { happy = happy.override { bootstrap = true; }; };
-          in
-          pkgs32.callPackage ./ghc/4_08_2 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10.gcc295;
-            happy = happy;
-            ghc = pkgs32.callPackage ./ghc/4_08_2 {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32_0_10_glibc.gcc295;
+          ghc_4_06 =
+            let
+              ghc = pkgs.callPackage ./ghc/4_06/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs.gcc13;
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+              };
+              happy =
+                let
+                  happy = pkgs.callPackage ./ghc/4_06/happy.nix {
+                    perl = pkgs_last_glibc_2_13.perl58;
+                    gcc = pkgs_0_10_glibc.gcc295;
+                    happy = throw "happy";
+                    ghc = ghc;
+                    gmp = self.packages.i686-linux.gmp_2_0_2;
+                  };
+                in
+                happy.override { happy = happy.override { bootstrap = true; }; };
+            in
+            pkgs.callPackage ./ghc/4_06 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
               happy = happy;
               ghc = ghc;
+              gmp = self.packages.i686-linux.gmp_2_0_2;
             };
-          };
 
-        ghc_5_00_2 = pkgs32.callPackage ./ghc/5_00_2 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_0_10.gcc295;
-          happy = pkgs32.writeShellScriptBin "happy" ''
-            echo "Happy Version 1.9"
-          '';
-          ghc = pkgs32.callPackage ./ghc/5_00_2/binary.nix {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32.gcc13;
-            ncurses = pkgs.linkFarm "ncurses" {
-              "lib/libncurses.so.4" = "${pkgs32.ncurses5}/lib/libncurses.so.5";
+          ghc_4_08_2 =
+            let
+              ghc = pkgs.callPackage ./ghc/4_08_2/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs.gcc13;
+              };
+              happy =
+                let
+                  happy = pkgs.callPackage ./ghc/4_08_2/happy.nix {
+                    perl = pkgs_last_glibc_2_13.perl58;
+                    gcc = pkgs_0_10_glibc.gcc295;
+                    happy = throw "happy";
+                    ghc = ghc;
+                  };
+                in
+                happy.override { happy = happy.override { bootstrap = true; }; };
+            in
+            pkgs.callPackage ./ghc/4_08_2 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10.gcc295;
+              happy = happy;
+              ghc = pkgs.callPackage ./ghc/4_08_2 {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs_0_10_glibc.gcc295;
+                happy = happy;
+                ghc = ghc;
+              };
             };
-            readline = pkgs.linkFarm "readline" {
-              "lib/libreadline.so.3" = "${pkgs32_last_glibc_2_13.readline4}/lib/libreadline.so.4";
-            };
-          };
-          readline = pkgs32_16_03.readline;
-        };
 
-        ghc_5_02_3 = pkgs32.callPackage ./ghc/5_02_3 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_0_10.gcc295;
-          happy = pkgs32.writeShellScriptBin "happy" ''
-            echo "Happy Version 1.9"
-          '';
-          ghc = pkgs32.callPackage ./ghc/5_02_3 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10_glibc.gcc295;
-            happy = pkgs32.writeShellScriptBin "happy" ''
+          ghc_5_00_2 = pkgs.callPackage ./ghc/5_00_2 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_0_10.gcc295;
+            happy = pkgs.writeShellScriptBin "happy" ''
               echo "Happy Version 1.9"
             '';
-            ghc = pkgs32.callPackage ./ghc/5_02_3/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32.gcc13;
+            ghc = pkgs.callPackage ./ghc/5_00_2/binary.nix {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs.gcc13;
               ncurses = pkgs.linkFarm "ncurses" {
-                "lib/libncurses.so.4" = "${pkgs32.ncurses5}/lib/libncurses.so.5";
+                "lib/libncurses.so.4" = "${pkgs.ncurses5}/lib/libncurses.so.5";
               };
               readline = pkgs.linkFarm "readline" {
-                "lib/libreadline.so.3" = "${pkgs32_last_glibc_2_13.readline4}/lib/libreadline.so.4";
+                "lib/libreadline.so.3" = "${pkgs_last_glibc_2_13.readline4}/lib/libreadline.so.4";
               };
             };
-            ncurses = pkgs32_16_03.ncurses;
-            readline = pkgs32_16_03.readline;
+            readline = pkgs_16_03.readline;
           };
-          ncurses = pkgs32_16_03.ncurses;
-          readline = pkgs32_16_03.readline;
-        };
 
-        ghc_5_04_3 = pkgs32.callPackage ./ghc/5_04_3 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_0_10.gcc295;
-          ghc = pkgs32.callPackage ./ghc/5_04_3 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_0_10_glibc.gcc295;
-            ghc = pkgs32.callPackage ./ghc/5_04_3/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              gcc = pkgs32.gcc13;
-              readline = pkgs32_last_glibc_2_13.readline4;
-            };
-            ncurses = pkgs32_16_03.ncurses;
-            readline = pkgs32_16_03.readline;
-          };
-          ncurses = pkgs32_16_03.ncurses;
-          readline = pkgs32_16_03.readline;
-        };
-
-        ghc_6_0_1 = pkgs32.callPackage ./ghc/6_0_1 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_last_glibc_2_13.gcc33;
-          ghc = pkgs32.callPackage ./ghc/6_0_1 {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            gcc = pkgs32_last_glibc_2_13_glibc.gcc33;
-            ghc = pkgs32.callPackage ./ghc/6_0_1/binary.nix {
-              perl = pkgs32_last_glibc_2_13.perl58;
-              readline = pkgs32_last_glibc_2_13.readline4;
-            };
-          };
-        };
-
-        ghc_6_2_2 = pkgs32.callPackage ./ghc/6_2_2 {
-          perl = pkgs32_last_glibc_2_13.perl58;
-          gcc = pkgs32_last_glibc_2_13.gcc34;
-          ghc = pkgs32.callPackage ./ghc/6_2_2/binary.nix {
-            perl = pkgs32_last_glibc_2_13.perl58;
-            readline = pkgs32_last_glibc_2_13.readline4;
-          };
-        };
-
-        ghc_6_4_2 = pkgs.callPackage ./ghc/6_4_2 {
-          perl = pkgs_last_glibc_2_13.perl58;
-          gcc = pkgs_20_03.wrapCCWith {
-            cc = pkgs_17_09.gcc.cc;
-            bintools = pkgs_20_03.wrapBintoolsWith {
-              bintools = pkgs.binutils.bintools;
-              libc = pkgs.libc;
-            };
-          };
-          ghc = pkgs.callPackage ./ghc/6_4_2/binary.nix {
+          ghc_5_02_3 = pkgs.callPackage ./ghc/5_02_3 {
             perl = pkgs_last_glibc_2_13.perl58;
-            gmp = pkgs_24_11.gmp4;
-            readline = pkgs_21_11.readline5;
+            gcc = pkgs_0_10.gcc295;
+            happy = pkgs.writeShellScriptBin "happy" ''
+              echo "Happy Version 1.9"
+            '';
+            ghc = pkgs.callPackage ./ghc/5_02_3 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
+              happy = pkgs.writeShellScriptBin "happy" ''
+                echo "Happy Version 1.9"
+              '';
+              ghc = pkgs.callPackage ./ghc/5_02_3/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs.gcc13;
+                ncurses = pkgs.linkFarm "ncurses" {
+                  "lib/libncurses.so.4" = "${pkgs.ncurses5}/lib/libncurses.so.5";
+                };
+                readline = pkgs.linkFarm "readline" {
+                  "lib/libreadline.so.3" = "${pkgs_last_glibc_2_13.readline4}/lib/libreadline.so.4";
+                };
+              };
+              ncurses = pkgs_16_03.ncurses;
+              readline = pkgs_16_03.readline;
+            };
+            ncurses = pkgs_16_03.ncurses;
+            readline = pkgs_16_03.readline;
           };
-        };
 
-        ghc_6_6_1 = pkgs.callPackage ./ghc/6_6_1 {
-          perl = pkgs_last_glibc_2_13.perl58;
-          gcc = pkgs_20_03.wrapCCWith {
-            cc = pkgs_last_glibc_2_13.gcc.gcc;
-            bintools = pkgs_20_03.wrapBintoolsWith {
-              bintools = pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd.binutils_release;
-              libc = pkgs_15_09.glibc;
+          ghc_5_04_3 = pkgs.callPackage ./ghc/5_04_3 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_0_10.gcc295;
+            ghc = pkgs.callPackage ./ghc/5_04_3 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
+              ghc = pkgs.callPackage ./ghc/5_04_3/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs.gcc13;
+                readline = pkgs_last_glibc_2_13.readline4;
+              };
+              ncurses = pkgs_16_03.ncurses;
+              readline = pkgs_16_03.readline;
+            };
+            ncurses = pkgs_16_03.ncurses;
+            readline = pkgs_16_03.readline;
+          };
+
+          ghc_6_0_1 = pkgs.callPackage ./ghc/6_0_1 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_last_glibc_2_13.gcc33;
+            ghc = pkgs.callPackage ./ghc/6_0_1 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_last_glibc_2_13_glibc.gcc33;
+              ghc = pkgs.callPackage ./ghc/6_0_1/binary.nix {
+                perl = pkgs_last_glibc_2_13.perl58;
+                readline = pkgs_last_glibc_2_13.readline4;
+              };
             };
           };
-          ghc = pkgs.callPackage ./ghc/6_6_1/binary.nix {
+
+          ghc_6_2_2 = pkgs.callPackage ./ghc/6_2_2 {
             perl = pkgs_last_glibc_2_13.perl58;
-            gmp = pkgs_24_11.gmp4;
-            readline = pkgs_21_11.readline5;
+            gcc = pkgs_last_glibc_2_13.gcc34;
+            ghc = pkgs.callPackage ./ghc/6_2_2/binary.nix {
+              perl = pkgs_last_glibc_2_13.perl58;
+              readline = pkgs_last_glibc_2_13.readline4;
+            };
           };
-          gmp = pkgs_23_05.gmp;
-        };
 
-        ghc_6_8_3 = pkgs.callPackage ./ghc/6_8_3 {
-          gcc = pkgs_18_03.gcc;
-          ghc = pkgs.callPackage ./ghc/6_8_3/binary.nix {
-            gmp = pkgs_24_11.gmp4;
-            readline = pkgs_21_11.readline5;
+          gmp_2_0_2 = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+            pname = "gmp";
+            version = "2.0.2";
+            src = pkgs.fetchurl {
+              url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
+              hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
+            };
+            nativeBuildInputs = [ pkgs.rpmextract ];
+            sourceRoot = ".";
+            unpackCmd = "rpmextract $curSrc";
+            postPatch = ''
+              ln -s libgmp.so.2 usr/lib/libgmp.so
+            '';
+            installPhase = ''
+              runHook preInstall
+
+              mv usr $out
+
+              runHook postInstall
+            '';
+          });
+
+          nhc98_1_22 = pkgs.callPackage ./nhc98/1_22 {
+            gcc = pkgs_last_glibc_2_13.gcc;
+            nhc98 = pkgs.callPackage ./nhc98/1_22 {
+              gcc = pkgs_last_glibc_2_13.gcc43;
+              nhc98 = throw "nhc98";
+              bootstrap = true;
+            };
           };
-          gmp = pkgs_23_05.gmp;
         };
 
-        ghc_6_10_4 = pkgs.callPackage ./ghc/6_10_4 {
-          gcc = pkgs_18_03.gcc;
-          ghc = pkgs.callPackage ./ghc/6_10_4/binary.nix { gmp = pkgs_24_11.gmp4; };
-          gmp = pkgs_23_05.gmp;
-          ncurses = pkgs_21_05.ncurses;
-        };
-
-        ghc_6_12_3 = pkgs.callPackage ./ghc/6_12_3 {
-          gcc = pkgs_18_03.gcc;
-          ghc = pkgs.callPackage ./ghc/6_12_3/binary.nix {
-            gcc = pkgs_25_05.gcc;
-            gmp = pkgs_24_11.gmp4;
+      packages.x86_64-linux =
+        let
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs_25_11 = pkgs.callPackage ./nixpkgs/25_11 {
+            src = nixpkgs_25_11;
+            system = "x86_64-linux";
           };
-          gmp = pkgs_23_05.gmp;
-          ncurses = pkgs_21_05.ncurses;
-        };
-
-        ghc_7_0_4 = pkgs.callPackage ./ghc/7_0_4 {
-          gcc = pkgs_18_03.gcc;
-          ghc = pkgs.callPackage ./ghc/7_0_4/binary.nix {
-            gcc = pkgs_20_03.gcc;
-            gmp = pkgs_24_11.gmp4;
+          pkgs_25_05 = pkgs.callPackage ./nixpkgs/25_05 {
+            src = nixpkgs_25_05;
+            system = "x86_64-linux";
           };
-          gmp = pkgs_23_05.gmp;
-          ncurses = pkgs_21_05.ncurses;
-        };
-
-        ghc_7_2_2 = pkgs.callPackage ./ghc/7_2_2 {
-          gcc = pkgs_18_03.gcc;
-          ghc = pkgs.callPackage ./ghc/7_2_2/binary.nix {
-            gcc = pkgs_20_03.gcc;
-            gmp = pkgs_24_11.gmp4;
+          pkgs_24_11 = pkgs.callPackage ./nixpkgs/24_11 {
+            src = nixpkgs_24_11;
+            system = "x86_64-linux";
           };
-          gmp = pkgs_23_05.gmp;
-          ncurses = pkgs_21_05.ncurses;
-        };
-
-        ghc_7_4_2 = pkgs.callPackage ./ghc/7_4_2 {
-          gcc = pkgs_24_11.gcc;
-          ghc = pkgs.callPackage ./ghc/7_4_2/binary.nix {
-            gcc = pkgs_25_05.gcc;
-            gmp = pkgs_24_11.gmp4;
+          pkgs_24_05 = pkgs.callPackage ./nixpkgs/24_05 {
+            src = nixpkgs_24_05;
+            system = "x86_64-linux";
           };
-          gmp = pkgs_24_11.gmp4;
-          ncurses = pkgs_25_11.ncurses5;
-        };
-
-        ghc_7_6_3 = pkgs.callPackage ./ghc/7_6_3 {
-          gcc = pkgs_24_11.gcc;
-          ghc = pkgs.callPackage ./ghc/7_6_3/binary.nix {
-            gcc = pkgs_25_05.gcc;
-            gmp = pkgs_24_11.gmp4;
+          pkgs_23_11 = pkgs.callPackage ./nixpkgs/23_11 {
+            src = nixpkgs_23_11;
+            system = "x86_64-linux";
           };
-          gmp = pkgs_24_11.gmp4;
-          ncurses = pkgs_25_11.ncurses;
-        };
+          pkgs_23_05 = pkgs.callPackage ./nixpkgs/23_05 {
+            src = nixpkgs_23_05;
+            system = "x86_64-linux";
+          };
+          pkgs_22_11 = pkgs.callPackage ./nixpkgs/22_11 {
+            src = nixpkgs_22_11;
+            system = "x86_64-linux";
+          };
+          pkgs_22_05 = pkgs.callPackage ./nixpkgs/22_05 {
+            src = nixpkgs_22_05;
+            system = "x86_64-linux";
+          };
+          pkgs_21_11 = pkgs.callPackage ./nixpkgs/21_11 {
+            src = nixpkgs_21_11;
+            system = "x86_64-linux";
+          };
+          pkgs_21_05 = pkgs.callPackage ./nixpkgs/21_05 {
+            src = nixpkgs_21_05;
+            system = "x86_64-linux";
+          };
+          pkgs_20_09 = pkgs.callPackage ./nixpkgs/20_09 {
+            src = nixpkgs_20_09;
+            system = "x86_64-linux";
+          };
+          pkgs_20_03 = pkgs.callPackage ./nixpkgs/20_03 {
+            src = nixpkgs_20_03;
+            system = "x86_64-linux";
+          };
+          pkgs_19_09 = pkgs.callPackage ./nixpkgs/19_09 {
+            src = nixpkgs_19_09;
+            system = "x86_64-linux";
+          };
+          pkgs_19_03 = pkgs.callPackage ./nixpkgs/19_03 {
+            src = nixpkgs_19_03;
+            system = "x86_64-linux";
+          };
+          pkgs_18_09 = pkgs.callPackage ./nixpkgs/18_09 {
+            src = nixpkgs_18_09;
+            system = "x86_64-linux";
+          };
+          pkgs_18_03 = pkgs.callPackage ./nixpkgs/18_03 {
+            src = nixpkgs_18_03;
+            system = "x86_64-linux";
+          };
+          pkgs_17_09 = pkgs.callPackage ./nixpkgs/17_09 {
+            src = nixpkgs_17_09;
+            system = "x86_64-linux";
+          };
+          pkgs_17_03 = pkgs.callPackage ./nixpkgs/17_03 {
+            src = nixpkgs_17_03;
+            system = "x86_64-linux";
+          };
+          pkgs_16_09 = pkgs.callPackage ./nixpkgs/16_09 {
+            src = nixpkgs_16_09;
+            system = "x86_64-linux";
+          };
+          pkgs_16_03 = pkgs.callPackage ./nixpkgs/16_03 {
+            src = nixpkgs_16_03;
+            system = "x86_64-linux";
+          };
+          pkgs_15_09 = pkgs.callPackage ./nixpkgs/15_09 {
+            src = nixpkgs_15_09;
+            system = "x86_64-linux";
+          };
+          pkgs_last_glibc_2_13 = pkgs.callPackage ./nixpkgs/last_glibc_2_13 {
+            src = nixpkgs_last_glibc_2_13;
+            system = "x86_64-linux";
+          };
+          pkgs_last_glibc_2_13_glibc = pkgs.callPackage ./nixpkgs/last_glibc_2_13/glibc.nix {
+            src = nixpkgs_last_glibc_2_13;
+            system = "i686-linux";
+          };
+          pkgs_0_14 = pkgs.callPackage ./nixpkgs/0_14 {
+            src = nixpkgs_0_14;
+            system = "x86_64-linux";
+          };
+          pkgs_0_13 = pkgs.callPackage ./nixpkgs/0_13 {
+            src = nixpkgs_0_13;
+            system = "x86_64-linux";
+          };
+          pkgs_0_12 = pkgs.callPackage ./nixpkgs/0_12 {
+            src = nixpkgs_0_12;
+            system = "x86_64-linux";
+          };
+          pkgs_0_11 = pkgs.callPackage ./nixpkgs/0_11 {
+            src = nixpkgs_0_11;
+            system = "x86_64-linux";
+          };
+          pkgs_0_10 = pkgs.callPackage ./nixpkgs/0_10 {
+            src = nixpkgs_0_10;
+            system = "x86_64-linux";
+          };
+          pkgs_0_10_glibc = pkgs.callPackage ./nixpkgs/0_10/glibc.nix {
+            src = nixpkgs_0_10;
+            system = "x86_64-linux";
+          };
+          pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd =
+            pkgs.callPackage ./nixpkgs/2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd
+              {
+                src = nixpkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd;
+                system = "x86_64-linux";
+              };
+        in
+        {
+          default = self.packages.x86_64-linux.ghc_9_12_3;
 
-        ghc_7_8_4 = pkgs.callPackage ./ghc/7_8_4 {
-          gcc = pkgs_24_11.gcc;
-          ghc = pkgs.callPackage ./ghc/7_8_4/binary.nix { gcc = pkgs_25_05.gcc; };
-          ncurses = pkgs_25_11.ncurses;
-        };
+          ghc_6_4_2 = pkgs.callPackage ./ghc/6_4_2 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_20_03.wrapCCWith {
+              cc = pkgs_17_09.gcc.cc;
+              bintools = pkgs_20_03.wrapBintoolsWith {
+                bintools = pkgs.binutils.bintools;
+                libc = pkgs.libc;
+              };
+            };
+            ghc = pkgs.callPackage ./ghc/6_4_2/binary.nix {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gmp = pkgs_24_11.gmp4;
+              readline = pkgs_21_11.readline5;
+            };
+          };
 
-        ghc_7_10_3 = pkgs.callPackage ./ghc/7_10_3 {
-          gcc = pkgs_24_11.gcc;
-          ghc = pkgs.callPackage ./ghc/7_10_3 {
-            gcc = pkgs_24_11.gcc;
-            ghc = pkgs.callPackage ./ghc/7_10_3/binary.nix { gcc = pkgs_21_11.gcc; };
+          ghc_6_6_1 = pkgs.callPackage ./ghc/6_6_1 {
+            perl = pkgs_last_glibc_2_13.perl58;
+            gcc = pkgs_20_03.wrapCCWith {
+              cc = pkgs_last_glibc_2_13.gcc.gcc;
+              bintools = pkgs_20_03.wrapBintoolsWith {
+                bintools = pkgs_2ad6c9c6c215d48bd1524e8f281ede8bfea1e2dd.binutils_release;
+                libc = pkgs_15_09.glibc;
+              };
+            };
+            ghc = pkgs.callPackage ./ghc/6_6_1/binary.nix {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gmp = pkgs_24_11.gmp4;
+              readline = pkgs_21_11.readline5;
+            };
             gmp = pkgs_23_05.gmp;
+          };
+
+          ghc_6_8_3 = pkgs.callPackage ./ghc/6_8_3 {
+            gcc = pkgs_18_03.gcc;
+            ghc = pkgs.callPackage ./ghc/6_8_3/binary.nix {
+              gmp = pkgs_24_11.gmp4;
+              readline = pkgs_21_11.readline5;
+            };
+            gmp = pkgs_23_05.gmp;
+          };
+
+          ghc_6_10_4 = pkgs.callPackage ./ghc/6_10_4 {
+            gcc = pkgs_18_03.gcc;
+            ghc = pkgs.callPackage ./ghc/6_10_4/binary.nix { gmp = pkgs_24_11.gmp4; };
+            gmp = pkgs_23_05.gmp;
+            ncurses = pkgs_21_05.ncurses;
+          };
+
+          ghc_6_12_3 = pkgs.callPackage ./ghc/6_12_3 {
+            gcc = pkgs_18_03.gcc;
+            ghc = pkgs.callPackage ./ghc/6_12_3/binary.nix {
+              gcc = pkgs_25_05.gcc;
+              gmp = pkgs_24_11.gmp4;
+            };
+            gmp = pkgs_23_05.gmp;
+            ncurses = pkgs_21_05.ncurses;
+          };
+
+          ghc_7_0_4 = pkgs.callPackage ./ghc/7_0_4 {
+            gcc = pkgs_18_03.gcc;
+            ghc = pkgs.callPackage ./ghc/7_0_4/binary.nix {
+              gcc = pkgs_20_03.gcc;
+              gmp = pkgs_24_11.gmp4;
+            };
+            gmp = pkgs_23_05.gmp;
+            ncurses = pkgs_21_05.ncurses;
+          };
+
+          ghc_7_2_2 = pkgs.callPackage ./ghc/7_2_2 {
+            gcc = pkgs_18_03.gcc;
+            ghc = pkgs.callPackage ./ghc/7_2_2/binary.nix {
+              gcc = pkgs_20_03.gcc;
+              gmp = pkgs_24_11.gmp4;
+            };
+            gmp = pkgs_23_05.gmp;
+            ncurses = pkgs_21_05.ncurses;
+          };
+
+          ghc_7_4_2 = pkgs.callPackage ./ghc/7_4_2 {
+            gcc = pkgs_24_11.gcc;
+            ghc = pkgs.callPackage ./ghc/7_4_2/binary.nix {
+              gcc = pkgs_25_05.gcc;
+              gmp = pkgs_24_11.gmp4;
+            };
+            gmp = pkgs_24_11.gmp4;
+            ncurses = pkgs_25_11.ncurses5;
+          };
+
+          ghc_7_6_3 = pkgs.callPackage ./ghc/7_6_3 {
+            gcc = pkgs_24_11.gcc;
+            ghc = pkgs.callPackage ./ghc/7_6_3/binary.nix {
+              gcc = pkgs_25_05.gcc;
+              gmp = pkgs_24_11.gmp4;
+            };
+            gmp = pkgs_24_11.gmp4;
             ncurses = pkgs_25_11.ncurses;
           };
-          ncurses = pkgs_25_11.ncurses;
-        };
 
-        ghc_8_0_2 = pkgs.callPackage ./ghc/8_0_2 {
-          gcc = pkgs.gcc13;
-          ghc = pkgs.callPackage ./ghc/8_0_2/binary.nix { };
-        };
-
-        ghc_8_2_2 = pkgs.callPackage ./ghc/8_2_2 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/8_2_2/binary.nix { };
-        };
-
-        ghc_8_4_4 = pkgs.callPackage ./ghc/8_4_4 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/8_4_4/binary.nix { };
-        };
-
-        ghc_8_6_5 = pkgs.callPackage ./ghc/8_6_5 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/8_6_5/binary.nix { };
-        };
-
-        ghc_8_8_4 = pkgs.callPackage ./ghc/8_8_4 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/8_8_4/binary.nix { };
-        };
-
-        ghc_8_10_7 = pkgs.callPackage ./ghc/8_10_7 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/8_10_7/binary.nix { };
-        };
-
-        ghc_9_0_2 = pkgs.callPackage ./ghc/9_0_2 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/9_0_2/binary.nix { };
-        };
-
-        ghc_9_2_8 = pkgs.callPackage ./ghc/9_2_8 {
-          gcc = pkgs.gcc14;
-          alex = pkgs.writeScriptBin "alex" "";
-          happy = pkgs.writeScriptBin "happy" "";
-          ghc = pkgs.callPackage ./ghc/9_2_8/binary.nix { };
-        };
-
-        ghc_9_4_8 = pkgs.callPackage ./ghc/9_4_8 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/9_4_8/binary.nix { };
-        };
-
-        ghc_9_6_7 = pkgs.callPackage ./ghc/9_6_7 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/9_6_7/binary.nix { };
-        };
-
-        ghc_9_8_4 = pkgs.callPackage ./ghc/9_8_4 {
-          gcc = pkgs.gcc14;
-          ghc = pkgs.callPackage ./ghc/9_8_4/binary.nix { };
-        };
-
-        ghc_9_10_3 = pkgs.callPackage ./ghc/9_10_3 { ghc = pkgs.callPackage ./ghc/9_10_3/binary.nix { }; };
-
-        ghc_9_12_3 = pkgs.callPackage ./ghc/9_12_3 { ghc = pkgs.callPackage ./ghc/9_12_3/binary.nix { }; };
-
-        gmp_2_0_2 = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-          pname = "gmp";
-          version = "2.0.2";
-          src = pkgs.fetchurl {
-            url = "https://web.archive.org/web/20041114193115if_/http://ftp.redhat.com:80/pub/contrib/libc5/i386/gmp-${finalAttrs.version}-8.i386.rpm";
-            hash = "sha256-3zDUISjvOC+MP9Q6rklBTD6IHBU0/MmnwMQ11SkLRIE=";
+          ghc_7_8_4 = pkgs.callPackage ./ghc/7_8_4 {
+            gcc = pkgs_24_11.gcc;
+            ghc = pkgs.callPackage ./ghc/7_8_4/binary.nix { gcc = pkgs_25_05.gcc; };
+            ncurses = pkgs_25_11.ncurses;
           };
-          nativeBuildInputs = [ pkgs.rpmextract ];
-          sourceRoot = ".";
-          unpackCmd = "rpmextract $curSrc";
-          postPatch = ''
-            ln -s libgmp.so.2 usr/lib/libgmp.so
-          '';
-          installPhase = ''
-            runHook preInstall
 
-            mv usr $out
-
-            runHook postInstall
-          '';
-        });
-
-        nhc98_1_22 = pkgs32.callPackage ./nhc98/1_22 {
-          gcc = pkgs32_last_glibc_2_13.gcc;
-          nhc98 = pkgs32.callPackage ./nhc98/1_22 {
-            gcc = pkgs32_last_glibc_2_13.gcc43;
-            nhc98 = throw "nhc98";
-            bootstrap = true;
+          ghc_7_10_3 = pkgs.callPackage ./ghc/7_10_3 {
+            gcc = pkgs_24_11.gcc;
+            ghc = pkgs.callPackage ./ghc/7_10_3 {
+              gcc = pkgs_24_11.gcc;
+              ghc = pkgs.callPackage ./ghc/7_10_3/binary.nix { gcc = pkgs_21_11.gcc; };
+              gmp = pkgs_23_05.gmp;
+              ncurses = pkgs_25_11.ncurses;
+            };
+            ncurses = pkgs_25_11.ncurses;
           };
+
+          ghc_8_0_2 = pkgs.callPackage ./ghc/8_0_2 {
+            gcc = pkgs.gcc13;
+            ghc = pkgs.callPackage ./ghc/8_0_2/binary.nix { };
+          };
+
+          ghc_8_2_2 = pkgs.callPackage ./ghc/8_2_2 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/8_2_2/binary.nix { };
+          };
+
+          ghc_8_4_4 = pkgs.callPackage ./ghc/8_4_4 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/8_4_4/binary.nix { };
+          };
+
+          ghc_8_6_5 = pkgs.callPackage ./ghc/8_6_5 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/8_6_5/binary.nix { };
+          };
+
+          ghc_8_8_4 = pkgs.callPackage ./ghc/8_8_4 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/8_8_4/binary.nix { };
+          };
+
+          ghc_8_10_7 = pkgs.callPackage ./ghc/8_10_7 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/8_10_7/binary.nix { };
+          };
+
+          ghc_9_0_2 = pkgs.callPackage ./ghc/9_0_2 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/9_0_2/binary.nix { };
+          };
+
+          ghc_9_2_8 = pkgs.callPackage ./ghc/9_2_8 {
+            gcc = pkgs.gcc14;
+            alex = pkgs.writeScriptBin "alex" "";
+            happy = pkgs.writeScriptBin "happy" "";
+            ghc = pkgs.callPackage ./ghc/9_2_8/binary.nix { };
+          };
+
+          ghc_9_4_8 = pkgs.callPackage ./ghc/9_4_8 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/9_4_8/binary.nix { };
+          };
+
+          ghc_9_6_7 = pkgs.callPackage ./ghc/9_6_7 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/9_6_7/binary.nix { };
+          };
+
+          ghc_9_8_4 = pkgs.callPackage ./ghc/9_8_4 {
+            gcc = pkgs.gcc14;
+            ghc = pkgs.callPackage ./ghc/9_8_4/binary.nix { };
+          };
+
+          ghc_9_10_3 = pkgs.callPackage ./ghc/9_10_3 { ghc = pkgs.callPackage ./ghc/9_10_3/binary.nix { }; };
+
+          ghc_9_12_3 = pkgs.callPackage ./ghc/9_12_3 { ghc = pkgs.callPackage ./ghc/9_12_3/binary.nix { }; };
         };
-      };
     };
 }
