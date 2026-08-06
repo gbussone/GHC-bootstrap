@@ -502,7 +502,927 @@
               bootstrap = true;
             };
           };
-        };
+        }
+        // pkgs.lib.attrsets.listToAttrs (
+          pkgs.lib.attrsets.mapCartesianProduct
+            (
+              {
+                commit,
+                fptools,
+                ghc,
+              }:
+              {
+                name = "happy-${toString commit.i}-${fptools.version}-${ghc.version}";
+                value =
+                  let
+                    happy =
+                      {
+                        happy,
+                        bootstrap ? false,
+                      }:
+                      pkgs.stdenvNoCC.mkDerivation (
+                        {
+                          pname = "happy";
+                          version = "0-unstable-${commit.info.rev}";
+                          src = pkgs.fetchurl fptools.info;
+                          postUnpack =
+                            let
+                              dir =
+                                if fptools.version == "4_02" || fptools.version == "4_04" || fptools.version == "4_06" then
+                                  "fptools"
+                                else if fptools.version == "4_08_2" then
+                                  "ghc-4.08.2"
+                                else if fptools.version == "5_00_2" then
+                                  "ghc-5.00.2"
+                                else if fptools.version == "5_02_3" then
+                                  "ghc-5.02.3"
+                                else if fptools.version == "5_04_3" then
+                                  "ghc-5.04.3"
+                                else if fptools.version == "6_0_1" then
+                                  "ghc-6.0.1"
+                                else if fptools.version == "6_2_2" then
+                                  "ghc-6.2.2"
+                                else
+                                  throw "untested";
+                            in
+                            ''
+                              cp -r ${
+                                pkgs.fetchFromGitHub (
+                                  {
+                                    owner = "haskell";
+                                    repo = "happy";
+                                  }
+                                  // commit.info
+                                )
+                              } ${dir}/happy
+                              chmod -R u+w ${dir}/happy
+                            '';
+                          prePatch =
+                            if bootstrap then
+                              if
+                                commit.i >= 16 && commit.i <= 764
+                                || commit.i >= 780 && commit.i <= 871
+                                || commit.i == 954
+                                || commit.i == 955
+                                || commit.i == 956
+                                || commit.i == 959
+                                || commit.i == 961
+                              then
+                                ''
+                                  rm happy/src/Parser.ly
+                                ''
+                              else
+                                throw "no happy/src/Parser.ly"
+                            else
+                              ''
+                                rm happy/src/Parser.hs
+                              '';
+                        }
+                        // (
+                          if fptools.version == "4_02" then
+                            if
+                              (commit.i >= 126 && commit.i <= 177 && commit.i != 127 && commit.i != 171) && ghc.version == "4_02"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.4"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 203 && commit.i != 171 && commit.i != 184) && ghc.version == "4_04"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.4"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 230 && commit.i != 171 && commit.i != 184) && ghc.version == "4_06"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.4"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if (commit.i >= 171 && commit.i <= 230 && commit.i != 184) && ghc.version == "4_08_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.4"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "4_04" then
+                            if
+                              (commit.i >= 126 && commit.i <= 177 && commit.i != 127 && commit.i != 171) && ghc.version == "4_02"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs.perl
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.6"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 203 && commit.i != 171 && commit.i != 184) && ghc.version == "4_04"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.6"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 230 && commit.i != 171 && commit.i != 184) && ghc.version == "4_06"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.6"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if (commit.i >= 171 && commit.i <= 230 && commit.i != 184) && ghc.version == "4_08_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional bootstrap (
+                                  pkgs.writeShellScriptBin "happy" ''
+                                    echo "Happy Version 1.6"
+                                  ''
+                                )
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild = ''
+                                  ln -s ${ghc.pkg}/bin/ghc ghc/driver/ghc
+                                '';
+                                postBuild = ''
+                                  rm ghc/driver/ghc
+                                '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "4_06" then
+                            if
+                              (commit.i >= 126 && commit.i <= 177 && commit.i != 127 && commit.i != 171) && ghc.version == "4_02"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 203 && commit.i != 171 && commit.i != 184) && ghc.version == "4_04"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 230 && commit.i != 171 && commit.i != 184) && ghc.version == "4_06"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if (commit.i >= 171 && commit.i <= 230 && commit.i != 184) && ghc.version == "4_08_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "4_08_2" then
+                            if
+                              (commit.i >= 126 && commit.i <= 177 && commit.i != 127 && commit.i != 171) && ghc.version == "4_02"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 203 && commit.i != 171 && commit.i != 184) && ghc.version == "4_04"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if
+                              (commit.i >= 147 && commit.i <= 230 && commit.i != 171 && commit.i != 184) && ghc.version == "4_06"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                                env.LIBRARY_PATH = pkgs.lib.strings.makeLibraryPath [ self.packages.i686-linux.gmp_2_0_2 ];
+                              }
+                            else if (commit.i >= 171 && commit.i <= 230 && commit.i != 184) && ghc.version == "4_08_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "5_00_2" then
+                            if (commit.i >= 253 && commit.i <= 297 && commit.i != 254) && ghc.version == "4_08_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else if (commit.i >= 253 && commit.i <= 297 && commit.i != 254) && ghc.version == "5_00_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "5_02_3" then
+                            if (commit.i >= 255 && commit.i <= 297) && ghc.version == "5_00_2" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else if (commit.i >= 255 && commit.i <= 297) && ghc.version == "5_02_3" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "5_04_3" then
+                            if (commit.i >= 255 && commit.i <= 297) && ghc.version == "5_02_3" then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else if
+                              (
+                                commit.i >= 302
+                                && commit.i <= 392
+                                && commit.i != 318
+                                && commit.i != 331
+                                && commit.i != 332
+                                && commit.i != 333
+                                && commit.i != 334
+                                && commit.i != 335
+                              )
+                              && ghc.version == "5_04_3"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild =
+                                  pkgs.lib.strings.optionalString (!bootstrap) ''
+                                    cd happy/src
+                                    happy Parser.ly
+                                    cd ../..
+                                  ''
+                                  + ''
+                                    make -C happy boot
+                                  '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "6_0_1" then
+                            if
+                              (
+                                commit.i >= 302
+                                && commit.i <= 392
+                                && commit.i != 318
+                                && commit.i != 331
+                                && commit.i != 332
+                                && commit.i != 333
+                                && commit.i != 334
+                                && commit.i != 335
+                              )
+                              && ghc.version == "5_04_3"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild =
+                                  pkgs.lib.strings.optionalString (!bootstrap) ''
+                                    cd happy/src
+                                    happy Parser.ly
+                                    cd ../..
+                                  ''
+                                  + ''
+                                    make -C happy boot
+                                  '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else if
+                              (
+                                commit.i >= 302
+                                && commit.i <= 392
+                                && commit.i != 318
+                                && commit.i != 331
+                                && commit.i != 332
+                                && commit.i != 333
+                                && commit.i != 334
+                                && commit.i != 335
+                              )
+                              && ghc.version == "6_0_1"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild =
+                                  pkgs.lib.strings.optionalString (!bootstrap) ''
+                                    cd happy/src
+                                    happy Parser.ly
+                                    cd ../..
+                                  ''
+                                  + ''
+                                    make -C happy boot
+                                  '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else if fptools.version == "6_2_2" then
+                            if
+                              (
+                                commit.i >= 302
+                                && commit.i <= 392
+                                && commit.i != 318
+                                && commit.i != 331
+                                && commit.i != 332
+                                && commit.i != 333
+                                && commit.i != 334
+                                && commit.i != 335
+                              )
+                              && ghc.version == "6_0_1"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild =
+                                  pkgs.lib.strings.optionalString (!bootstrap) ''
+                                    cd happy/src
+                                    happy Parser.ly
+                                    cd ../..
+                                  ''
+                                  + ''
+                                    make -C happy boot
+                                  '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else if
+                              (
+                                commit.i >= 302
+                                && commit.i <= 392
+                                && commit.i != 318
+                                && commit.i != 331
+                                && commit.i != 332
+                                && commit.i != 333
+                                && commit.i != 334
+                                && commit.i != 335
+                              )
+                              && ghc.version == "6_2_2"
+                            then
+                              {
+                                nativeBuildInputs = [
+                                  pkgs_last_glibc_2_13.perl58
+                                  pkgs_0_10_glibc.gcc295
+                                  pkgs.flex
+                                ]
+                                ++ pkgs.lib.lists.optional (!bootstrap) happy
+                                ++ [ ghc.pkg ];
+                                preConfigure = ''
+                                  export NIX_CFLAGS_COMPILE=
+                                '';
+                                makeFlags = [
+                                  "-C"
+                                  "happy"
+                                ];
+                                preBuild =
+                                  pkgs.lib.strings.optionalString (!bootstrap) ''
+                                    cd happy/src
+                                    happy Parser.ly
+                                    cd ../..
+                                  ''
+                                  + ''
+                                    make -C happy boot
+                                  '';
+                                preInstall = ''
+                                  make -C glafp-utils/mkdirhier
+                                  mkdir -p $out/bin
+                                '';
+                              }
+                            else
+                              {
+                                name = "untested";
+                                nativeBuildInputs = throw "untested";
+                              }
+                          else
+                            {
+                              name = "untested";
+                              nativeBuildInputs = throw "untested";
+                            }
+                        )
+                      );
+                  in
+                  happy {
+                    happy = happy {
+                      happy = throw "happy";
+                      bootstrap = true;
+                    };
+                  };
+              }
+            )
+            {
+              commit = pkgs.lib.lists.imap0 (i: commit: {
+                i = i;
+                info = commit;
+              }) (import ./happy/commits.nix);
+              fptools = pkgs.lib.lists.map ({ name, value }: {
+                version = name;
+                info = value;
+              }) (pkgs.lib.attrsets.attrsToList (import ./happy/fptools.nix));
+              ghc =
+                pkgs.lib.lists.map
+                  (version: {
+                    version = version;
+                    pkg = self.packages.i686-linux."ghc_${version}";
+                  })
+                  [
+                    "0_29"
+                    "3_02"
+                    "4_02"
+                    "4_04"
+                    "4_06"
+                    "4_08_2"
+                    "5_00_2"
+                    "5_02_3"
+                    "5_04_3"
+                    "6_0_1"
+                    "6_2_2"
+                  ];
+            }
+        );
 
       packages.x86_64-linux =
         let
