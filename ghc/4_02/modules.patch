@@ -1,0 +1,3606 @@
+--- a/ghc/compiler/main/CmdLineOpts.lhs
++++ b/ghc/compiler/main/CmdLineOpts.lhs
+@@ -105,7 +105,9 @@
+ 	opt_WarnHiShadows,
+ 	opt_WarnMissingSigs,
+ 	opt_PruneTyDecls, opt_PruneInstDecls,
+-	opt_D_show_rn_stats
++	opt_D_show_rn_stats,
++	opt_ModuleNumber,
++	opt_Interpreter
+     ) where
+ 
+ #include "HsVersions.h"
+@@ -366,6 +368,8 @@
+ opt_D_show_rn_stats		= lookUp SLIT("-dshow-rn-stats")
+ 
+ -- opt_UnfoldingOverrideThreshold	= lookup_int "-funfolding-override-threshold"
++opt_ModuleNumber		= lookup_def_int "-module-number" 0
++opt_Interpreter			= lookUp  SLIT("-interpreter")
+ \end{code}
+ 
+ \begin{code}
+diff --git a/ghc/compiler/main/Interpreter.lhs b/ghc/compiler/main/Interpreter.lhs
+new file mode 100644
+index 0000000000..5f08258ca0
+--- /dev/null
++++ b/ghc/compiler/main/Interpreter.lhs
+@@ -0,0 +1,3340 @@
++\begin{code}
++{-# OPTIONS -monly-3-regs -I../lib/std -Iparser -#include "cbits/timezone.h" -#include "ctypes.h" -#include "hspincl.h" #-}
++
++module Interpreter ( interpret ) where
++
++import BasicTypes	( RecFlag(..) )
++import FastString	( FastString(..), mkFastString, unpackFS )
++import HsBasic		( HsLit(..) )
++import HsBinds		( HsBinds(..), MonoBinds(..), Sig(..) )
++import HsDecls		( ConDecl(..), ConDetails(..), ForeignDecl(..), ForKind(..), HsDecl(..), InstDecl(..), TyClDecl(..) )
++import HsExpr		( ArithSeqInfo(..), HsExpr(..), Stmt(..), StmtCtxt(..) )
++import HsImpExp		( IE(..), ImportDecl(..) )
++import HsMatches	( GRHS(..), GRHSs(..), Match(..) )
++import HsPat		( InPat(..) )
++import HsSyn		( HsModule(..) )
++import HsTypes		( HsType(..), HsTyVar(..) )
++import List		( elemIndex )
++import OccName		( clsName, dataName, mkSrcModule, mkSrcOccFS, OccName, tcName, varName, occNameUserString )
++import PrelArr		( ByteArray(..) )
++import PrelAddr		( Addr(..), Word(..) )
++import PrelBase		( Char(..), Int(..) )
++import PrelException	( Exception(..) )
++import PrelGHC
++import PrelIOBase	( ForeignObj(..), IO(..), IOError(..) )
++import PrelST		( STret(..) )
++import RdrName		( isUnqual, mkRdrUnqual, RdrName, rdrNameModule, rdrNameOcc )
++import UgenUtil		( U_VOID_STAR )
++
++import qualified IOExts
++import qualified PrelErr
++
++data Value
++  = Data OccName [Value]
++  | Function (Value -> Value)
++  | Addr Addr#
++  | Array_ (Array# Value)
++  | ByteArray_ ByteArray#
++  | Char Char#
++  | ForeignObj_ ForeignObj#
++  | Int Int#
++  | MutableArray_ (MutableArray# RealWorld Value)
++  | MutableByteArray_ (MutableByteArray# RealWorld)
++  | MutVar (MutVar# RealWorld Value)
++  | State (State# RealWorld)
++  | Weak_ (Weak# Value)
++  | Word Word#
++
++interpret :: [HsModule RdrName (InPat RdrName)] -> U_VOID_STAR -> IO ()
++interpret modules hspmain_result =
++  trace "interpret" $
++  IO
++    (\ s# ->
++      (# value_to_state#
++           (case
++              unwrap "interpret lookup main"
++              $ lookup (mk_var "main")
++              $ unwrap "interpret lookup Main"
++              $ lookup (mk_module "Main") module_envs
++            of
++              Data _ [f] ->
++                case apply f $ state_to_value# s# of
++                  Data _ [value, _] -> value),
++         () #))
++  where
++    addr_to_value addr =
++      Data (mk_constr "A#") [addr_to_value# (case addr of A# addr# -> addr#)]
++
++    addr_to_value# addr# = Addr addr#
++
++    apply (Data constr values) arg = Data constr (values ++ [arg])
++    apply (Function f) arg = f arg
++
++    applys f [] = f
++    applys f (value : values) = applys (apply f value) values
++
++    array_to_value# data# = Array_ data#
++
++    binds EmptyBinds _ = error "TODO binds EmptyBinds"
++    binds (ThenBinds _ _) _ = error "TODO binds ThenBinds"
++    binds (MonoBind monobinds_ _ Recursive) env =
++      trace "binds MonoBind Recursive" $
++      new_env
++      where
++        new_env = monobinds monobinds_ total_env
++        total_env = new_env ++ env
++    binds (MonoBind _ _ _) _ = error "TODO binds MonoBind"
++
++    bool_to_value b = Data (mk_constr $ if b then "True" else "False") []
++
++    bytearray_to_value# data# = ByteArray_ data#
++
++    char_to_value c =
++      Data (mk_constr "C#") [char_to_value# (case c of C# c# -> c#)]
++
++    char_to_value# c# = Char c#
++
++    decl1 (TyClD _) _ = trace "decl1 TyClD" $ []
++    decl1 (InstD _) _ = trace "decl1 InstD" $ []
++    decl1 (DefD _) _ = error "TODO decl1 DefD"
++    decl1 (ValD binds_) env = trace "decl1 ValD" $ binds binds_ env
++    decl1 (ForD foreigndecl_) _ =
++      trace "decl1 ForD" $
++      [foreigndecl foreigndecl_]
++    decl1 (SigD _) _ = error "TODO decl1 SigD"
++    decl1 (FixD _) _ = trace "decl1 FixD" $ []
++
++    decl2 (TyClD tycldecl_) env = trace "decl2 TyClD" $ tycldecl tycldecl_ env
++    decl2 (InstD instdecl_) env = trace "decl2 InstD" $ instdecl instdecl_ env
++    decl2 (DefD _) _ = error "TODO decl2 DefD"
++    decl2 (ValD _) _ = trace "decl2 ValD" $ ([], [], [], [], [])
++    decl2 (ForD _) _ = trace "decl2 ForD" $ ([], [], [], [], [])
++    decl2 (SigD _) _ = error "TODO decl2 SigD"
++    decl2 (FixD _) _ = trace "decl2 FixD" $ ([], [], [], [], [])
++
++    error msg =
++      IOExts.unsafePerformIO $
++      IOExts.performGC >>= \ () ->
++      IOExts.trace msg $
++      IOExts.performGC >>
++      return (PrelErr.error msg)
++
++    export (IEVar name) _ _ env =
++      trace "export IEVar" $
++      [(var_name,
++        unwrap "export IEVar lookup var_name"
++        $ lookup var_name
++        $ if isUnqual name then
++            env
++          else
++            unwrap "export IEVar lookup module_name"
++            $ lookup module_name module_envs)]
++      where
++        module_name = rdrNameModule name
++        var_name = rdrNameOcc name
++    export (IEThingAbs _) _ _ _ = trace "export IEThingAbs" $ []
++    export (IEThingAll _) _ _ _ = trace "export IEThingAll" $ []
++    export (IEThingWith _ _) _ _ _ = trace "export IEThingWith" $ []
++    export (IEModuleContents name) current_module local_env _ =
++      trace "export IEModuleContents" $
++      if name == current_module then
++        local_env
++      else
++        unwrap "export IEModuleContents lookup name"
++        $ lookup name module_envs
++
++    expr (HsVar name) env =
++      trace ("expr HsVar " ++ occNameUserString var_name) $
++      unwrap ("expr HsVar lookup var_name " ++ occNameUserString var_name)
++      $ lookup var_name
++      $ (if isUnqual name then
++           env
++         else
++           unwrap "expr HsVar lookup module_name"
++           $ lookup module_name module_envs)
++        ++ map (\ (constr, _) -> (constr, Data constr [])) constructors
++        ++ methods
++        ++ map
++             (\ (name, constrs) ->
++               (name,
++                Function
++                  (\ (Data constr values) ->
++                    values
++                    !! (unwrap "expr HsVar lookup constr"
++                        $ lookup constr constrs))))
++             fields
++      where
++        module_name = rdrNameModule name
++        var_name = rdrNameOcc name
++    expr (HsLit hslit_) _ = hslit hslit_
++    expr (HsLitOut _ _) _ = error "TODO expr HsLitOut"
++    expr (HsLam match@(Match _ inpats _ _)) env =
++      trace "expr HsLam" $
++      function (length inpats) (\ values -> matchs [match] values env)
++    expr (HsApp expr1 expr2) env =
++      trace "expr HsApp" $
++      apply (expr expr1 env) $ expr expr2 env
++    expr expr_@(OpApp _ _ _ _) env =
++      trace "expr OpApp" $
++      case normalize expr_ of
++        OpApp expr1 op _ expr2 ->
++          applys (expr op env) $ map (\ expr_ -> expr expr_ env) [expr1, expr2]
++        NegApp _ _ -> error "TODO expr OpApp NegApp"
++      where
++        normalize (OpApp expr1 (HsVar op) _ expr2) =
++          mk_opapp (normalize expr1) op (normalize expr2)
++        normalize (OpApp _ _ _ _) = error "TODO normalize OpApp no variable"
++        normalize expr = expr
++        mk_opapp (OpApp expr1 (HsVar op1) _ expr2) op2 expr3
++          | (occNameUserString $ rdrNameOcc op1) == ">>"
++            && (occNameUserString $ rdrNameOcc op2) == ">>"
++            || (occNameUserString $ rdrNameOcc op1) == ">="
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "||"
++            || (occNameUserString $ rdrNameOcc op1) == "geChar#"
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == "=="
++               && (occNameUserString $ rdrNameOcc op2) == "||"
++            || (occNameUserString $ rdrNameOcc op1) == ">>"
++               && (occNameUserString $ rdrNameOcc op2) == ">>="
++            || (occNameUserString $ rdrNameOcc op1) == "seqMaybe"
++               && (occNameUserString $ rdrNameOcc op2) == "seqMaybe"
++            || (occNameUserString $ rdrNameOcc op1) == "<#"
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == ">"
++               && (occNameUserString $ rdrNameOcc op2) == "||"
++            || (occNameUserString $ rdrNameOcc op1) == "<="
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == "+#"
++               && (occNameUserString $ rdrNameOcc op2) == "+#"
++            || (occNameUserString $ rdrNameOcc op1) == "quotInt#"
++               && (occNameUserString $ rdrNameOcc op2) == "-#"
++            || (occNameUserString $ rdrNameOcc op1) == "+"
++               && (occNameUserString $ rdrNameOcc op2) == "<"
++            || (occNameUserString $ rdrNameOcc op1) == "+"
++               && (occNameUserString $ rdrNameOcc op2) == "+"
++            || (occNameUserString $ rdrNameOcc op1) == ">=#"
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == ">=#"
++               && (occNameUserString $ rdrNameOcc op2) == "||"
++            || (occNameUserString $ rdrNameOcc op1) == "+"
++               && (occNameUserString $ rdrNameOcc op2) == "-"
++            || (occNameUserString $ rdrNameOcc op1) == "remInt#"
++               && (occNameUserString $ rdrNameOcc op2) == "+#" =
++            -- op1 > op2 || op1 == op2 == left
++            OpApp
++              (OpApp expr1 (HsVar op1) undefined expr2)
++              (HsVar op2)
++              undefined
++              expr3
++          | (occNameUserString $ rdrNameOcc op1) == "$"
++            && (occNameUserString $ rdrNameOcc op2) == "thenUgn"
++            || (occNameUserString $ rdrNameOcc op1) == "$"
++               && (occNameUserString $ rdrNameOcc op2) == "$"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "<="
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == ">="
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == "<="
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == "||"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "leChar#"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "&&"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "neChar#"
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == "=="
++            || (occNameUserString $ rdrNameOcc op1) == "."
++               && (occNameUserString $ rdrNameOcc op2) == "."
++            || (occNameUserString $ rdrNameOcc op1) == "$"
++               && (occNameUserString $ rdrNameOcc op2) == "seqMaybe"
++            || (occNameUserString $ rdrNameOcc op1) == "++"
++               && (occNameUserString $ rdrNameOcc op2) == ":"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == ">"
++            || (occNameUserString $ rdrNameOcc op1) == "$"
++               && (occNameUserString $ rdrNameOcc op2) == "thenRn"
++            || (occNameUserString $ rdrNameOcc op1) == "++"
++               && (occNameUserString $ rdrNameOcc op2) == "++"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == ">#"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "<#"
++            || (occNameUserString $ rdrNameOcc op1) == ">"
++               && (occNameUserString $ rdrNameOcc op2) == "*"
++            || (occNameUserString $ rdrNameOcc op1) == "<"
++               && (occNameUserString $ rdrNameOcc op2) == "*"
++            || (occNameUserString $ rdrNameOcc op1) == "&&"
++               && (occNameUserString $ rdrNameOcc op2) == "<=#"
++            || (occNameUserString $ rdrNameOcc op1) == "||"
++               && (occNameUserString $ rdrNameOcc op2) == "eqChar#"
++            || (occNameUserString $ rdrNameOcc op1) == ":"
++               && (occNameUserString $ rdrNameOcc op2) == "++"
++            || (occNameUserString $ rdrNameOcc op1) == "thenRn_"
++               && (occNameUserString $ rdrNameOcc op2) == "thenRn_"
++            || (occNameUserString $ rdrNameOcc op1) == "thenRn_"
++               && (occNameUserString $ rdrNameOcc op2) == "thenRn"
++            || (occNameUserString $ rdrNameOcc op1) == ">>="
++               && (occNameUserString $ rdrNameOcc op2) == "." =
++            -- op1 < op2 || op1 == op2 == right
++            OpApp expr1 (HsVar op1) undefined (mk_opapp expr2 op2 expr3)
++          | otherwise =
++            error
++              ("TODO mk_opapp OpApp "
++               ++ (occNameUserString $ rdrNameOcc op1)
++               ++ " OpApp "
++               ++ (occNameUserString $ rdrNameOcc op2))
++        mk_opapp (NegApp _ _) _ _ = error "TODO mk_opapp NegApp"
++        mk_opapp expr1 op expr2 = OpApp expr1 (HsVar op) undefined expr2
++    expr (NegApp _ _) _ = error "TODO expr NegApp"
++    expr (HsPar expr_) env = trace "expr HsPar" $ expr expr_ env
++    expr (SectionL _ _) _ = error "TODO expr SectionL"
++    expr (SectionR op expr2) env =
++      trace "expr SectionR" $
++      Function (\ value1 -> applys (expr op env) [value1, expr expr2 env])
++    expr (HsCase expr_ matchs_ _) env =
++      trace "expr HsCase" $
++      matchs matchs_ [expr expr_ env] env
++    expr (HsIf expr1 expr2 expr3 _) env =
++      trace "expr HsIf" $
++      expr
++        (if value_to_bool $ expr expr1 env then
++           expr2
++         else
++           expr3)
++        env
++    expr (HsLet binds_ expr_) env =
++      trace "expr HsLet" $
++      expr expr_ $ binds binds_ env ++ env
++    expr (HsDo DoStmt stmts _) env =
++      trace "expr HsDo DoStmt" $
++      stmts3 stmts env
++    expr (HsDo ListComp stmts _) env =
++      trace "expr HsDo ListComp" $
++      stmts2 stmts env
++    expr (HsDo CaseAlt _ _) _ = error "TODO expr HsDo CaseAlt"
++    expr (HsDo PatBindRhs _ _) _ = error "TODO expr HsDo PatBindRhs"
++    expr (HsDo (FunRhs _) _ _) _ = error "TODO expr HsDo FunRhs"
++    expr (HsDo LambdaBody _ _) _ = error "TODO expr HsDo LambdaBody"
++    expr (HsDoOut _ _ _ _ _ _ _) _ = error "TODO expr HsDoOut"
++    expr (ExplicitList exprs) env =
++      trace "expr ExplicitList" $
++      go $ map (\ expr_ -> expr expr_ env) exprs
++      where
++        go [] = Data (mk_constr "[]") []
++        go (value : values) = Data (mk_constr ":") [value, go values]
++    expr (ExplicitListOut _ _) _ = error "TODO expr ExplicitListOut"
++    expr (ExplicitTuple exprs _) env =
++      trace "expr ExplicitTuple" $
++      Data
++        (mk_constr $ "(" ++ replicate (length exprs) ',' ++ ")")
++        (map (\ expr_ -> expr expr_ env) exprs)
++    expr (HsCon _ _ _) _ = error "TODO expr HsCon"
++    expr (RecordCon constr recordbinds) env =
++      trace "expr RecordCon" $
++      Data
++        (rdrNameOcc constr)
++        (map
++           (\ i ->
++             unwrap "expr RecordCon lookup i" -- FIXME may be non-exhaustive
++             $ lookup i
++             $ map
++                 (\ (name, expr_, _) ->
++                   (unwrap "expr RecordCon lookup constr"
++                    $ lookup (rdrNameOcc constr)
++                    $ unwrap "expr RecordCon lookup name"
++                    $ lookup (rdrNameOcc name) fields,
++                    expr expr_ env))
++                 recordbinds)
++         [0..length recordbinds - 1])
++    expr (RecordConOut _ _ _) _ = error "TODO expr RecordConOut"
++    expr (RecordUpd expr_ recordbinds) env =
++      trace "expr RecordUpd" $
++      case expr expr_ env of
++        Data constr values ->
++          Data
++            constr
++            (map
++               (\ i ->
++                 case
++                   lookup i
++                   $ map
++                       (\ (name, expr_, _) ->
++                         (unwrap "expr RecordUpd lookup constr"
++                          $ lookup constr
++                          $ unwrap "expr RecordUpd lookup name"
++                          $ lookup (rdrNameOcc name) fields,
++                          expr expr_ env))
++                       recordbinds
++                 of
++                   Just value -> value
++                   Nothing -> values !! i)
++             [0..length values - 1])
++    expr (RecordUpdOut _ _ _ _) _ = error "TODO expr RecordUpdOut"
++    expr (ExprWithTySig expr_ _) env =
++      trace "expr ExprWithTySig" $
++      expr expr_ env
++    expr (ArithSeqIn (From expr_)) env =
++      trace "expr ArithSeqIn From" $
++      apply
++        (unwrap "expr ArithSeqIn From lookup enumFrom"
++         $ lookup (mk_var "enumFrom") methods)
++      $ expr expr_ env
++    expr (ArithSeqIn (FromThen _ _)) _ = error "TODO expr ArithSeqIn FromThen"
++    expr (ArithSeqIn (FromTo expr1 expr2)) env =
++      trace "expr ArithSeqIn FromTo" $
++      applys
++        (unwrap "expr ArithSeqIn FromTo lookup enumFromTo"
++         $ lookup (mk_var "enumFromTo") methods)
++      $ map (\ expr_ -> expr expr_ env) [expr1, expr2]
++    expr (ArithSeqIn (FromThenTo _ _ _)) _ =
++      error "TODO expr ArithSeqIn FromThenTo"
++    expr (ArithSeqOut _ _) _ = error "TODO expr ArithSeqOut"
++    expr (CCall _ _ True True _) _ = error "TODO expr CCall True True"
++    expr (CCall _ _ True False _) _ = error "TODO expr CCall True False"
++    expr (CCall name exprs False True _) env =
++      trace "expr CCall False True" $
++      applys
++        (if name == mkFastString "%r = 1;" then
++           io_to_value (_casm_ ``%r = 1;'') int_to_value
++         else if name == mkFastString " ((char *)%0)[(int)%1]=(char)0; " then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   io_to_value
++                     (_casm_
++                        `` ((char *)%0)[(int)%1]=(char)0; ''
++                        (value_to_addr x1)
++                        (value_to_int x2))
++                     (\ () -> Data (mk_constr "()") [])))
++         else
++           error ("TODO expr CCall False True " ++ unpackFS name))
++      $ map (\ expr_ -> expr expr_ env) exprs
++    expr (CCall name exprs False False _) env =
++      trace "expr CCall False False" $
++      applys
++        (if name == mkFastString "allocMemory__" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ allocMemory__ (value_to_int x))
++                 addr_to_value)
++         else if name == mkFastString "closeFile" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   io_to_value
++                     (_ccall_
++                        closeFile
++                        (value_to_foreignobj x1)
++                        (value_to_int x2))
++                     int_to_value))
++         else if name == mkFastString "fileSize" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   io_to_value
++                     (_ccall_
++                        fileSize
++                        (value_to_foreignobj x1)
++                        (value_to_bytearray# x2))
++                     int_to_value))
++         else if name == mkFastString "freeFileObject" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ freeFileObject (value_to_foreignobj x))
++                 (\ () -> Data (mk_constr "()") []))
++         else if name == mkFastString "gabindfst" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gabindfst (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gabindsnd" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gabindsnd (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "garg" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ garg (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gase" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gase (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gasid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gasid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcasebody" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcasebody (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcaseexpr" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcaseexpr (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcaseline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcaseline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gcbindc" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcbindc (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcbindid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcbindid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcbindw" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcbindw (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gchar" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gchar (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcharprim" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcharprim (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gconcid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconcid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gconcline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconcline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gconcon" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconcon (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gconctypel" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gconctypel (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gconcxt" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconcxt (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gconiline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconiline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gconiop" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconiop (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gconity1" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconity1 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gconity2" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gconity2 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gcontvs" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gcontvs (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gefrom" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gefrom (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "genSymZh" then
++           io_to_value (_ccall_ genSymZh) word_to_value
++         else if name == mkFastString "gentid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gentid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gestep" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gestep (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "getBufferMode" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ getBufferMode (value_to_foreignobj x))
++                 int_to_value)
++         else if name == mkFastString "getErrStr__" then
++           io_to_value (_ccall_ getErrStr__) addr_to_value
++         else if name == mkFastString "getErrType__" then
++           io_to_value (_ccall_ getErrType__) int_to_value
++         else if name == mkFastString "get_hstring_bytes" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ get_hstring_bytes (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "get_hstring_len" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ get_hstring_len (value_to_addr x))
++                 int_to_value)
++         else if name == mkFastString "geto" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ geto (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gfbindm" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfbindm (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gfline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gfixinfx" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfixinfx (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gfixline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfixline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gfixop" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfixop (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gfixprec" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfixprec (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gfun" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gfun (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ggbind1" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ggbind1 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ggbind2" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ggbind2 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ggexp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ggexp (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ggid" then
++           Function
++             (\ x -> io_to_value (_ccall_ ggid (value_to_addr x)) int_to_value)
++         else if name == mkFastString "ggrhss" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ggrhss (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ghexplist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghexplist (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ghimplist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghimplist (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ghmodline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghmodline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "ghmodlist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghmodlist (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ghname" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghname (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ghversion" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ghversion (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gibindas" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gibindas (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gibindi" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gibindi (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gibindimod" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gibindimod (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gibindline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gibindline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gibindqual" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gibindqual (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gibindsource" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gibindsource (value_to_addr x))
++                 int_to_value)
++         else if name == mkFastString "gibindspec" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gibindspec (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gibindw" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gibindw (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gident" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gident (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gidname" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gidname (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gifelse" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gifelse (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gifline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gifline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gifpred" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gifpred (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gifthen" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gifthen (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "giline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ giline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "ginfarg1" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ginfarg1 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ginfarg2" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ginfarg2 (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ginffun" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ginffun (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ginline_id" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ ginline_id (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "ginline_line" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ ginline_line (value_to_addr x))
++                 int_to_value)
++         else if name == mkFastString "ginteger" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ginteger (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gintprim" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gintprim (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "glammatch" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ glammatch (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gleft" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gleft (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "glit" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ glit (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gllist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gllist (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gmentid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gmentid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gmpats" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gmpats (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gmrhsb" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gmrhsb (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gmsig" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gmsig (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gnamedtvar" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gnamedtvar (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gnbindas" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnbindas (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gnbindid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnbindid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gnexp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnexp (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gnline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gnogline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnogline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gnoqual" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gnoqual (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpare" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpare (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpbindl" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpbindl (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpbindr" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpbindr (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpexp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpexp (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpgline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpgline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gpguard" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpguard (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gpline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gpline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "grhs" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ grhs (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "grsexp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ grsexp (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "grsop" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ grsop (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gsbindid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gsbindid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gsbindids" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gsbindids (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gsline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gsline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gstring" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gstring (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtapp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtapp (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtarg" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtarg (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtbindc" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtbindc (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtbindd" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtbindd (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtbindid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtbindid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtbindl" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtbindl (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtforallctxt" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gtforallctxt (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gtforallt" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtforallt (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtforalltv" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gtforalltv (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gthing" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gthing (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtin" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtin (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtline" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtline (value_to_addr x)) int_to_value)
++         else if name == mkFastString "gtlist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtlist (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtout" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtout (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gttuple" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gttuple (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gtuplelist" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gtuplelist (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gtypeid" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gtypeid (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gutuplelist" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gutuplelist (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gvspec_id" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gvspec_id (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gvspec_line" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gvspec_line (value_to_addr x))
++                 int_to_value)
++         else if name == mkFastString "gvspec_ty" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ gvspec_ty (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "gvspec_tyid" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gvspec_tyid (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "gvspec_tys" then
++           Function
++             (\ x ->
++               io_to_value
++                 (_ccall_ gvspec_tys (value_to_addr x))
++                 addr_to_value)
++         else if name == mkFastString "hspmain" then
++           io_to_value (return hspmain_result) addr_to_value
++         else if name == mkFastString "lhd" then
++           Function
++             (\ x -> io_to_value (_ccall_ lhd (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "ltl" then
++           Function
++             (\ x -> io_to_value (_ccall_ ltl (value_to_addr x)) addr_to_value)
++         else if name == mkFastString "openFile" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   Function
++                     (\ x3 ->
++                       Function
++                         (\ x4 ->
++                           io_to_value
++                             (_ccall_
++                                openFile
++                                (value_to_string x1)
++                                (value_to_int x2)
++                                (value_to_int x3)
++                                (value_to_int x4))
++                             addr_to_value))))
++         else if name == mkFastString "readChunk" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   Function
++                     (\ x3 ->
++                       io_to_value
++                         (_ccall_
++                            readChunk
++                            (value_to_foreignobj x1)
++                            (value_to_addr x2) -- FIXME sometimes ByteArray?
++                            (value_to_int x3))
++                         int_to_value)))
++         else if name == mkFastString "setBuf" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   Function
++                     (\ x3 ->
++                       io_to_value
++                         (_ccall_
++                            setBuf
++                            (value_to_foreignobj x1)
++                            (value_to_addr x2)
++                            (value_to_int x3))
++                         (\ () -> Data (mk_constr "()") []))))
++         else if name == mkFastString "strcmp" then
++           Function
++             (\ x1 ->
++               Function
++                 (\ x2 ->
++                   io_to_value
++                     (case (x1, x2) of
++                        (Data _ [_], Data _ [_]) ->
++                          _ccall_ strcmp (value_to_addr x1) (value_to_addr x2)
++                        (Data _ [_], Data _ [_, _]) ->
++                          _ccall_
++                            strcmp
++                            (value_to_addr x1)
++                            (value_to_bytearray x2)
++                        (Data _ [_, _], Data _ [_]) ->
++                          _ccall_
++                            strcmp
++                            (value_to_bytearray x1)
++                            (value_to_addr x2)
++                        (Data _ [_, _], Data _ [_, _]) ->
++                          _ccall_
++                            strcmp
++                            (value_to_bytearray x1)
++                            (value_to_bytearray x2))
++                     int_to_value))
++         else if name == mkFastString "strlen" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ strlen (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tbinding" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tbinding (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tconstr" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tconstr (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tentidt" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tentidt (value_to_addr x)) int_to_value)
++         else if name == mkFastString "teither" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ teither (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tgdexp" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tgdexp (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tgrhsb" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tgrhsb (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tlist" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tlist (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tliteral" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tliteral (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tmatch" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tmatch (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tmaybe" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tmaybe (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tqid" then
++           Function
++             (\ x -> io_to_value (_ccall_ tqid (value_to_addr x)) int_to_value)
++         else if name == mkFastString "ttree" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ ttree (value_to_addr x)) int_to_value)
++         else if name == mkFastString "tttype" then
++           Function
++             (\ x ->
++               io_to_value (_ccall_ tttype (value_to_addr x)) int_to_value)
++         else
++           error ("TODO expr CCall False False " ++ unpackFS name))
++      $ map (\ expr_ -> expr expr_ env) exprs
++    expr (HsSCC _ _) _ = error "TODO expr HsSCC"
++    expr (TyLam _ _) _ = error "TODO expr TyLam"
++    expr (TyApp _ _) _ = error "TODO expr TyApp"
++    expr (DictLam _ _) _ = error "TODO expr DictLam"
++    expr (DictApp _ _) _ = error "TODO expr DictApp"
++
++    foreigndecl (ForeignDecl _ FoLabel _ _ _ _) =
++      error "TODO foreigndecl FoLabel"
++    foreigndecl (ForeignDecl _ FoExport _ _ _ _) =
++      error "TODO foreigndecl FoExport"
++    foreigndecl (ForeignDecl name (FoImport True) _ _ _ _) =
++      (var_name,
++       if var_name == mk_var "primOpenDir" then
++         Function
++           (\ x ->
++             io_to_value (primOpenDir $ value_to_bytearray x) addr_to_value)
++       else if var_name == mk_var "primReadDir" then
++         Function
++           (\ x -> io_to_value (primReadDir $ value_to_addr x) addr_to_value)
++       else if var_name == mk_var "primGetDirentDName" then
++         Function
++           (\ x ->
++             io_to_value (primGetDirentDName $ value_to_addr x) addr_to_value)
++       else
++         error
++           ("TODO foreigndecl FoImport True " ++ occNameUserString var_name))
++      where
++        var_name = rdrNameOcc name
++    foreigndecl (ForeignDecl _ (FoImport False) _ _ _ _) =
++      error "TODO foreigndecl FoImport False"
++
++    foreignobj_to_value obj =
++      Data
++        (mk_constr "ForeignObj")
++        [foreignobj_to_value# (case obj of ForeignObj obj# -> obj#)]
++
++    foreignobj_to_value# obj# = ForeignObj_ obj#
++
++    function 0 k = trace "function 0" $ k []
++    function n k =
++      trace "function n" $
++      Function (\ v -> function (n - 1) (\ vs -> k $ v : vs))
++
++    grhs (GRHS stmts_ _) env = trace "grhs GRHS" $ stmts stmts_ env
++
++    grhs_list [] _ = trace "grhs_list []" $ Nothing
++    grhs_list (grhs_ : grhss) env =
++      trace "grhs_list (_:_)" $
++      case grhs grhs_ env of
++        Just value -> Just value
++        Nothing -> grhs_list grhss env
++
++    grhss (GRHSs grhss binds_ _) env =
++      trace "grhss" $
++      grhs_list grhss $ binds binds_ env ++ env
++
++    hslit (HsChar c) = trace "hslit HsChar" $ char_to_value c
++    hslit (HsCharPrim c) =
++      trace "hslit HsCharPrim" $
++      char_to_value# (case c of C# c# -> c#)
++    hslit (HsString s) = trace "hslit HsString" $ string_to_value $ unpackFS s
++    hslit (HsStringPrim s) =
++      trace "hslit HsStringPrim" $
++      addr_to_value# (case s of CharStr addr# _ -> addr#)
++    hslit (HsInt _) = error "TODO hslit HsInt"
++    hslit (HsFrac _) = error "TODO hslit HsFrac"
++    hslit (HsIntPrim n) =
++      trace "hslit HsIntPrim" $
++      int_to_value# (case fromInteger n of I# n# -> n#)
++    hslit (HsFloatPrim _) = error "TODO hslit HsFloatPrim"
++    hslit (HsDoublePrim _) = error "TODO hslit HsDoublePrim"
++    hslit (HsLitLit lit) =
++      trace "hslit HsLitLit" $
++      if lit == mkFastString "abind" then
++        int_to_value ``abind''
++      else if lit == mkFastString "ap" then
++        int_to_value ``ap''
++      else if lit == mkFastString "aqual" then
++        int_to_value ``aqual''
++      else if lit == mkFastString "as" then
++        int_to_value ``as''
++      else if lit == mkFastString "BUFSIZ" then
++        int_to_value ``BUFSIZ''
++      else if lit == mkFastString "casee" then
++        int_to_value ``casee''
++      else if lit == mkFastString "cbind" then
++        int_to_value ``cbind''
++      else if lit == mkFastString "charprim" then
++        int_to_value ``charprim''
++      else if lit == mkFastString "charr" then
++        int_to_value ``charr''
++      else if lit == mkFastString "char_types" then
++        addr_to_value ``char_types''
++      else if lit == mkFastString "comprh" then
++        int_to_value ``comprh''
++      else if lit == mkFastString "constrex" then
++        int_to_value ``constrex''
++      else if lit == mkFastString "constrinf" then
++        int_to_value ``constrinf''
++      else if lit == mkFastString "constrnew" then
++        int_to_value ``constrnew''
++      else if lit == mkFastString "constrpre" then
++        int_to_value ``constrpre''
++      else if lit == mkFastString "constrrec" then
++        int_to_value ``constrrec''
++      else if lit == mkFastString "dbind" then
++        int_to_value ``dbind''
++      else if lit == mkFastString "dobind" then
++        int_to_value ``dobind''
++      else if lit == mkFastString "doe" then
++        int_to_value ``doe''
++      else if lit == mkFastString "doexp" then
++        int_to_value ``doexp''
++      else if lit == mkFastString "doubleprim" then
++        int_to_value ``doubleprim''
++      else if lit == mkFastString "eenum" then
++        int_to_value ``eenum''
++      else if lit == mkFastString "entid" then
++        int_to_value ``entid''
++      else if lit == mkFastString "entmod" then
++        int_to_value ``entmod''
++      else if lit == mkFastString "enttype" then
++        int_to_value ``enttype''
++      else if lit == mkFastString "enttypeall" then
++        int_to_value ``enttypeall''
++      else if lit == mkFastString "enttypenamed" then
++        int_to_value ``enttypenamed''
++      else if lit == mkFastString "fbind" then
++        int_to_value ``fbind''
++      else if lit == mkFastString "fixd" then
++        int_to_value ``fixd''
++      else if lit == mkFastString "floatprim" then
++        int_to_value ``floatprim''
++      else if lit == mkFastString "floatr" then
++        int_to_value ``floatr''
++      else if lit == mkFastString "fobind" then
++        int_to_value ``fobind''
++      else if lit == mkFastString "forall" then
++        int_to_value ``forall''
++      else if lit == mkFastString "gid" then
++        int_to_value ``gid''
++      else if lit == mkFastString "guard" then
++        int_to_value ``guard''
++      else if lit == mkFastString "hmodule" then
++        int_to_value ``hmodule''
++      else if lit == mkFastString "ibind" then
++        int_to_value ``ibind''
++      else if lit == mkFastString "ident" then
++        int_to_value ``ident''
++      else if lit == mkFastString "ife" then
++        int_to_value ``ife''
++      else if lit == mkFastString "import" then
++        int_to_value ``import''
++      else if lit == mkFastString "infixap" then
++        int_to_value ``infixap''
++      else if lit == mkFastString "inline_uprag" then
++        int_to_value ``inline_uprag''
++      else if lit == mkFastString "integer" then
++        int_to_value ``integer''
++      else if lit == mkFastString "intprim" then
++        int_to_value ``intprim''
++      else if lit == mkFastString "ispec_uprag" then
++        int_to_value ``ispec_uprag''
++      else if lit == mkFastString "just" then
++        int_to_value ``just''
++      else if lit == mkFastString "lambda" then
++        int_to_value ``lambda''
++      else if lit == mkFastString "lazyp" then
++        int_to_value ``lazyp''
++      else if lit == mkFastString "lcons" then
++        int_to_value ``lcons''
++      else if lit == mkFastString "left" then
++        int_to_value ``left''
++      else if lit == mkFastString "let" then
++        int_to_value ``let''
++      else if lit == mkFastString "lit" then
++        int_to_value ``lit''
++      else if lit == mkFastString "llist" then
++        int_to_value ``llist''
++      else if lit == mkFastString "lnil" then
++        int_to_value ``lnil''
++      else if lit == mkFastString "lsection" then
++        int_to_value ``lsection''
++      else if lit == mkFastString "namedtvar" then
++        int_to_value ``namedtvar''
++      else if lit == mkFastString "nbind" then
++        int_to_value ``nbind''
++      else if lit == mkFastString "negate" then
++        int_to_value ``negate''
++      else if lit == mkFastString "noqual" then
++        int_to_value ``noqual''
++      else if lit == mkFastString "nothing" then
++        int_to_value ``nothing''
++      else if lit == mkFastString "ntbind" then
++        int_to_value ``ntbind''
++      else if lit == mkFastString "NULL" then
++        addr_to_value ``NULL''
++      else if lit == mkFastString "nullbind" then
++        int_to_value ``nullbind''
++      else if lit == mkFastString "par" then
++        int_to_value ``par''
++      else if lit == mkFastString "pbind" then
++        int_to_value ``pbind''
++      else if lit == mkFastString "pgdexp" then
++        int_to_value ``pgdexp''
++      else if lit == mkFastString "pguards" then
++        int_to_value ``pguards''
++      else if lit == mkFastString "plusp" then
++        int_to_value ``plusp''
++      else if lit == mkFastString "pmatch" then
++        int_to_value ``pmatch''
++      else if lit == mkFastString "prog_argc" then
++        int_to_value ``(prog_argc - 5)'' -- FIXME 5
++      else if lit == mkFastString "prog_argv" then
++        addr_to_value ``(prog_argv + 5)'' -- FIXME 5
++      else if lit == mkFastString "qual" then
++        int_to_value ``qual''
++      else if lit == mkFastString "rbind" then
++        int_to_value ``rbind''
++      else if lit == mkFastString "record" then
++        int_to_value ``record''
++      else if lit == mkFastString "restr" then
++        int_to_value ``restr''
++      else if lit == mkFastString "rsection" then
++        int_to_value ``rsection''
++      else if lit == mkFastString "rupdate" then
++        int_to_value ``rupdate''
++      else if lit == mkFastString "sbind" then
++        int_to_value ``sbind''
++      else if lit == mkFastString "seqlet" then
++        int_to_value ``seqlet''
++      else if lit == mkFastString "string" then
++        int_to_value ``string''
++      else if lit == mkFastString "tapp" then
++        int_to_value ``tapp''
++      else if lit == mkFastString "tbang" then
++        int_to_value ``tbang''
++      else if lit == mkFastString "tbind" then
++        int_to_value ``tbind''
++      else if lit == mkFastString "tfun" then
++        int_to_value ``tfun''
++      else if lit == mkFastString "tllist" then
++        int_to_value ``tllist''
++      else if lit == mkFastString "tname" then
++        int_to_value ``tname''
++      else if lit == mkFastString "pnoguards" then
++        int_to_value ``pnoguards''
++      else if lit == mkFastString "ttuple" then
++        int_to_value ``ttuple''
++      else if lit == mkFastString "tuple" then
++        int_to_value ``tuple''
++      else if lit == mkFastString "tutuple" then
++        int_to_value ``tutuple''
++      else if lit == mkFastString "utuple" then
++        int_to_value ``utuple''
++      else if lit == mkFastString "vspec_ty_and_id" then
++        int_to_value ``vspec_ty_and_id''
++      else if lit == mkFastString "vspec_uprag" then
++        int_to_value ``vspec_uprag''
++      else if lit == mkFastString "wildp" then
++        int_to_value ``wildp''
++      else
++        error ("TODO hslit HsLitLit " ++ unpackFS lit)
++
++    import_ (ImportDecl name False Nothing Nothing _) =
++      trace "import_ False Nothing Nothing" $
++      unwrap "import_ False Nothing Nothing lookup name"
++      $ lookup name module_envs
++    import_ (ImportDecl name False Nothing (Just (True, _)) _) =
++      trace "import_ False Nothing (Just (True, _))" $
++      unwrap "import_ False Nothing (Just (True, _)) lookup name"
++      $ lookup name module_envs
++    import_ (ImportDecl name False Nothing (Just (False, imports)) _) =
++      trace "import_ False Nothing (Just (False, _))" $
++      concat
++      $ map
++          (\ import_ ->
++            import_include import_
++            $ unwrap "import_ False Nothing (Just (False, _)) lookup name"
++            $ lookup name module_envs)
++          imports
++    import_ (ImportDecl _ False (Just _) Nothing _) =
++      error "TODO import_ False Just Nothing"
++    import_ (ImportDecl _ False (Just _) (Just (True, _)) _) =
++      error "TODO import_ False Just (Just (True, _))"
++    import_ (ImportDecl _ False (Just _) (Just (False, _)) _) =
++      error "TODO import_ False Just (Just (False, _))"
++    import_ (ImportDecl _ True Nothing Nothing _) =
++      trace "import_ True Nothing Nothing" $
++      []
++    import_ (ImportDecl _ True Nothing (Just (True, _)) _) =
++      error "TODO import_ True Nothing (Just (True, _))"
++    import_ (ImportDecl _ True Nothing (Just (False, _)) _) =
++      trace "import_ True Nothing (Just (False, _))" $
++      []
++    import_ (ImportDecl _ True (Just _) Nothing _) =
++      error "TODO import_ True Just Nothing"
++    import_ (ImportDecl _ True (Just _) (Just (True, _)) _) =
++      error "TODO import_ True Just (Just (True, _))"
++    import_ (ImportDecl _ True (Just _) (Just (False, _)) _) =
++      error "TODO import_ True Just (Just (False, _))"
++
++    import_include (IEVar name) env =
++      trace "import_include IEVar" $
++      [(var_name,
++        case lookup var_name env of
++          Just value -> value
++          Nothing ->
++            unwrap "import_include IEVar lookup var_name"
++            $ lookup var_name methods)]
++      where
++        var_name = rdrNameOcc name
++    import_include (IEThingAbs _) _ = trace "import_include IEThingAbs" $ []
++    import_include (IEThingAll _) _ = trace "import_include IEThingAll" $ []
++    import_include (IEThingWith _ _) _ =
++      trace "import_include IEThingWith" $
++      []
++    import_include (IEModuleContents _) _ =
++      error "TODO import_include IEModuleContents"
++
++    inpat WildPatIn _ = trace "inpat WildPatIn" $ Just []
++    inpat (VarPatIn name) value =
++      trace "inpat VarPatIn" $
++      Just [(var_name, value)]
++      where
++        var_name = rdrNameOcc name
++    inpat (LitPatIn (HsChar c)) value =
++      trace "inpat LitPatIn HsChar" $
++      if
++        (case c of C# c# -> c#)
++        `eqChar#` value_to_char# (case value of Data _ [value] -> value)
++      then
++        Just []
++      else
++        Nothing
++    inpat (LitPatIn (HsCharPrim c)) value =
++      trace "inpat LitPatIn HsCharPrim" $
++      if (case c of C# c# -> c#) `eqChar#` value_to_char# value then
++        Just []
++      else
++        Nothing
++    inpat (LitPatIn (HsString s)) value =
++      trace "inpat LitPatIn HsString" $
++      if go (unpackFS s) value then
++        Just []
++      else
++        Nothing
++      where
++        go [] (Data _ []) = True
++        go [] (Data _ [_, _]) = False
++        go (_ : _) (Data _ []) = False
++        go (c : s) (Data _ [value1, value2]) =
++          ((case c of C# c# -> c#)
++           `eqChar#` value_to_char# (case value1 of Data _ [value] -> value))
++          && go s value2
++    inpat (LitPatIn (HsStringPrim _)) _ =
++      error "TODO inpat LitPatIn HsStringPrim"
++    inpat (LitPatIn (HsInt n)) value =
++      trace "inpat LitPatIn HsInt" $
++      case value of
++        Data constr [value]
++          | constr == mk_constr "I#" ->
++            if (case fromInteger n of I# n# -> n#) ==# value_to_int# value then
++              Just []
++            else
++              Nothing
++        Data constr _ ->
++          error ("TODO inpat LitPatIn HsInt " ++ occNameUserString constr)
++    inpat (LitPatIn (HsFrac _)) _ = error "TODO inpat LitPatIn HsFrac"
++    inpat (LitPatIn (HsIntPrim n)) value =
++      trace "inpat LitPatIn HsIntPrim" $
++      if (case fromInteger n of I# n# -> n#) ==# value_to_int# value then
++        Just []
++      else
++        Nothing
++    inpat (LitPatIn (HsFloatPrim _)) _ =
++      error "TODO inpat LitPatIn HsFloatPrim"
++    inpat (LitPatIn (HsDoublePrim _)) _ =
++      error "TODO inpat LitPatIn HsDoublePrim"
++    inpat (LitPatIn (HsLitLit _)) _ = error "TODO inpat LitPatIn HsLitLit"
++    inpat (LazyPatIn inpat) value =
++      trace "inpat LazyPatIn" $
++      Just (inpat_lazy inpat value)
++    inpat (AsPatIn name inpat_) value =
++      trace "inpat AsPatIn" $
++      case inpat inpat_ value of
++        Nothing -> Nothing
++        Just env -> Just ([(var_name, value)] ++ env)
++      where
++        var_name = rdrNameOcc name
++    inpat (SigPatIn _ _) _ = error "TODO inpat SigPatIn"
++    inpat (ConPatIn constr_ inpats_) (Data constr values) =
++      trace "inpat ConPatIn" $
++      if constr == rdrNameOcc constr_ then
++        inpats inpats_ values
++      else
++        Nothing
++    inpat inpat@(ConOpPatIn _ _ _ _) (Data constr values) =
++      trace "inpat ConOpPatIn" $
++      case normalize inpat of
++        ConOpPatIn inpat1 constr_ _ inpat2 ->
++          if constr == rdrNameOcc constr_ then
++            inpats [inpat1, inpat2] values
++          else
++            Nothing
++      where
++        normalize (ConOpPatIn inpat1 constr _ inpat2) =
++          mk_conoppatin (normalize inpat1) constr (normalize inpat2)
++        normalize inpat = inpat
++        mk_conoppatin (ConOpPatIn inpat1 constr1 _ inpat2) constr2 inpat3
++          -- | (occNameUserString $ rdrNameOcc constr1) == ">>"
++          --   && (occNameUserString $ rdrNameOcc constr2) == ">>"
++          --   || (occNameUserString $ rdrNameOcc constr1) == ">="
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "&&"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "||"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "geChar#"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "=="
++          --      && (occNameUserString $ rdrNameOcc constr2) == "||"
++          --   || (occNameUserString $ rdrNameOcc constr1) == ">>"
++          --      && (occNameUserString $ rdrNameOcc constr2) == ">>="
++          --   || (occNameUserString $ rdrNameOcc constr1) == "seqMaybe"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "seqMaybe"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "<#"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&" =
++          --   -- constr1 > constr2 || constr1 == constr2 == left
++          --   ConOpPatIn
++          --     (ConOpPatIn inpat1 constr1 undefined inpat2)
++          --     constr2
++          --     undefined
++          --     inpat3
++          | (occNameUserString $ rdrNameOcc constr1) == ":"
++            && (occNameUserString $ rdrNameOcc constr2) == ":" =
++            -- constr1 < constr2 || constr1 == constr2 == right
++            ConOpPatIn
++              inpat1
++              constr1
++              undefined
++              (mk_conoppatin inpat2 constr2 inpat3)
++          | otherwise =
++            error
++              ("TODO mk_conoppatin ConOpPatIn "
++               ++ (occNameUserString $ rdrNameOcc constr1)
++               ++ " ConOpPatIn "
++               ++ (occNameUserString $ rdrNameOcc constr2))
++        mk_conoppatin inpat1 constr inpat2 =
++          ConOpPatIn inpat1 constr undefined inpat2
++    inpat (NPlusKPatIn _ _) _ = error "TODO inpat NPlusKPatIn"
++    inpat (NegPatIn (LitPatIn (HsInt n))) value =
++      trace "inpat NegPatIn HsInt" $
++      case value of
++        Data constr [value]
++          | constr == mk_constr "I#" ->
++            if
++              (case fromInteger (-n) of I# n# -> n#) ==# value_to_int# value
++            then
++              Just []
++            else
++              Nothing
++        Data constr _ ->
++          error ("TODO inpat NegPatIn HsInt " ++ occNameUserString constr)
++    inpat (NegPatIn _) _ = error "TODO inpat NegPatIn"
++    inpat (ParPatIn inpat_) value = trace "inpat ParPatIn" $ inpat inpat_ value
++    inpat (ListPatIn inpats) value =
++      trace "inpat ListPatIn" $
++      go inpats value
++      where
++        go [] (Data _ []) = Just []
++        go [] (Data _ [_, _]) = Nothing
++        go (_ : _) (Data _ []) = Nothing
++        go (inpat_ : inpats) (Data _ [value1, value2]) =
++          case inpat inpat_ value1 of
++            Nothing -> Nothing
++            Just hd_env ->
++              case go inpats value2 of
++                Nothing -> Nothing
++                Just tl_env -> Just (hd_env ++ tl_env)
++    inpat (TuplePatIn inpats_ _) (Data _ values) =
++      trace "inpat TuplePatIn" $
++      inpats inpats_ values
++    inpat (RecPatIn constr_ inpats_) (Data constr values) =
++      trace "inpat RecPatIn" $
++      if constr == rdrNameOcc constr_ then
++        inpats
++          (map (\ (_, inpat, _) -> inpat) inpats_)
++          (map
++             (\ (name, _, _) ->
++               values
++               !! (unwrap "inpat RecPatIn lookup constr"
++                   $ lookup constr
++                   $ unwrap "inpat RecPatIn lookup name"
++                   $ lookup (rdrNameOcc name) fields))
++             inpats_)
++      else
++        Nothing
++
++    inpat_lazy WildPatIn _ = trace "inpat_lazy WildPatIn" $ []
++    inpat_lazy (VarPatIn name) value =
++      trace "inpat_lazy VarPatIn" $
++      [(var_name, value)]
++      where
++        var_name = rdrNameOcc name
++    inpat_lazy (LitPatIn _) _ = error "TODO inpat_lazy LitPatIn"
++    inpat_lazy (LazyPatIn _) _ = error "TODO inpat_lazy LazyPatIn"
++    inpat_lazy (AsPatIn _ _) _ = error "TODO inpat_lazy AsPatIn"
++    inpat_lazy (SigPatIn _ _) _ = error "TODO inpat_lazy SigPatIn"
++    inpat_lazy (ConPatIn _ inpats) ~(Data _ values) =
++      trace "inpat_lazy ConPatIn" $
++      inpats_lazy inpats values
++    inpat_lazy inpat@(ConOpPatIn _ _ _ _) ~(Data _ values) =
++      trace "inpat_lazy ConOpPatIn" $
++      case normalize inpat of
++        ConOpPatIn inpat1 _ _ inpat2 ->
++          inpats_lazy [inpat1, inpat2] values
++      where
++        normalize (ConOpPatIn inpat1 constr _ inpat2) =
++          mk_conoppatin (normalize inpat1) constr (normalize inpat2)
++        normalize inpat = inpat
++        mk_conoppatin (ConOpPatIn inpat1 constr1 _ inpat2) constr2 inpat3
++          -- | (occNameUserString $ rdrNameOcc constr1) == ">>"
++          --   && (occNameUserString $ rdrNameOcc constr2) == ">>"
++          --   || (occNameUserString $ rdrNameOcc constr1) == ">="
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "&&"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "||"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "geChar#"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "=="
++          --      && (occNameUserString $ rdrNameOcc constr2) == "||"
++          --   || (occNameUserString $ rdrNameOcc constr1) == ">>"
++          --      && (occNameUserString $ rdrNameOcc constr2) == ">>="
++          --   || (occNameUserString $ rdrNameOcc constr1) == "seqMaybe"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "seqMaybe"
++          --   || (occNameUserString $ rdrNameOcc constr1) == "<#"
++          --      && (occNameUserString $ rdrNameOcc constr2) == "&&" =
++          --   -- constr1 > constr2 || constr1 == constr2 == left
++          --   ConOpPatIn
++          --     (ConOpPatIn inpat1 constr1 undefined inpat2)
++          --     constr2
++          --     undefined
++          --     inpat3
++          | (occNameUserString $ rdrNameOcc constr1) == ":"
++            && (occNameUserString $ rdrNameOcc constr2) == ":" =
++            -- constr1 < constr2 || constr1 == constr2 == right
++            ConOpPatIn
++              inpat1
++              constr1
++              undefined
++              (mk_conoppatin inpat2 constr2 inpat3)
++          | otherwise =
++            error
++              ("TODO mk_conoppatin lazy ConOpPatIn "
++               ++ (occNameUserString $ rdrNameOcc constr1)
++               ++ " ConOpPatIn "
++               ++ (occNameUserString $ rdrNameOcc constr2))
++        mk_conoppatin inpat1 constr inpat2 =
++          ConOpPatIn inpat1 constr undefined inpat2
++    inpat_lazy (NPlusKPatIn _ _) _ = error "TODO inpat_lazy NPlusKPatIn"
++    inpat_lazy (NegPatIn _) _ = error "TODO inpat_lazy NegPatIn"
++    inpat_lazy (ParPatIn inpat) value =
++      trace "inpat_lazy ParPatIn" $
++      inpat_lazy inpat value
++    inpat_lazy (ListPatIn inpats) value =
++      trace "inpat_lazy ListPatIn" $
++      go inpats value
++      where
++        go [] _ = []
++        go (inpat : inpats) ~(Data _ [value1, value2]) =
++          inpat_lazy inpat value1 ++ go inpats value2
++    inpat_lazy (TuplePatIn inpats _) ~(Data _ values) =
++      trace "inpat_lazy TuplePatIn" $
++      inpats_lazy inpats values
++    inpat_lazy (RecPatIn constr inpats) ~(Data _ values) =
++      trace "inpat_lazy RecPatIn" $
++      inpats_lazy
++        (map (\ (_, inpat, _) -> inpat) inpats)
++        (map
++           (\ (name, _, _) ->
++             values
++             !! (unwrap "inpat_lazy RecPatIn lookup constr"
++                 $ lookup (rdrNameOcc constr)
++                 $ unwrap "inpat_lazy RecPatIn lookup name"
++                 $ lookup (rdrNameOcc name) fields))
++           inpats)
++
++    inpats [] [] = trace "inpats [] []" $ Just []
++    inpats (inpat_ : inpats_) (value : values) =
++      trace "inpats (_:_) (_:_)" $
++      case inpat inpat_ value of
++        Nothing -> Nothing
++        Just hd_env ->
++          case inpats inpats_ values of
++            Nothing -> Nothing
++            Just tl_env -> Just (hd_env ++ tl_env)
++
++    inpats_lazy [] ~[] = trace "inpats_lazy [] []" $ []
++    inpats_lazy (inpat : inpats) ~(value : values) =
++      trace "inpats_lazy (_:_) (_:_)" $
++      inpat_lazy inpat value ++ inpats_lazy inpats values
++
++    int_to_value n =
++      Data (mk_constr "I#") [int_to_value# (case n of I# n# -> n#)]
++
++    int_to_value# n# = Int n#
++
++    instdecl
++      (InstDecl (HsForAllTy _ _ (MonoDictTy _ [type_])) monobinds_ _ _ _) env =
++      trace "instdecl InstDecl HsForAllTy MonoDictTy [_]" $
++      ([],
++       [],
++       [],
++       map
++         (\ (method, value) ->
++           ((case type_ of
++               HsForAllTy _ _ _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [HsForAllTy]"
++               MonoTyVar name -> rdrNameOcc name
++               MonoTyApp (MonoTyVar name) _ -> rdrNameOcc name
++               MonoTyApp (MonoTyApp (MonoTyVar name) _) _ -> rdrNameOcc name
++               MonoTyApp (MonoTyApp (MonoTyApp (MonoTyVar name) _) _) _ ->
++                 rdrNameOcc name
++               MonoTyApp (MonoTyApp (MonoTyApp (MonoTyApp _ _) _) _) _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [MonoTyApp MonoTyApp MonoTyApp MonoTyApp]"
++               MonoTyApp (MonoTyApp (MonoTyApp _ _) _) _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [MonoTyApp MonoTyApp MonoTyApp]"
++               MonoTyApp (MonoTyApp _ _) _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [MonoTyApp MonoTyApp]"
++               MonoTyApp _ _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [MonoTyApp]"
++               MonoFunTy _ _ -> mk_type "TODOFun"
++               MonoListTy _ -> mk_type "[]"
++               MonoTupleTy _ _ ->
++                 mk_type "TODOTuple" -- FIXME maybe depends on the arity
++               MonoDictTy _ _ ->
++                 error "TODO instdecl InstDecl HsForAllTy MonoDictTy [MonoDictTy]",
++             method),
++            value))
++       $ monobinds monobinds_ env,
++       [])
++    instdecl _ _ = error "TODO instdecl"
++
++    io_to_value io k =
++      Data
++        (mk_constr "IO")
++        [Function
++           (\ s ->
++             Data
++               (error "TODO io_to_value")
++               (case io of
++                  IO f ->
++                    case f (value_to_state# s) of
++                      (# s#, x #) -> [state_to_value# s#, k x]))]
++
++    match (Match _ inpats_ _ grhss_) values env =
++      trace "match Match" $
++      case inpats inpats_ values of
++        Nothing -> Nothing
++        Just new_env -> grhss grhss_ $ new_env ++ env
++
++    matchs (match_ : matchs_) values env =
++      trace "matchs (_:_)" $
++      case match match_ values env of
++        Nothing -> matchs matchs_ values env
++        Just value -> value
++
++    mk_class name = mkSrcOccFS clsName $ mkFastString name
++
++    mk_constr name = mkSrcOccFS dataName $ mkFastString name
++
++    mk_module name = mkSrcModule name
++
++    mk_type name = mkSrcOccFS tcName $ mkFastString name
++
++    mk_var name = mkSrcOccFS varName $ mkFastString name
++
++    module_ (HsModule name _ exports imports decls _) =
++      trace "module_" $
++      (name,
++       (case exports of
++          Nothing -> local_env
++          Just exports ->
++            concat
++            $ map (\ export_ -> export export_ name local_env env) exports,
++        let tmp = map (\ decl -> decl2 decl env) decls in
++        (concat $ map (\ (x, _, _, _, _) -> x) tmp,
++         concat $ map (\ (_, x, _, _, _) -> x) tmp,
++         concat $ map (\ (_, _, x, _, _) -> x) tmp,
++         concat $ map (\ (_, _, _, x, _) -> x) tmp,
++         concat $ map (\ (_, _, _, _, x) -> x) tmp)))
++      where
++        env =
++          local_env
++          ++ import_env
++          ++ (unwrap "module_ lookup Prelude"
++              $ lookup (mk_module "Prelude") module_envs)
++        import_env = concat $ map import_ imports
++        local_env = concat $ map (\ decl -> decl1 decl env) decls
++
++    (module_envs, constructors, fields, methods, instances, defaults) =
++      trace "(module_envs, constructors, fields, methods, instances, defaults)" $
++      (map (\ (name, (exports, _)) -> (name, exports)) envs
++       ++ [(mk_module "PrelGHC",
++            map (\ (name, value) -> (mk_var name, value))
++            $ [
++               -- All
++               -- CCallable
++               -- CReturnable
++               -- assert
++               ("realWorld#", state_to_value# realWorld#),
++               -- State#
++               -- ThreadId#
++               -- fork#
++               -- killThread#
++               -- delay#
++               -- waitRead#
++               -- waitWrite#
++               -- MVar#
++               -- sameMVar#
++               -- newMVar#
++               -- takeMVar#
++               -- putMVar#
++               -- isEmptyMVar#
++               -- seq#
++               -- par#
++               -- parGlobal#
++               -- parLocal#
++               -- parAt#
++               -- parAtAbs#
++               -- parAtRel#
++               -- parAtForNow#
++               -- Char#
++               -- gtChar#
++               ("geChar#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_char# x1 `geChar#` value_to_char# x2))),
++               ("eqChar#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_char# x1 `eqChar#` value_to_char# x2))),
++               -- neChar#
++               -- ltChar#
++               -- leChar#
++               ("ord#",
++                Function (\ x -> int_to_value# (ord# (value_to_char# x)))),
++               ("chr#",
++                Function (\ x -> char_to_value# (chr# (value_to_int# x)))),
++               (">#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_int# x1 ># value_to_int# x2))),
++               (">=#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_int# x1 >=# value_to_int# x2))),
++               ("==#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_int# x1 ==# value_to_int# x2))),
++               -- /=#
++               ("<#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_int# x1 <# value_to_int# x2))),
++               ("<=#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        bool_to_value
++                        $ value_to_int# x1 <=# value_to_int# x2))),
++               ("+#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        int_to_value#
++                          (value_to_int# x1 +# value_to_int# x2)))),
++               ("-#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        int_to_value#
++                          (value_to_int# x1 -# value_to_int# x2)))),
++               ("*#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        int_to_value#
++                          (value_to_int# x1 *# value_to_int# x2)))),
++               -- /#
++               ("quotInt#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        int_to_value#
++                          (value_to_int# x1 `quotInt#` value_to_int# x2)))),
++               ("remInt#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        int_to_value#
++                          (value_to_int# x1 `remInt#` value_to_int# x2)))),
++               ("negateInt#", error "negateInt#"),
++               -- iShiftL#
++               -- iShiftRA#
++               -- iShiftRL#
++               -- Word#
++               -- gtWord#
++               -- geWord#
++               -- eqWord#
++               -- neWord#
++               -- ltWord#
++               -- leWord#
++               -- quotWord#
++               -- remWord#
++               -- and#
++               ("or#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        word_to_value#
++                          (value_to_word# x1 `or#` value_to_word# x2)))),
++               -- not#
++               -- xor#
++               ("shiftL#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        word_to_value#
++                          (value_to_word# x1 `shiftL#` value_to_int# x2)))),
++               ("shiftRL#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        word_to_value#
++                          (value_to_word# x1 `shiftRL#` value_to_int# x2)))),
++               ("int2Word#",
++                Function
++                  (\ x -> word_to_value# (int2Word# (value_to_int# x)))),
++               ("word2Int#",
++                Function
++                  (\ x -> int_to_value# (word2Int# (value_to_word# x)))),
++               -- Word64#
++               -- Int64#
++               -- Addr#
++               -- gtAddr#
++               -- geAddr#
++               -- eqAddr#
++               -- neAddr#
++               -- ltAddr#
++               -- leAddr#
++               -- int2Addr#
++               -- addr2Int#
++               -- addr2Integer#
++               -- Float#
++               -- gtFloat#
++               -- geFloat#
++               -- eqFloat#
++               -- neFloat#
++               -- ltFloat#
++               -- leFloat#
++               -- plusFloat#
++               -- minusFloat#
++               -- timesFloat#
++               -- divideFloat#
++               -- negateFloat#
++               -- float2Int#
++               -- int2Float#
++               -- expFloat#
++               -- logFloat#
++               -- sqrtFloat#
++               -- sinFloat#
++               -- cosFloat#
++               -- tanFloat#
++               -- asinFloat#
++               -- acosFloat#
++               -- atanFloat#
++               -- sinhFloat#
++               -- coshFloat#
++               -- tanhFloat#
++               -- powerFloat#
++               -- decodeFloat#
++               -- encodeFloat#
++               -- Double#
++               -- >##
++               -- >=##
++               -- ==##
++               -- /=##
++               -- <##
++               -- <=##
++               -- +##
++               -- -##
++               -- *##
++               -- /##
++               -- negateDouble#
++               -- double2Int#
++               -- int2Double#
++               -- double2Float#
++               -- float2Double#
++               -- expDouble#
++               -- logDouble#
++               -- sqrtDouble#
++               -- sinDouble#
++               -- cosDouble#
++               -- tanDouble#
++               -- asinDouble#
++               -- acosDouble#
++               -- atanDouble#
++               -- sinhDouble#
++               -- coshDouble#
++               -- tanhDouble#
++               -- **##
++               -- decodeDouble#
++               -- encodeDouble#
++               ("cmpInteger#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Function
++                              (\ x4 ->
++                                Function
++                                  (\ x5 ->
++                                    Function
++                                      (\ x6 ->
++                                        int_to_value#
++                                          (cmpInteger#
++                                             (value_to_int# x1)
++                                             (value_to_int# x2)
++                                             (value_to_bytearray# x3)
++                                             (value_to_int# x4)
++                                             (value_to_int# x5)
++                                             (value_to_bytearray# x6))))))))),
++               -- negateInteger#
++               -- plusInteger#
++               -- minusInteger#
++               -- timesInteger#
++               -- quotRemInteger#
++               ("integer2Int#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            int_to_value#
++                              (integer2Int#
++                                 (value_to_int# x1)
++                                 (value_to_int# x2)
++                                 (value_to_bytearray# x3)))))),
++               -- integer2Word#
++               -- int2Integer# -- TODO
++               ("int2Integer#",
++                Function
++                  (\ x ->
++                    Data
++                      (error "TODO int2Integer#")
++                      (case int2Integer# (value_to_int# x) of
++                         (# a#, s#, d# #) ->
++                           [int_to_value# a#,
++                            int_to_value# s#,
++                            bytearray_to_value# d#]))),
++               -- word2Integer#
++               -- integerToInt64#
++               -- integerToWord64#
++               -- int64ToInteger#
++               -- word64ToInteger#
++               -- Array#
++               -- ByteArray#
++               -- MutableArray#
++               -- MutableByteArray#
++               -- sameMutableArray#
++               -- sameMutableByteArray#
++               ("newArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Data
++                              (error "TODO newArray#")
++                              (case
++                                 newArray#
++                                   (value_to_int# x1)
++                                   x2
++                                   (value_to_state# x3)
++                               of
++                                 (# s#, data# #) ->
++                                   [state_to_value# s#,
++                                    mutablearray_to_value# data#]))))),
++               ("newCharArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO newCharArray#")
++                          (case
++                             newCharArray#
++                               (value_to_int# x1)
++                               (value_to_state# x2)
++                           of
++                             (# s#, data# #) ->
++                               [state_to_value# s#,
++                                mutablebytearray_to_value# data#])))),
++               -- newIntArray#
++               -- newWordArray#
++               -- newFloatArray#
++               -- newDoubleArray#
++               -- newAddrArray#
++               -- newStablePtrArray#
++               ("indexArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO indexArray#")
++                          [error "TODO2 indexArray#",
++                           case
++                             indexArray#
++                               (value_to_array# x1)
++                               (value_to_int# x2)
++                           of
++                             (# _, value #) -> value]))),
++               ("indexCharArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        char_to_value#
++                          (indexCharArray#
++                             (value_to_bytearray# x1)
++                             (value_to_int# x2))))),
++               -- indexIntArray#
++               -- indexWordArray#
++               -- indexFloatArray#
++               -- indexDoubleArray#
++               -- indexAddrArray#
++               -- indexStablePtrArray#
++               -- indexInt64Array#
++               -- indexWord64Array#
++               ("indexCharOffAddr#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        char_to_value#
++                          (indexCharOffAddr#
++                             (value_to_addr# x1)
++                             (value_to_int# x2))))),
++               -- indexIntOffAddr#
++               -- indexWordOffAddr#
++               ("indexAddrOffAddr#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        addr_to_value#
++                          (indexAddrOffAddr#
++                             (value_to_addr# x1)
++                             (value_to_int# x2))))),
++               -- indexFloatOffAddr#
++               -- indexDoubleOffAddr#
++               -- indexStablePtrOffAddr#
++               -- indexInt64OffAddr#
++               -- indexWord64OffAddr#
++               -- writeCharOffAddr#
++               -- writeIntOffAddr#
++               -- writeWordOffAddr#
++               -- writeAddrOffAddr#
++               -- writeForeignObjOffAddr#
++               -- writeFloatOffAddr#
++               -- writeDoubleOffAddr#
++               -- writeStablePtrOffAddr#
++               -- writeInt64OffAddr#
++               -- writeWord64OffAddr#
++               -- indexCharOffForeignObj#
++               -- indexIntOffForeignObj#
++               -- indexWordOffForeignObj#
++               -- indexAddrOffForeignObj#
++               -- indexFloatOffForeignObj#
++               -- indexDoubleOffForeignObj#
++               -- indexStablePtrOffForeignObj#
++               -- indexInt64OffForeignObj#
++               -- indexWord64OffForeignObj#
++               ("writeArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Function
++                              (\ x4 ->
++                                state_to_value#
++                                  (writeArray#
++                                     (value_to_mutablearray# x1)
++                                     (value_to_int# x2)
++                                     x3
++                                     (value_to_state# x4))))))),
++               ("writeCharArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Function
++                              (\ x4 ->
++                                state_to_value#
++                                  (writeCharArray#
++                                     (value_to_mutablebytearray# x1)
++                                     (value_to_int# x2)
++                                     (value_to_char# x3)
++                                     (value_to_state# x4))))))),
++               -- writeIntArray#
++               -- writeWordArray#
++               -- writeFloatArray#
++               -- writeDoubleArray#
++               -- writeAddrArray#
++               -- writeStablePtrArray#
++               -- writeInt64Array#
++               -- writeWord64Array#
++               ("readArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Data
++                              (error "TODO readArray#")
++                              (case
++                                 readArray#
++                                   (value_to_mutablearray# x1)
++                                   (value_to_int# x2)
++                                   (value_to_state# x3)
++                               of
++                                 (# s#, value #) ->
++                                   [state_to_value# s#, value]))))),
++               -- readCharArray#
++               -- readIntArray#
++               -- readWordArray#
++               -- readFloatArray#
++               -- readDoubleArray#
++               -- readAddrArray#
++               -- readStablePtrArray#
++               -- readInt64Array#
++               -- readWord64Array#
++               ("unsafeFreezeArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO unsafeFreezeArray#")
++                          (case
++                             unsafeFreezeArray#
++                               (value_to_mutablearray# x1)
++                               (value_to_state# x2)
++                           of
++                             (# s#, data# #) ->
++                               [state_to_value# s#, array_to_value# data#])))),
++               ("unsafeFreezeByteArray#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO unsafeFreezeByteArray#")
++                          (case
++                             unsafeFreezeByteArray#
++                               (value_to_mutablebytearray# x1)
++                               (value_to_state# x2)
++                           of
++                             (# s#, data# #) ->
++                               [state_to_value# s#,
++                                bytearray_to_value# data#])))),
++               -- sizeofByteArray#
++               -- sizeofMutableByteArray#
++               -- MutVar#
++               ("newMutVar#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO newMutVar#")
++                          (case newMutVar# x1 (value_to_state# x2) of
++                             (# s#, var# #) ->
++                               [state_to_value# s#, mutvar_to_value# var#])))),
++               ("readMutVar#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO readMutVar#")
++                          (case
++                             readMutVar#
++                               (value_to_mutvar# x1)
++                               (value_to_state# x2)
++                           of
++                             (# s#, value #) ->
++                               [state_to_value# s#, value])))),
++               ("writeMutVar#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            state_to_value#
++                              (writeMutVar#
++                                 -- (value_to_mutvar# x1)
++                                 (case x1 of MutVar var# -> var#)
++                                 x2
++                                 (value_to_state# x3)))))),
++               -- sameMutVar#
++               ("catch#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (mk_constr "STret")
++                          (case
++                             catch#
++                               (case x1 of
++                                  Data _ [value1, value2] ->
++                                    STret (value_to_state# value1) value2)
++                               (\ exn ->
++                                 case
++                                   apply
++                                     x2
++                                     (case exn of
++                                        IOException ioerror ->
++                                          Data
++                                            (mk_constr "IOException")
++                                            [Data
++                                               (mk_constr "IOError")
++                                               (case ioerror of
++                                                  IOError _ _ _ _ ->
++                                                    [error
++                                                       "catch# IOException1",
++                                                     error
++                                                       "catch# IOException2",
++                                                     error
++                                                       "catch# IOException3",
++                                                     error
++                                                       "catch# IOException4"])]
++                                        ArithException _ ->
++                                          error "catch# ArithException"
++                                        ErrorCall s ->
++                                          Data
++                                            (mk_constr "ErrorCall")
++                                            [string_to_value s]
++                                        NoMethodError _ ->
++                                          error "catch# NoMethodError"
++                                        PatternMatchFail s ->
++                                          Data
++                                            (mk_constr "PatternMatchFail")
++                                            [string_to_value s]
++                                        NonExhaustiveGuards _ ->
++                                          error "catch# NonExhaustiveGuards"
++                                        RecSelError _ ->
++                                          error "catch# RecSelError"
++                                        RecConError _ ->
++                                          error "catch# RecConError"
++                                        RecUpdError _ ->
++                                          error "catch# RecUpdError"
++                                        AssertionFailed _ ->
++                                          error "catch# AssertionFailed"
++                                        DynException _ ->
++                                          error "catch# DynException"
++                                        AsyncException _ ->
++                                          error "catch# AsyncException")
++                                 of
++                                   Data _ [value1, value2] ->
++                                     STret (value_to_state# value1) value2)
++                           of
++                             STret s# value -> [state_to_value# s#, value])))),
++               ("raise#",
++                Function
++                  (\ x ->
++                    raise#
++                      (case x of
++                         Data constr [value]
++                           | constr == mk_constr "IOException" ->
++                             IOException
++                               (IOError
++                                  (error "raise# IOException1")
++                                  (error "raise# IOException2")
++                                  (error "raise# IOException3")
++                                  (error "raise# IOException4"))
++                           | constr == mk_constr "ArithException" ->
++                             ArithException (error "raise# ArithException")
++                           | constr == mk_constr "ErrorCall" ->
++                             trace (value_to_string value) $
++                             ErrorCall (value_to_string value)
++                           | constr == mk_constr "NoMethodError" ->
++                             NoMethodError (error "raise# NoMethodError")
++                           | constr == mk_constr "PatternMatchFail" ->
++                             trace (value_to_string value) $
++                             PatternMatchFail (value_to_string value)
++                           | constr == mk_constr "NonExhaustiveGuards" ->
++                             NonExhaustiveGuards
++                               (error "raise# NonExhaustiveGuards")
++                           | constr == mk_constr "RecSelError" ->
++                             RecSelError (error "raise# RecSelError")
++                           | constr == mk_constr "RecConError" ->
++                             RecConError (error "raise# RecConError")
++                           | constr == mk_constr "RecUpdError" ->
++                             RecUpdError (error "raise# RecUpdError")
++                           | constr == mk_constr "AssertionFailed" ->
++                             AssertionFailed (error "raise# AssertionFailed")
++                           | constr == mk_constr "DynException" ->
++                             DynException (error "raise# DynException")
++                           | constr == mk_constr "AsyncException" ->
++                             AsyncException (error "raise# AsyncException")))),
++               -- Weak#
++               ("mkWeak#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Function
++                          (\ x3 ->
++                            Function
++                              (\ x4 ->
++                                Data
++                                  (error "TODO mkWeak#")
++                                  (case
++                                     mkWeak#
++                                       x1
++                                       x2
++                                       -- (IO
++                                       --    (\ s# ->
++                                       --      (# value_to_state#
++                                       --           (case x3 of
++                                       --              Data _ [f] ->
++                                       --                case
++                                       --                  apply f
++                                       --                  $ state_to_value# s#
++                                       --                of
++                                       --                  Data _ [value, _] ->
++                                       --                    value),
++                                       --         () #)))
++                                       (return () :: IO ())
++                                       (value_to_state# x4)
++                                   of
++                                     (# s#, weak# #) ->
++                                       [state_to_value# s#,
++                                        weak_to_value# weak#])))))),
++               -- deRefWeak#
++               -- finaliseWeak#
++               -- ForeignObj#
++               ("makeForeignObj#",
++                Function
++                  (\ x1 ->
++                    Function
++                      (\ x2 ->
++                        Data
++                          (error "TODO makeForeignObj#")
++                          (case
++                             makeForeignObj#
++                               (value_to_addr# x1)
++                               (value_to_state# x2)
++                           of
++                             (# s#, obj# #) ->
++                               [state_to_value# s#,
++                                foreignobj_to_value# obj#]))))
++               -- writeForeignObj#
++               -- StablePtr#
++               -- makeStablePtr#
++               -- deRefStablePtr#
++               -- eqStablePtr#
++               -- StableName#
++               -- makeStableName#
++               -- eqStableName#
++               -- stableNameToInt#
++               -- reallyUnsafePtrEquality#
++               -- unsafeCoerce#
++              ])],
++       concat $ map (\ (x, _, _, _, _) -> x) $ map snd $ map snd envs,
++       concat $ map (\ (_, x, _, _, _) -> x) $ map snd $ map snd envs,
++       map
++         (\ (name, (i, k)) ->
++           (name,
++            function
++              (i + 1)
++              (\ values ->
++                applys
++                  (case lookup (typeof $ k $ values !! i, name) instances of
++                     Just f -> f
++                     Nothing ->
++                       trace
++                         (occNameUserString name
++                          ++ " "
++                          ++ (occNameUserString $ typeof $ k $ values !! i)) $
++                       unwrap "methods lookup name"
++                       $ lookup name defaults)
++                  values)))
++       $ concat
++       $ map (\ (_, _, x, _, _) -> x)
++       $ map snd
++       $ map snd envs,
++       (concat $ map (\ (_, _, _, x, _) -> x) $ map snd $ map snd envs)
++       ++ map
++            (\ ((type_, method), value) ->
++              ((mk_type type_, mk_var method), value))
++            [(("Addr#", "=="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_addr# x1 `eqAddr#` value_to_addr# x2))),
++             (("Addr#", "/="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_addr# x1 `neAddr#` value_to_addr# x2))),
++             (("Char#", "=="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `eqChar#` value_to_char# x2))),
++             (("Char#", "/="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `neChar#` value_to_char# x2))),
++             (("Char#", "<"),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `ltChar#` value_to_char# x2))),
++             (("Char#", "<="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `leChar#` value_to_char# x2))),
++             (("Char#", ">="),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `geChar#` value_to_char# x2))),
++             (("Char#", ">"),
++              Function
++                (\ x1 ->
++                  Function
++                    (\ x2 ->
++                      bool_to_value
++                      $ value_to_char# x1 `gtChar#` value_to_char# x2)))],
++       concat $ map (\ (_, _, _, _, x) -> x) $ map snd $ map snd envs)
++-- All
++-- CCallable
++-- CReturnable
++-- assert
++-- State#
++-- ThreadId#
++-- fork#
++-- killThread#
++-- delay#
++-- waitRead#
++-- waitWrite#
++-- MVar#
++-- sameMVar#
++-- newMVar#
++-- takeMVar#
++-- putMVar#
++-- isEmptyMVar#
++-- seq#
++-- par#
++-- parGlobal#
++-- parLocal#
++-- parAt#
++-- parAtAbs#
++-- parAtRel#
++-- parAtForNow#
++-- Char#
++-- gtChar#
++-- neChar#
++-- ltChar#
++-- leChar#
++-- /=#
++-- /#
++-- iShiftL#
++-- iShiftRA#
++-- iShiftRL#
++-- Word#
++-- gtWord#
++-- geWord#
++-- eqWord#
++-- neWord#
++-- ltWord#
++-- leWord#
++-- quotWord#
++-- remWord#
++-- and#
++-- not#
++-- xor#
++-- Word64#
++-- Int64#
++-- Addr#
++-- gtAddr#
++-- geAddr#
++-- eqAddr#
++-- neAddr#
++-- ltAddr#
++-- leAddr#
++-- int2Addr#
++-- addr2Int#
++-- addr2Integer#
++-- Float#
++-- gtFloat#
++-- geFloat#
++-- eqFloat#
++-- neFloat#
++-- ltFloat#
++-- leFloat#
++-- plusFloat#
++-- minusFloat#
++-- timesFloat#
++-- divideFloat#
++-- negateFloat#
++-- float2Int#
++-- int2Float#
++-- expFloat#
++-- logFloat#
++-- sqrtFloat#
++-- sinFloat#
++-- cosFloat#
++-- tanFloat#
++-- asinFloat#
++-- acosFloat#
++-- atanFloat#
++-- sinhFloat#
++-- coshFloat#
++-- tanhFloat#
++-- powerFloat#
++-- decodeFloat#
++-- encodeFloat#
++-- Double#
++-- >##
++-- >=##
++-- ==##
++-- /=##
++-- <##
++-- <=##
++-- +##
++-- -##
++-- *##
++-- /##
++-- negateDouble#
++-- double2Int#
++-- int2Double#
++-- double2Float#
++-- float2Double#
++-- expDouble#
++-- logDouble#
++-- sqrtDouble#
++-- sinDouble#
++-- cosDouble#
++-- tanDouble#
++-- asinDouble#
++-- acosDouble#
++-- atanDouble#
++-- sinhDouble#
++-- coshDouble#
++-- tanhDouble#
++-- **##
++-- decodeDouble#
++-- encodeDouble#
++-- negateInteger#
++-- plusInteger#
++-- minusInteger#
++-- timesInteger#
++-- quotRemInteger#
++-- integer2Word#
++-- int2Integer#
++-- word2Integer#
++-- integerToInt64#
++-- integerToWord64#
++-- int64ToInteger#
++-- word64ToInteger#
++-- Array#
++-- ByteArray#
++-- MutableArray#
++-- MutableByteArray#
++-- sameMutableArray#
++-- sameMutableByteArray#
++-- newIntArray#
++-- newWordArray#
++-- newFloatArray#
++-- newDoubleArray#
++-- newAddrArray#
++-- newStablePtrArray#
++-- indexIntArray#
++-- indexWordArray#
++-- indexFloatArray#
++-- indexDoubleArray#
++-- indexAddrArray#
++-- indexStablePtrArray#
++-- indexInt64Array#
++-- indexWord64Array#
++-- indexIntOffAddr#
++-- indexWordOffAddr#
++-- indexFloatOffAddr#
++-- indexDoubleOffAddr#
++-- indexStablePtrOffAddr#
++-- indexInt64OffAddr#
++-- indexWord64OffAddr#
++-- writeCharOffAddr#
++-- writeIntOffAddr#
++-- writeWordOffAddr#
++-- writeAddrOffAddr#
++-- writeForeignObjOffAddr#
++-- writeFloatOffAddr#
++-- writeDoubleOffAddr#
++-- writeStablePtrOffAddr#
++-- writeInt64OffAddr#
++-- writeWord64OffAddr#
++-- indexCharOffForeignObj#
++-- indexIntOffForeignObj#
++-- indexWordOffForeignObj#
++-- indexAddrOffForeignObj#
++-- indexFloatOffForeignObj#
++-- indexDoubleOffForeignObj#
++-- indexStablePtrOffForeignObj#
++-- indexInt64OffForeignObj#
++-- indexWord64OffForeignObj#
++-- writeIntArray#
++-- writeWordArray#
++-- writeFloatArray#
++-- writeDoubleArray#
++-- writeAddrArray#
++-- writeStablePtrArray#
++-- writeInt64Array#
++-- writeWord64Array#
++-- readCharArray#
++-- readIntArray#
++-- readWordArray#
++-- readFloatArray#
++-- readDoubleArray#
++-- readAddrArray#
++-- readStablePtrArray#
++-- readInt64Array#
++-- readWord64Array#
++-- sizeofByteArray#
++-- sizeofMutableByteArray#
++-- MutVar#
++-- sameMutVar#
++-- Weak#
++-- deRefWeak#
++-- finaliseWeak#
++-- ForeignObj#
++-- writeForeignObj#
++-- StablePtr#
++-- makeStablePtr#
++-- deRefStablePtr#
++-- eqStablePtr#
++-- StableName#
++-- makeStableName#
++-- eqStableName#
++-- stableNameToInt#
++-- reallyUnsafePtrEquality#
++-- unsafeCoerce#
++      where
++        envs = map module_ modules
++
++    monobinds EmptyMonoBinds _ = trace "monobinds EmptyMonoBinds" $ []
++    monobinds (AndMonoBinds monobinds1 monobinds2) env =
++      trace "monobinds AndMonoBinds" $
++      monobinds monobinds1 env ++ monobinds monobinds2 env
++    monobinds (PatMonoBind inpat grhss_ _) env =
++      trace "monobinds PatMonoBind" $
++      inpat_lazy inpat
++      $ unwrap "monobinds PatMonoBind grhss"
++      $ grhss grhss_ env
++    monobinds (FunMonoBind name _ matchs_@(Match _ inpats _ _ : _) _) env =
++      trace "monobinds FunMonoBind" $
++      [(var_name,
++        function (length inpats) (\ values -> matchs matchs_ values env))]
++      where
++        var_name = rdrNameOcc name
++    monobinds (VarMonoBind _ _) _ = error "TODO monobinds VarMonoBind"
++    monobinds (CoreMonoBind _ _) _ = error "TODO monobinds CoreMonoBind"
++    monobinds (AbsBinds _ _ _ _) _ = error "TODO monobinds AbsBinds"
++
++    mutablearray_to_value# data# = MutableArray_ data#
++
++    mutablebytearray_to_value# data# = MutableByteArray_ data#
++
++    mutvar_to_value# var# = MutVar var#
++
++    state_to_value# s# = State s#
++
++    stmts [ExprStmt expr_ _] env =
++      trace "stmts [ExprStmt]" $
++      Just (expr expr_ env)
++    stmts (GuardStmt expr_ _ : stmts_) env =
++      trace "stmts (GuardStmt:_)" $
++      if value_to_bool $ expr expr_ env then
++        stmts stmts_ env
++      else
++        Nothing
++    stmts _ _ = error "TODO stmts"
++
++    stmts2 [ReturnStmt expr_] env =
++      trace "stmts2 [ReturnStmt]" $
++      applys
++        (unwrap "stmts2 [ReturnStmt] lookup return_"
++         $ lookup (mk_var "return_")
++         $ unwrap "stmts2 [ReturnStmt] lookup PrelBase"
++         $ lookup (mk_module "PrelBase") module_envs)
++        [unwrap "stmts2 [ReturnStmt] lookup monad_witness"
++         $ lookup (mk_type "[]", mk_var "monad_witness") instances,
++         expr expr_ env]
++    stmts2 (BindStmt inpat_ expr_ _ : stmts) env =
++      trace "stmts2 (BindStmt:_)" $
++      applys
++        (unwrap "stmts2 (BindStmt:_) lookup >>="
++         $ lookup (mk_var ">>=") methods)
++        [expr expr_ env,
++         Function
++           (\ value ->
++             case inpat inpat_ value of
++               Just new_env -> stmts2 stmts $ new_env ++ env
++               Nothing ->
++                 unwrap "stmts2 (BindStmt:_) lookup mzero"
++                 $ lookup (mk_var "mzero") methods)]
++    stmts2 (LetStmt _ : _) _ = error "TODO stmts2 (LetStmt:_)"
++    stmts2 (GuardStmt expr_ _ : stmts) env =
++      trace "stmts2 (GuardStmt:_)" $
++      if value_to_bool $ expr expr_ env then
++        stmts2 stmts env
++      else
++        unwrap "stmts2 (GuardStmt:_) lookup mzero"
++        $ lookup (mk_type "[]", mk_var "mzero") instances
++    stmts2 (ExprStmt _ _ : _) _ = error "TODO stmts2 (ExprStmt:_)"
++    stmts2 _ _ = error "TODO stmts2"
++
++    stmts3 [ExprStmt expr_ _] env = trace "stmts3 [ExprStmt]" $ expr expr_ env
++    stmts3 (BindStmt inpat_ expr_ _ : stmts) env =
++      trace "stmts3 (BindStmt:_)" $
++      applys
++        (unwrap "stmts3 (BindStmt:_) lookup >>="
++         $ lookup (mk_var ">>=") methods)
++        [expr expr_ env,
++         Function
++           (\ value ->
++             case inpat inpat_ value of
++               Just new_env -> stmts3 stmts $ new_env ++ env
++               Nothing ->
++                 unwrap "stmts3 (BindStmt:_) lookup mzero"
++                 $ lookup (mk_var "mzero") methods)]
++    stmts3 (LetStmt binds_ : stmts) env =
++      trace "stmts3 (LetStmt:_)" $
++      stmts3 stmts $ binds binds_ env ++ env
++    stmts3 (GuardStmt _ _ : _) _ = error "TODO stmts3 (GuardStmt:_)"
++    stmts3 (ExprStmt expr_ _ : stmts) env =
++      trace "stmts3 (ExprStmt:_)" $
++      applys
++        (unwrap "stmts3 (ExprStmt:_) lookup >>"
++         $ lookup (mk_var ">>") methods)
++        [expr expr_ env, stmts3 stmts env]
++    stmts3 (ReturnStmt _ : _) _ = error "TODO stmts3 (ReturnStmt:_)"
++    stmts3 _ _ = error "TODO stmts3"
++
++    string_to_value [] = Data (mk_constr "[]") []
++    string_to_value (c : s) =
++      Data (mk_constr ":") [char_to_value c, string_to_value s]
++
++    trace msg x =
++      IOExts.unsafePerformIO $
++      IOExts.performGC >>
++      return x
++
++    tycldecl (TyData _ _ _ _ [] _ _ _) _ = error "TODO tycldecl TyData []"
++    tycldecl (TyData _ _ name _ constrs derivings _ _) _ =
++      trace "tycldecl TyData" $
++      (map (\ (ConDecl name _ _ _ _) -> (rdrNameOcc name, var_name)) constrs,
++       map
++         (\ field ->
++           (field,
++            concat
++            $ map
++                (\ (name, fields) ->
++                  case elemIndex field fields of
++                    Nothing -> []
++                    Just i -> [(name, i)])
++                fieldss))
++       $ concat
++       $ map snd fieldss,
++       [],
++       map (\ (name, value) -> ((var_name, mk_var name), value))
++       $ concat
++       $ map
++           (\ deriving_ ->
++             if deriving_ == mk_class "Bounded" then
++               map
++                 (\ name -> (name, error ("TODO " ++ name)))
++                 ["minBound", "maxBound"]
++             else if deriving_ == mk_class "Enum" then
++               map
++                 (\ name -> (name, error ("TODO " ++ name)))
++                 ["succ",
++                  "prec",
++                  "toEnum",
++                  "fromEnum",
++                  "enumFrom",
++                  "enumFromThen",
++                  "enumFromTo",
++                  "enumFromThenTo"]
++             else if deriving_ == mk_class "Eq" then
++               [("==",
++                 Function
++                   (\ x1 ->
++                     Function
++                       (\ x2 ->
++                         bool_to_value
++                         $ case x1 of
++                             Data constr1 values1 ->
++                               case x2 of
++                                 Data constr2 values2 ->
++                                   [constr1 == constr2]
++                                   ++ (map
++                                         (\ (value1, value2) ->
++                                           value_to_bool
++                                           $ applys
++                                               (unwrap
++                                                  "tycldecl TyData lookup =="
++                                                $ lookup (mk_var "==") methods)
++                                               [value1, value2])
++                                       $ zip values1 values2)
++                                   == [True] ++ map (\ _ -> True) values1))),
++                ("/=",
++                 Function
++                   (\ x1 ->
++                     Function
++                       (\ x2 ->
++                         bool_to_value
++                         $ case x1 of
++                             Data constr1 values1 ->
++                               case x2 of
++                                 Data constr2 values2 ->
++                                   [constr1 == constr2]
++                                   ++ (map
++                                         (\ (value1, value2) ->
++                                           value_to_bool
++                                           $ applys
++                                               (unwrap
++                                                  "tycldecl TyData lookup =="
++                                                $ lookup (mk_var "==") methods)
++                                               [value1, value2])
++                                       $ zip values1 values2)
++                                   /= [True] ++ map (\ _ -> True) values1)))]
++             else if deriving_ == mk_class "Ix" then
++               map
++                 (\ name -> (name, error ("TODO " ++ name)))
++                 ["range", "index", "inRange"]
++             else if deriving_ == mk_class "Ord" then
++               [("compare",
++                 Function
++                   (\ x1 ->
++                     Function
++                       (\ x2 ->
++                         Data
++                           (mk_constr
++                            $ case
++                                case x1 of
++                                  Data constr1 values1 ->
++                                    case x2 of
++                                      Data constr2 values2 ->
++                                        ([(unwrap
++                                             "deriving compare elemIndex constr1"
++                                           $ elemIndex constr1
++                                           $ map rdrNameOcc
++                                           $ map
++                                               (\ (ConDecl name _ _ _ _) ->
++                                                 name)
++                                               constrs)
++                                          `compare`
++                                            (unwrap
++                                               "deriving compare elemIndex constr2"
++                                             $ elemIndex constr1
++                                             $ map rdrNameOcc
++                                             $ map
++                                                 (\ (ConDecl name _ _ _ _) ->
++                                                   name)
++                                                 constrs)]
++                                         ++ (map
++                                               (\ (value1, value2) ->
++                                                 case
++                                                   applys
++                                                     (unwrap
++                                                        "tycldecl TyData lookup compare"
++                                                      $ lookup
++                                                          (mk_var "compare")
++                                                          methods)
++                                                     [value1, value2]
++                                                 of
++                                                   Data constr _
++                                                     | constr
++                                                       == mk_constr "LT" ->
++                                                       LT
++                                                     | constr
++                                                       == mk_constr "EQ" ->
++                                                       EQ
++                                                     | constr
++                                                       == mk_constr "GT" ->
++                                                       GT)
++                                             $ zip values1 values2))
++                                        `compare`
++                                          ([EQ] ++ map (\ _ -> EQ) values1)
++                              of
++                                LT -> "LT"
++                                EQ -> "EQ"
++                                GT -> "GT")
++                           []))),
++                ("<", error "TODO <"),
++                ("<=",
++                 Function
++                   (\ x1 ->
++                     Function
++                       (\ x2 ->
++                         bool_to_value
++                         $ case x1 of
++                             Data constr1 values1 ->
++                               case x2 of
++                                 Data constr2 values2 ->
++                                   [(unwrap "deriving >= elemIndex constr1"
++                                     $ elemIndex constr1
++                                     $ map rdrNameOcc
++                                     $ map
++                                         (\ (ConDecl name _ _ _ _) -> name)
++                                         constrs)
++                                     `compare`
++                                       (unwrap "deriving >= elemIndex constr2"
++                                        $ elemIndex constr1
++                                        $ map rdrNameOcc
++                                        $ map
++                                            (\ (ConDecl name _ _ _ _) -> name)
++                                            constrs)]
++                                   ++ (map
++                                         (\ (value1, value2) ->
++                                           case
++                                             applys
++                                               (unwrap
++                                                  "tycldecl TyData lookup compare"
++                                                $ lookup
++                                                    (mk_var "compare")
++                                                    methods)
++                                               [value1, value2]
++                                           of
++                                             Data constr _
++                                               | constr == mk_constr "LT" -> LT
++                                               | constr == mk_constr "EQ" -> EQ
++                                               | constr == mk_constr "GT" ->
++                                                 GT)
++                                       $ zip values1 values2)
++                                   <= [EQ] ++ map (\ _ -> EQ) values1))),
++                (">=",
++                 Function
++                   (\ x1 ->
++                     Function
++                       (\ x2 ->
++                         bool_to_value
++                         $ case x1 of
++                             Data constr1 values1 ->
++                               case x2 of
++                                 Data constr2 values2 ->
++                                   [(unwrap "deriving >= elemIndex constr1"
++                                     $ elemIndex constr1
++                                     $ map rdrNameOcc
++                                     $ map
++                                         (\ (ConDecl name _ _ _ _) -> name)
++                                         constrs)
++                                     `compare`
++                                       (unwrap "deriving >= elemIndex constr2"
++                                        $ elemIndex constr1
++                                        $ map rdrNameOcc
++                                        $ map
++                                            (\ (ConDecl name _ _ _ _) -> name)
++                                            constrs)]
++                                   ++ (map
++                                         (\ (value1, value2) ->
++                                           case
++                                             applys
++                                               (unwrap
++                                                  "tycldecl TyData lookup compare"
++                                                $ lookup
++                                                    (mk_var "compare")
++                                                    methods)
++                                               [value1, value2]
++                                           of
++                                             Data constr _
++                                               | constr == mk_constr "LT" -> LT
++                                               | constr == mk_constr "EQ" -> EQ
++                                               | constr == mk_constr "GT" ->
++                                                 GT)
++                                       $ zip values1 values2)
++                                   >= [EQ] ++ map (\ _ -> EQ) values1))),
++                (">", error "TODO >"),
++                ("max", error "TODO max"),
++                ("min", error "TODO min")]
++             else if deriving_ == mk_class "Read" then
++               map
++                 (\ name -> (name, error ("TODO " ++ name)))
++                 ["readsPrec", "readList"]
++             else if deriving_ == mk_class "Show" then
++               map
++                 (\ name -> (name, error ("TODO " ++ name)))
++                 ["showsPrec", "show", "showList"]
++             else
++               error ("TODO tycldecl TyData " ++ occNameUserString deriving_))
++       $ case derivings of
++           Nothing -> []
++           Just [] -> []
++           Just derivings -> map rdrNameOcc derivings,
++       [])
++      where
++        fieldss =
++          map
++            (\ (ConDecl name _ _ details _) ->
++              (rdrNameOcc name,
++               map rdrNameOcc
++               $ case details of
++                   VanillaCon _ -> []
++                   InfixCon _ _ -> []
++                   RecCon fieldss -> concat $ map fst fieldss
++                   NewCon _ Nothing -> []
++                   NewCon _ (Just field) -> [field]))
++            constrs
++        var_name = rdrNameOcc name
++    tycldecl (TySynonym _ _ _ _) _ =
++      trace "tycldecl TySynonym" $
++      ([], [], [], [], [])
++    tycldecl (ClassDecl _ _ [UserTyVar var] sigs monobinds_ _ _ _ _) env =
++      trace "tycldecl ClassDecl [UserTyVar]" $
++      ([],
++       [],
++       map (\ (name, (i, k)) -> (rdrNameOcc name, (i, k)))
++       $ map
++           (\ sig ->
++             case sig of
++               Sig _ _ _ -> error "Sig"
++               ClassOpSig name Nothing (HsForAllTy _ _ (MonoFunTy (MonoTyVar var0) _)) _
++                 | var == var0 -> (name, (0, (\ value -> value)))
++               ClassOpSig name Nothing (HsForAllTy _ _ (MonoFunTy (MonoTyApp (MonoTyVar var0) _) _)) _
++                 | var == var0 -> (name, (0, (\ value -> value)))
++               ClassOpSig name Nothing (HsForAllTy _ _ (MonoFunTy (MonoTupleTy [MonoTyVar var0, _] _) _)) _
++                 | var == var0 -> (name, (0, (\ (Data _ [value, _]) -> value)))
++               ClassOpSig name Nothing (HsForAllTy _ _ (MonoFunTy _ (MonoFunTy (MonoTyVar var1) _))) _
++                 | var == var1 -> (name, (1, (\ value -> value)))
++               ClassOpSig name Nothing (HsForAllTy _ _ (MonoFunTy _ (MonoFunTy (MonoTyApp (MonoTyVar var1) _) _))) _
++                 | var == var1 -> (name, (1, (\ value -> value)))
++               ClassOpSig _ Nothing (HsForAllTy _ _ (MonoFunTy _ (MonoFunTy _ (MonoFunTy _ _)))) _ ->
++                 error "fun x3"
++               ClassOpSig name Nothing (HsForAllTy _ _ _) _ ->
++                 (name,
++                  (error
++                     ("can't guess the instance "
++                      ++ (occNameUserString $ rdrNameOcc name)),
++                   error
++                     ("can't guess the instance "
++                      ++ (occNameUserString $ rdrNameOcc name))))
++               ClassOpSig _ Nothing (MonoTyVar _) _ ->
++                 error "ClassOpSig MonoTyVar"
++               ClassOpSig _ Nothing (MonoTyApp _ _) _ ->
++                 error "ClassOpSig MonoTyApp"
++               ClassOpSig _ Nothing (MonoFunTy _ _) _ ->
++                 error "ClassOpSig MonoFunTy"
++               ClassOpSig _ Nothing (MonoListTy _) _ ->
++                 error "ClassOpSig MonoListTy"
++               ClassOpSig _ Nothing (MonoTupleTy _ _) _ ->
++                 error "ClassOpSig MonoTupleTy"
++               ClassOpSig _ Nothing (MonoDictTy _ _) _ ->
++                 error "ClassOpSig MonoDictTy"
++               ClassOpSig _ (Just _) _ _ -> error "ClassOpSig Just"
++               SpecSig _ _ _ _ -> error "SpecSig"
++               InlineSig _ _ -> error "InlineSig"
++               NoInlineSig _ _ -> error "NoInlineSig"
++               SpecInstSig _ _ -> error "SpecInstSig"
++               FixSig _ -> error "FixSig")
++           sigs,
++       [],
++       monobinds monobinds_ env)
++    tycldecl (ClassDecl _ _ _ _ _ _ _ _ _) _ = error "TODO tycldecl ClassDecl"
++
++    typeof (Data constr _) =
++      unwrap "typeof Data lookup constr" $ lookup constr constructors
++    typeof (Function _) = error "TODO typeof Function"
++    typeof (Addr _) = mk_type "Addr#"
++    typeof (Array_ _) = error "TODO typeof Array"
++    typeof (ByteArray_ _) = error "TODO typeof ByteArray"
++    typeof (Char _) = mk_type "Char#"
++    typeof (ForeignObj_ _) = error "TODO typeof ForeignObj"
++    typeof (Int _) = error "TODO typeof Int"
++    typeof (MutableArray_ _) = error "TODO typeof MutableArray"
++    typeof (MutableByteArray_ _) = error "TODO typeof MutableByteArray"
++    typeof (MutVar _) = error "TODO typeof MutVar"
++    typeof (State _) = error "TODO typeof State"
++    typeof (Weak_ _) = error "TODO typeof Weak"
++    typeof (Word _) = error "TODO typeof Word"
++
++    unwrap error_msg (Just x) = x
++    unwrap error_msg Nothing = error error_msg
++
++    value_to_addr value =
++      A# (value_to_addr# (case value of Data _ [value] -> value))
++
++    value_to_addr# (Addr addr#) = addr#
++
++    value_to_array# (Array_ data#) = data#
++
++    value_to_bool (Data constr _)
++      | constr == mk_constr "True" = True
++      | constr == mk_constr "False" = False
++
++    value_to_bytearray value =
++      ByteArray
++        (error "value_to_bytearray" :: (Int, Int))
++        (value_to_bytearray# (case value of Data _ [_, value] -> value))
++
++    value_to_bytearray# (ByteArray_ data#) = data#
++
++    value_to_char value =
++      C# (value_to_char# (case value of Data _ [value] -> value))
++
++    value_to_char# (Char c#) = c#
++
++    value_to_foreignobj value =
++      ForeignObj (value_to_foreignobj# (case value of Data _ [value] -> value))
++
++    value_to_foreignobj# (ForeignObj_ obj#) = obj#
++
++    value_to_int value =
++      I# (value_to_int# (case value of Data _ [value] -> value))
++
++    value_to_int# (Int n#) = n#
++
++    value_to_mutablearray# (MutableArray_ data#) = data#
++
++    value_to_mutablebytearray# (MutableByteArray_ data#) = data#
++
++    value_to_mutvar# (MutVar var#) = var#
++
++    value_to_state# (State s#) = s#
++
++    value_to_string (Data _ []) = []
++    value_to_string (Data _ [value1, value2]) =
++      value_to_char value1 : value_to_string value2
++
++    value_to_weak# (Weak_ weak#) = weak#
++
++    value_to_word value =
++      W# (value_to_word# (case value of Data _ [value] -> value))
++
++    value_to_word# (Word word#) = word#
++
++    weak_to_value# weak# = Weak_ weak#
++
++    word_to_value word =
++      Data (mk_constr "W#") [word_to_value# (case word of W# word# -> word#)]
++
++    word_to_value# word# = Word word#
++
++foreign import ccall "libHS_cbits.so" "openDir__" unsafe primOpenDir :: ByteArray Int -> IO Addr
++foreign import ccall "libHS_cbits.so" "readDir__" unsafe primReadDir :: Addr -> IO Addr
++foreign import ccall "libHS_cbits.so" "get_dirent_d_name" unsafe primGetDirentDName :: Addr -> IO Addr
++\end{code}
+diff --git a/ghc/compiler/main/Main.lhs b/ghc/compiler/main/Main.lhs
+index c38079e9e1..541b9c4838 100644
+--- a/ghc/compiler/main/Main.lhs
++++ b/ghc/compiler/main/Main.lhs
+@@ -23,6 +23,7 @@
+ import StgSyn		( collectFinalStgBinders, pprStgBindingsWithSRTs )
+ import SimplStg		( stg2stg )
+ import CodeGen		( codeGen )
++import Interpreter	( interpret )
+ #if ! OMIT_NATIVE_CODEGEN
+ import AsmCodeGen	( dumpRealAsm, writeRealAsm )
+ #endif
+@@ -68,7 +69,9 @@
+     -- ******* READER
+     show_pass "Reader"	>>
+     _scc_     "Reader"
+-    rdModule		>>= \ (mod_name, rdr_module) ->
++    rdModule		>>= \ (pt, l) ->
++    if opt_Interpreter then interpret (map snd l) pt else
++    return (l !! opt_ModuleNumber) >>= \ (mod_name, rdr_module) ->
+ 
+     dumpIfSet opt_D_dump_rdr "Reader" (ppr rdr_module)		>>
+ 
+diff --git a/ghc/compiler/parser/hsclink.c b/ghc/compiler/parser/hsclink.c
+index a42a667ea3..1fb5a18a1b 100644
+--- a/ghc/compiler/parser/hsclink.c
++++ b/ghc/compiler/parser/hsclink.c
+@@ -23,7 +23,7 @@ hspmain()
+ long hsp_argc;
+ char *hsp_argv[MAX_HSP_ARGS];	/* sigh */
+ 
+-tree
++list
+ hspmain()
+ {
+     int hsp_i, prog_i;
+@@ -35,6 +35,9 @@ hspmain()
+     */
+     hsp_i = 0;
+     for (prog_i = 0; prog_i < prog_argc; prog_i++) {
++	if (prog_argv[prog_i][0] == '-' && prog_argv[prog_i][1] == '-' && prog_argv[prog_i][2] == 0) {
++	    break;
++	}
+ 	if (prog_argv[prog_i][0] == ',') {
+ 	    hsp_argv[hsp_i] = &(prog_argv[prog_i][1]);
+ 	    hsp_i++;
+diff --git a/ghc/compiler/parser/hsparser.y b/ghc/compiler/parser/hsparser.y
+index 2e78de726e..15daa770cb 100644
+--- a/ghc/compiler/parser/hsparser.y
++++ b/ghc/compiler/parser/hsparser.y
+@@ -48,7 +48,7 @@
+ 
+ extern list Lnil;
+ extern list reverse_list();
+-extern tree root;
++extern list root;
+ 
+ /* For FN, SAMEFN macros */
+ extern qid	fns[];
+@@ -248,6 +248,7 @@
+   		gdrhs gdpat 
+   		lampats	cexps gd texps
+ 		tyvars1 constr_context forall
++		modules
+ 
+ %type <umatch>  alt
+ 
+@@ -263,6 +264,7 @@
+ 		funlhs funlhs1 funlhs2 funlhs3 qual leftexp
+  		pat dpat cpat bpat apat apatc conpat rpat
+           	patk bpatk apatck conpatk
++		module body main_body
+ 
+ 
+ %type <uid>	MINUS PLUS DARROW AS LAZY
+@@ -311,36 +313,43 @@
+ *                                                                     *
+ **********************************************************************/
+ 
+-%start module
++%start top
+ 
+ %%
++top	:  modules	{ root = $1; }
++	;
++
++modules	:  /* empty */		{ $$ = mklnil(); }
++        |  module modules	{ $$ = mklcons($1, $2); }
++	;
++
+ module	:  modulekey modid maybeexports
+ 		{
+ 		  modulelineno = startlineno;
+ 		  the_module_name = $2;
+ 		  module_exports = $3;
+ 		}
+-	   WHERE body
++	   WHERE body	{ $$ = $6; }
+ 	|	{ 
+ 		  modulelineno = 0;
+ 		  the_module_name = install_literal("Main");
+ 		  module_exports = mknothing();
+                 }
+-	   body
++	   body		{ $$ = $2; }
+ 	;
+ 
+-body	:  ocurly { setstartlineno(); } main_body ccurly
+-        |  vocurly                      main_body vccurly
++body	:  ocurly { setstartlineno(); } main_body ccurly	{ $$ = $3; }
++        |  vocurly                      main_body vccurly	{ $$ = $2; }
+ 	;
+ 
+ main_body  :  interface_pragma maybeimpdecls topdecls
+ 	       {
+-		 root = mkhmodule(the_module_name, $2, module_exports,
++		 $$ = mkhmodule(the_module_name, $2, module_exports,
+ 				  $3, source_version,modulelineno);
+ 	       }
+ 	   |  interface_pragma impdecls
+ 	       {
+-		 root = mkhmodule(the_module_name, $2, module_exports,
++		 $$ = mkhmodule(the_module_name, $2, module_exports,
+ 			          mknullbind(), source_version, modulelineno);
+ 	       }
+ 
+diff --git a/ghc/compiler/parser/hspincl.h b/ghc/compiler/parser/hspincl.h
+index a7e286e0d8..fc3716a3d6 100644
+--- a/ghc/compiler/parser/hspincl.h
++++ b/ghc/compiler/parser/hspincl.h
+@@ -58,6 +58,6 @@ extern list hspmain();
+ #include "gdexp.h"
+ 
+ extern char *input_filename;
+-extern tree hspmain();
++extern list hspmain();
+ 
+ #endif /* HSPINCL_H */
+diff --git a/ghc/compiler/parser/main.c b/ghc/compiler/parser/main.c
+index eb1c58ecb4..9ad4831e94 100644
+--- a/ghc/compiler/parser/main.c
++++ b/ghc/compiler/parser/main.c
+@@ -33,7 +33,7 @@ main(int argc, char **argv)
+     if(yyparse() == 0 && !etags)
+       {
+ 	/* No syntax errors. */
+-	pprogram(root);
++	pprogram(lhd(root));
+ 	printf("\n");
+ 	exit(0);
+       } 
+diff --git a/ghc/compiler/parser/util.c b/ghc/compiler/parser/util.c
+index 6c0ebfb7d1..41b0abf871 100644
+--- a/ghc/compiler/parser/util.c
++++ b/ghc/compiler/parser/util.c
+@@ -10,7 +10,7 @@
+ #include "constants.h"
+ #include "utils.h"
+ 
+-tree root; 		/* The root of the built syntax tree. */
++list root; 		/* The root of the built syntax tree. */
+ list Lnil;
+ 
+ BOOLEAN nonstandardFlag = FALSE;  /* Set if non-std Haskell extensions to be used. */
+diff --git a/ghc/compiler/parser/utils.h b/ghc/compiler/parser/utils.h
+index 7b419d4ce2..a3e54e1046 100644
+--- a/ghc/compiler/parser/utils.h
++++ b/ghc/compiler/parser/utils.h
+@@ -6,7 +6,7 @@
+ #define __UTILS_H
+ 
+ /* stuff from util.c */
+-extern tree root;
++extern list root;
+ extern list Lnil;
+ extern list all;
+ 
+diff --git a/ghc/compiler/reader/ReadPrefix.lhs b/ghc/compiler/reader/ReadPrefix.lhs
+index 7ed114085e..2bc7e18bee 100644
+--- a/ghc/compiler/reader/ReadPrefix.lhs
++++ b/ghc/compiler/reader/ReadPrefix.lhs
+@@ -115,8 +115,8 @@
+ %************************************************************************
+ 
+ \begin{code}
+-rdModule :: IO (Module,		    -- this module's name
+-	        RdrNameHsModule)    -- the main goods
++rdModule :: IO (U_VOID_STAR, [(Module,		    -- this module's name
++	        RdrNameHsModule)])    -- the main goods
+ 
+ rdModule
+   = _ccall_ hspmain 	>>= \ pt -> -- call the Yacc parser!
+@@ -124,6 +124,8 @@
+ 	srcfile  = mkFastCharString ``input_filename'' -- What A Great Hack! (TM)
+     in
+     initUgn 		  $
++    rdU_list pt `thenUgn` \ (U_lcons pt l) ->
++    wlkList (\ pt ->
+     rdU_tree pt `thenUgn` \ (U_hmodule mod_fs himplist hexplist
+ 				       hmodlist srciface_version srcline) ->
+     let
+@@ -148,7 +150,8 @@
+ 	      		  imports
+ 			  top_decls
+ 	      		  src_loc
+-       		)
++       		)) l `thenUgn` \ l ->
++    returnUgn (pt, l)
+ \end{code}
+ 
+ %************************************************************************
+@@ -272,7 +275,12 @@
+       --------------------------------------------------------------
+       U_lit lit ->
+ 	wlkLiteral lit	`thenUgn` \ lit ->
+-	returnUgn (HsLit lit)
++	returnUgn (case lit of
++	             HsInt integer ->
++	               HsApp
++	                 (HsVar (mkSrcUnqual dataName SLIT("I#")))
++	                 (HsLit (HsIntPrim integer))
++	             _ -> HsLit lit)
+ 
+       U_ident n -> 			-- simple identifier
+ 	wlkVarId n	`thenUgn` \ var ->
+diff --git a/ghc/compiler/utils/Argv.lhs b/ghc/compiler/utils/Argv.lhs
+index 0d6262abdb..1735b10e88 100644
+--- a/ghc/compiler/utils/Argv.lhs
++++ b/ghc/compiler/utils/Argv.lhs
+@@ -18,7 +18,7 @@
+ #endif
+ 
+ argv :: [FAST_STRING]
+-argv = unpackArgv ``prog_argv'' (``prog_argc''::Int)
++argv = takeWhile (\ s -> unpackFS s /= "--") (unpackArgv ``prog_argv'' (``prog_argc''::Int))
+ 
+ unpackArgv :: Addr -> Int -> [FAST_STRING] -- argv[1 .. argc-1]
+ 

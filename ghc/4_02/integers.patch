@@ -1,0 +1,2995 @@
+--- a/ghc/compiler/absCSyn/PprAbsC.lhs
++++ b/ghc/compiler/absCSyn/PprAbsC.lhs
+@@ -173,8 +173,8 @@
+ -- What problem is the re-ordering trying to solve ?
+ pprAbsC (CSwitch discrim [(tag1@(MachInt i1 _), alt_code1),
+ 			      (tag2@(MachInt i2 _), alt_code2)] deflt) c
+-  | empty_deflt && ((i1 == 0 && i2 == 1) || (i1 == 1 && i2 == 0))
+-  = if (i1 == 0) then
++  | empty_deflt && ((i1 == fromInt_ num_witness_Integer 0 && i2 == fromInt_ num_witness_Integer 1) || (i1 == fromInt_ num_witness_Integer 1 && i2 == fromInt_ num_witness_Integer 0))
++  = if (i1 == fromInt_ num_witness_Integer 0) then
+ 	do_if_stmt discrim tag1 alt_code1 alt_code2 c
+     else
+ 	do_if_stmt discrim tag2 alt_code2 alt_code1 c
+@@ -622,7 +622,7 @@
+   = case tag of
+       -- This special case happens when testing the result of a comparison.
+       -- We can just avoid some redundant clutter in the output.
+-      MachInt n _ | n==0 -> ppr_if_stmt (pprAmode discrim)
++      MachInt n _ | n==fromInt_ num_witness_Integer 0 -> ppr_if_stmt (pprAmode discrim)
+ 				      deflt alt_code
+ 				      (addrModeCosts discrim Rhs) c
+       other              -> let
+diff --git a/ghc/compiler/basicTypes/Const.lhs b/ghc/compiler/basicTypes/Const.lhs
+index 1a48d0cdf0..b997086fa2 100644
+--- a/ghc/compiler/basicTypes/Const.lhs
++++ b/ghc/compiler/basicTypes/Const.lhs
+@@ -204,8 +204,8 @@
+  | otherwise = MachInt i True{-signed-}
+  where
+   out_of_range =
+---    i < fromInt minBound ||
+-    i > fromInt maxInt
++--    i < fromInt_ num_witness_Integer minBound ||
++    i > fromInt_ num_witness_Integer maxInt
+ 
+ mkMachInt64  x = MachInt64 x True{-signed-}
+ mkMachWord64 x = MachInt64 x False{-unsigned-}
+diff --git a/ghc/compiler/codeGen/CgTailCall.lhs b/ghc/compiler/codeGen/CgTailCall.lhs
+index b6953b1ce0..4a0f8560c8 100644
+--- a/ghc/compiler/codeGen/CgTailCall.lhs
++++ b/ghc/compiler/codeGen/CgTailCall.lhs
+@@ -489,7 +489,7 @@
+ 			= load_regs_and_profiling_code		`mkAbsCStmts`
+ 			  CJump (CLbl join_lbl CodePtrRep)
+ 
+-		    semi_tagged_alts = [ (mkMachInt (fromInt (tag - fIRST_TAG)),
++		    semi_tagged_alts = [ (mkMachInt (fromInt_ num_witness_Integer (tag - fIRST_TAG)),
+ 					  join_details_to_code join_details)
+ 				       | (tag, join_details) <- st_alts
+ 				       ]
+diff --git a/ghc/compiler/coreSyn/CoreUnfold.lhs b/ghc/compiler/coreSyn/CoreUnfold.lhs
+index 8a49dd5430..9fa9915160 100644
+--- a/ghc/compiler/coreSyn/CoreUnfold.lhs
++++ b/ghc/compiler/coreSyn/CoreUnfold.lhs
+@@ -393,7 +393,7 @@
+     discount :: Int
+     discount = length (take n_vals_wanted arg_evals) +
+ 	       round (opt_UnfoldingKeenessFactor * 
+-		      fromInt (arg_discount + result_discount))
++		      fromInt_ num_witness_Float (arg_discount + result_discount))
+ 
+     arg_discount    = sum (zipWith mk_arg_discount discount_vec arg_evals)
+     result_discount = mk_result_discount (drop n_vals_wanted arg_evals)
+diff --git a/ghc/compiler/deSugar/Check.lhs b/ghc/compiler/deSugar/Check.lhs
+index 681f00861f..07bf0a38d9 100644
+--- a/ghc/compiler/deSugar/Check.lhs
++++ b/ghc/compiler/deSugar/Check.lhs
+@@ -673,11 +673,11 @@
+ 
+     mk_addr   l@(HsLitLit s) = l
+ 
+-    mk_float  (HsInt i)      = HsFloatPrim (fromInteger i)
++    mk_float  (HsInt i)      = HsFloatPrim (fromInteger_ num_witness_Ratio i)
+     mk_float  (HsFrac f)     = HsFloatPrim f
+     mk_float  l@(HsLitLit s) = l
+ 
+-    mk_double (HsInt i)      = HsDoublePrim (fromInteger i)
++    mk_double (HsInt i)      = HsDoublePrim (fromInteger_ num_witness_Ratio i)
+     mk_double (HsFrac f)     = HsDoublePrim f
+     mk_double l@(HsLitLit s) = l
+ 
+diff --git a/ghc/compiler/deSugar/DsForeign.lhs b/ghc/compiler/deSugar/DsForeign.lhs
+index bfe23c3eba..0655994ea7 100644
+--- a/ghc/compiler/deSugar/DsForeign.lhs
++++ b/ghc/compiler/deSugar/DsForeign.lhs
+@@ -398,7 +398,7 @@
+ 	to be entered using an external calling convention
+ 	(stdcall, ccall).
+        -}
+-      adj_args      = [ mkLit (mkMachInt (fromInt (callConvToInt cconv)))
++      adj_args      = [ mkLit (mkMachInt (fromInt_ num_witness_Integer (callConvToInt cconv)))
+ 		      , Var stbl_value
+ 		      , mkLit (MachLitLit (_PK_ fe_nm) addrPrimTy)
+ 		      ]
+diff --git a/ghc/compiler/deSugar/Match.lhs b/ghc/compiler/deSugar/Match.lhs
+index d9de19c434..19b2cb2e3b 100644
+--- a/ghc/compiler/deSugar/Match.lhs
++++ b/ghc/compiler/deSugar/Match.lhs
+@@ -558,11 +558,11 @@
+ 
+     mk_addr   l@(HsLitLit s) = l
+ 
+-    mk_float  (HsInt i)      = HsFloatPrim (fromInteger i)
++    mk_float  (HsInt i)      = HsFloatPrim (fromInteger_ num_witness_Ratio i)
+     mk_float  (HsFrac f)     = HsFloatPrim f
+     mk_float  l@(HsLitLit s) = l
+ 
+-    mk_double (HsInt i)      = HsDoublePrim (fromInteger i)
++    mk_double (HsInt i)      = HsDoublePrim (fromInteger_ num_witness_Ratio i)
+     mk_double (HsFrac f)     = HsDoublePrim f
+     mk_double l@(HsLitLit s) = l
+ 
+diff --git a/ghc/compiler/main/Constants.lhs b/ghc/compiler/main/Constants.lhs
+index e24fe836be..dc2c715e09 100644
+--- a/ghc/compiler/main/Constants.lhs
++++ b/ghc/compiler/main/Constants.lhs
+@@ -126,21 +126,21 @@
+ 
+ \begin{code}
+ tARGET_MIN_INT, tARGET_MAX_INT :: Integer
+-tARGET_MIN_INT = -536870912
+-tARGET_MAX_INT =  536870912
++tARGET_MIN_INT = -fromInt_ num_witness_Integer 536870912
++tARGET_MAX_INT =  fromInt_ num_witness_Integer 536870912
+ \end{code}
+  
+ Constants for semi-tagging; the tags associated with the data
+ constructors will start at 0 and go up.
+ 
+ \begin{code}
+-oTHER_TAG = (INFO_OTHER_TAG :: Integer)	-- (-1) unevaluated, probably
++oTHER_TAG = (fromInt_ num_witness_Integer INFO_OTHER_TAG :: Integer)	-- (-1) unevaluated, probably
+ \end{code}
+ 
+ \begin{code}
+ mIN_INTLIKE, mAX_INTLIKE :: Integer	-- Only used to compare with (MachInt Integer)
+-mIN_INTLIKE = MIN_INTLIKE
+-mAX_INTLIKE = MAX_INTLIKE
++mIN_INTLIKE = fromInt_ num_witness_Integer MIN_INTLIKE
++mAX_INTLIKE = fromInt_ num_witness_Integer MAX_INTLIKE
+ \end{code}
+ 
+ A little function that abstracts the stack direction.  Note that most
+diff --git a/ghc/compiler/nativeGen/AbsCStixGen.lhs b/ghc/compiler/nativeGen/AbsCStixGen.lhs
+index 08dce9fe37..bdee4b0fbd 100644
+--- a/ghc/compiler/nativeGen/AbsCStixGen.lhs
++++ b/ghc/compiler/nativeGen/AbsCStixGen.lhs
+@@ -178,9 +178,9 @@
+     padding_wds = if closureUpdReqd cl_info then
+     	    		take (1 + max 0 (mIN_UPD_SIZE - length amodes)) zeros
+     	   	  else
+-    	    		[StInt 0]
++    	    		[StInt (fromInt_ num_witness_Integer 0)]
+ 
+-    zeros = StInt 0 : zeros
++    zeros = StInt (fromInt_ num_witness_Integer 0) : zeros
+ 
+     {- needed??? --SDM
+     	-- Watch out for VoidKinds...cf. PprAbsC
+@@ -360,9 +360,9 @@
+ 
+       [(tag1@(MachInt i1 _), alt_code1),
+        (tag2@(MachInt i2 _), alt_code2)]
+-	| deflt_is_empty && i1 == 0 && i2 == 1
++	| deflt_is_empty && i1 == fromInt_ num_witness_Integer 0 && i2 == fromInt_ num_witness_Integer 1
+ 	-> mkIfThenElse discrim tag1 alt_code1 alt_code2
+-	| deflt_is_empty && i1 == 1 && i2 == 0
++	| deflt_is_empty && i1 == fromInt_ num_witness_Integer 1 && i2 == fromInt_ num_witness_Integer 0
+ 	-> mkIfThenElse discrim tag2 alt_code2 alt_code1
+ 
+ 	-- If the @discrim@ is simple, then this unfolding is safe.
+@@ -412,7 +412,7 @@
+ \begin{code}
+ 
+  intTag :: Literal -> Integer
+- intTag (MachChar c)  = fromInt (ord c)
++ intTag (MachChar c)  = fromInt_ num_witness_Integer (ord c)
+  intTag (MachInt i _) = i
+  intTag _ = panic "intTag"
+ 
+@@ -554,7 +554,7 @@
+ 	returnUs (\xs -> cjmp : alt_code xs)
+ 
+     where
+-    	rangeOfOne = not floating && intTag lowTag + 1 >= intTag highTag
++    	rangeOfOne = not floating && intTag lowTag + fromInt_ num_witness_Integer 1 >= intTag highTag
+     	-- When there is only one possible tag left in range, we skip the comparison
+ 
+  mkBinaryTree am floating alts choices lowTag highTag udlbl
+diff --git a/ghc/compiler/nativeGen/AsmCodeGen.lhs b/ghc/compiler/nativeGen/AsmCodeGen.lhs
+index ce8587bfcb..15f86c9100 100644
+--- a/ghc/compiler/nativeGen/AsmCodeGen.lhs
++++ b/ghc/compiler/nativeGen/AsmCodeGen.lhs
+@@ -219,23 +219,23 @@
+ 
+ primOpt op args@[StInt x, StInt y]
+   = case op of
+-    	CharGtOp -> StInt (if x > y  then 1 else 0)
+-    	CharGeOp -> StInt (if x >= y then 1 else 0)
+-    	CharEqOp -> StInt (if x == y then 1 else 0)
+-    	CharNeOp -> StInt (if x /= y then 1 else 0)
+-    	CharLtOp -> StInt (if x < y  then 1 else 0)
+-    	CharLeOp -> StInt (if x <= y then 1 else 0)
++    	CharGtOp -> StInt (if x > y  then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	CharGeOp -> StInt (if x >= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	CharEqOp -> StInt (if x == y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	CharNeOp -> StInt (if x /= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	CharLtOp -> StInt (if x < y  then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	CharLeOp -> StInt (if x <= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
+     	IntAddOp -> StInt (x + y)
+     	IntSubOp -> StInt (x - y)
+     	IntMulOp -> StInt (x * y)
+     	IntQuotOp -> StInt (x `quot` y)
+     	IntRemOp -> StInt (x `rem` y)
+-    	IntGtOp -> StInt (if x > y  then 1 else 0)
+-    	IntGeOp -> StInt (if x >= y then 1 else 0)
+-    	IntEqOp -> StInt (if x == y then 1 else 0)
+-    	IntNeOp -> StInt (if x /= y then 1 else 0)
+-    	IntLtOp -> StInt (if x < y  then 1 else 0)
+-    	IntLeOp -> StInt (if x <= y then 1 else 0)
++    	IntGtOp -> StInt (if x > y  then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	IntGeOp -> StInt (if x >= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	IntEqOp -> StInt (if x == y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	IntNeOp -> StInt (if x /= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	IntLtOp -> StInt (if x < y  then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
++    	IntLeOp -> StInt (if x <= y then fromInt_ num_witness_Integer 1 else fromInt_ num_witness_Integer 0)
+ 	-- ToDo: WordQuotOp, WordRemOp.
+     	_ -> StPrim op args
+ \end{code}
+@@ -271,7 +271,7 @@
+   = case op of
+     	IntMulOp  -> x
+     	IntQuotOp -> x
+-    	IntRemOp  -> StInt 0
++    	IntRemOp  -> StInt (fromInt_ num_witness_Integer 0)
+     	_	  -> StPrim op args
+ \end{code}
+ 
+diff --git a/ghc/compiler/nativeGen/MachCode.lhs b/ghc/compiler/nativeGen/MachCode.lhs
+index 0fd076d3f0..8e0208131a 100644
+--- a/ghc/compiler/nativeGen/MachCode.lhs
++++ b/ghc/compiler/nativeGen/MachCode.lhs
+@@ -80,7 +80,7 @@
+ 				   ImmCLbl lbl)
+ 	-- the linker can handle simple arithmetic...
+ 	getData (StIndex rep (StCLbl lbl) (StInt off)) =
+-		returnUs (id, ImmIndex lbl (fromInteger (off * sizeOf rep)))
++		returnUs (id, ImmIndex lbl (fromInteger_ num_witness_Int (off * sizeOf rep)))
+ \end{code}
+ 
+ %************************************************************************
+@@ -162,11 +162,11 @@
+ maybeImm (StCLbl   l) = Just (ImmCLbl l)
+ 
+ maybeImm (StIndex rep (StCLbl l) (StInt off)) = 
+-	Just (ImmIndex l (fromInteger (off * sizeOf rep)))
++	Just (ImmIndex l (fromInteger_ num_witness_Int (off * sizeOf rep)))
+ 
+ maybeImm (StInt i)
+   | i >= toInteger minInt && i <= toInteger maxInt
+-  = Just (ImmInt (fromInteger i))
++  = Just (ImmInt (fromInteger_ num_witness_Int i))
+   | otherwise
+   = Just (ImmInteger i)
+ 
+@@ -492,7 +492,7 @@
+     in
+     returnUs (Any IntRep code)
+   where
+-    src = ImmInt (fromInteger i)
++    src = ImmInt (fromInteger_ num_witness_Int i)
+ 
+ getRegister leaf
+   | maybeToBool imm
+@@ -752,7 +752,7 @@
+ 	let
+ 	    code = registerCode register tmp
+ 	    src1 = registerName register tmp
+-	    src2 = ImmInt (fromInteger y)
++	    src2 = ImmInt (fromInteger_ num_witness_Int y)
+ 	    code__2 dst = code .
+ 			  mkSeqInstr (LEA sz (OpAddr (AddrBaseIndex (Just src1) Nothing src2)) (OpReg dst))
+ 	in
+@@ -824,7 +824,7 @@
+ 	let
+ 	    code = registerCode register tmp
+ 	    src1 = registerName register tmp
+-	    src2 = ImmInt (-(fromInteger y))
++	    src2 = ImmInt (-(fromInteger_ num_witness_Int y))
+ 	    code__2 dst = code .
+ 			  mkSeqInstr (LEA sz (OpAddr (AddrBaseIndex (Just src1) Nothing src2)) (OpReg dst))
+ 	in
+@@ -866,7 +866,7 @@
+ 	let
+ 	    code1   = registerCode register1 tmp1 asmVoid
+ 	    src1    = registerName register1 tmp1
+-	    src2    = ImmInt (fromInteger i)
++	    src2    = ImmInt (fromInteger_ num_witness_Int i)
+ 	    code__2 = asmParThen [code1] .
+ 		      mkSeqInstrs [-- we put src2 in (ebx)
+ 				   MOV L (OpImm src2) (OpAddr (AddrBaseIndex (Just ebx) Nothing (ImmInt OFFSET_R1))),
+@@ -916,7 +916,7 @@
+ 
+ getRegister (StInt i)
+   = let
+-    	src = ImmInt (fromInteger i)
++    	src = ImmInt (fromInteger_ num_witness_Int i)
+     	code dst = mkSeqInstr (MOV L (OpImm src) (OpReg dst))
+     in
+     	returnUs (Any IntRep code)
+@@ -1104,7 +1104,7 @@
+ getRegister (StInt i)
+   | fits13Bits i
+   = let
+-    	src = ImmInt (fromInteger i)
++    	src = ImmInt (fromInteger_ num_witness_Int i)
+     	code dst = mkSeqInstr (OR False g0 (RIImm src) dst)
+     in
+     	returnUs (Any IntRep code)
+@@ -1154,7 +1154,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (-(fromInteger i))
++    	off  = ImmInt (-(fromInteger_ num_witness_Int i))
+     in
+     returnUs (Amode (AddrRegImm reg off) code)
+ 
+@@ -1164,7 +1164,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (fromInteger i)
++    	off  = ImmInt (fromInteger_ num_witness_Int i)
+     in
+     returnUs (Amode (AddrRegImm reg off) code)
+ 
+@@ -1194,7 +1194,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (-(fromInteger i))
++    	off  = ImmInt (-(fromInteger_ num_witness_Int i))
+     in
+     returnUs (Amode (AddrBaseIndex (Just reg) Nothing off) code)
+ 
+@@ -1203,7 +1203,7 @@
+   = let
+ 	code = mkSeqInstrs []
+     in
+-    returnUs (Amode (ImmAddr imm__2 (fromInteger i)) code)
++    returnUs (Amode (ImmAddr imm__2 (fromInteger_ num_witness_Int i)) code)
+   where
+     imm    = maybeImm x
+     imm__2 = case imm of Just x -> x
+@@ -1214,7 +1214,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (fromInteger i)
++    	off  = ImmInt (fromInteger_ num_witness_Int i)
+     in
+     returnUs (Amode (AddrBaseIndex (Just reg) Nothing off) code)
+ 
+@@ -1263,7 +1263,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (-(fromInteger i))
++    	off  = ImmInt (-(fromInteger_ num_witness_Int i))
+     in
+     returnUs (Amode (AddrRegImm reg off) code)
+ 
+@@ -1275,7 +1275,7 @@
+     let
+     	code = registerCode register tmp
+     	reg  = registerName register tmp
+-    	off  = ImmInt (fromInteger i)
++    	off  = ImmInt (fromInteger_ num_witness_Int i)
+     in
+     returnUs (Amode (AddrRegImm reg off) code)
+ 
+@@ -1560,7 +1560,7 @@
+     let
+ 	code = registerCode register tmp
+ 	src1 = registerName register tmp
+-    	src2 = ImmInt (fromInteger y)
++    	src2 = ImmInt (fromInteger_ num_witness_Int y)
+ 	code__2 = code . mkSeqInstr (SUB False True src1 (RIImm src2) g0)
+     in
+     returnUs (CondCode False cond code__2)
+@@ -2316,7 +2316,7 @@
+ genCCall fn cconv kind [StInt i]
+   | fn == SLIT ("PerformGC_wrapper")
+   = let
+-     call = [MOV L (OpImm (ImmInt (fromInteger i))) (OpReg eax),
++     call = [MOV L (OpImm (ImmInt (fromInteger_ num_witness_Int i))) (OpReg eax),
+ 	     CALL (ImmLit (ptext (if underscorePrefix then (SLIT ("_PerformGC_wrapper")) else (SLIT ("PerformGC_wrapper")))))]
+     in
+     returnInstrs call
+@@ -2324,7 +2324,7 @@
+ {- OLD:
+   = getUniqLabelNCG    	    	    `thenUs` \ lbl ->
+     let
+-	call = [MOV L (OpImm (ImmInt (fromInteger i))) (OpReg eax),
++	call = [MOV L (OpImm (ImmInt (fromInteger_ num_witness_Int i))) (OpReg eax),
+ 		MOV L (OpImm (ImmCLbl lbl))
+ 		      -- this is hardwired
+ 		      (OpAddr (AddrBaseIndex (Just ebx) Nothing (ImmInt 104))),
+@@ -2379,7 +2379,7 @@
+ 	-> UniqSM (InstrBlock,Operand, Size)	-- code, operator, size
+ 
+     get_op (StInt i)
+-      = returnUs (asmParThen [], OpImm (ImmInt (fromInteger i)), L)
++      = returnUs (asmParThen [], OpImm (ImmInt (fromInteger_ num_witness_Int i)), L)
+ 
+     get_op (StInd pk mem)
+       = getAmode mem		`thenUs` \ amode ->
+@@ -2718,7 +2718,7 @@
+     let
+     	code = registerCode register tmp
+     	src1 = registerName register tmp
+-    	src2 = ImmInt (fromInteger y)
++    	src2 = ImmInt (fromInteger_ num_witness_Int y)
+     	code__2 dst = code . mkSeqInstr (instr src1 (RIImm src2) dst)
+     in
+     returnUs (Any IntRep code__2)
+@@ -2988,7 +2988,7 @@
+     let
+     	code = registerCode register tmp
+     	src1 = registerName register tmp
+-    	src2 = ImmInt (fromInteger y)
++    	src2 = ImmInt (fromInteger_ num_witness_Int y)
+     	code__2 dst = code . mkSeqInstr (instr src1 (RIImm src2) dst)
+     in
+     returnUs (Any IntRep code__2)
+diff --git a/ghc/compiler/nativeGen/MachMisc.lhs b/ghc/compiler/nativeGen/MachMisc.lhs
+index ced547477f..83d87933d8 100644
+--- a/ghc/compiler/nativeGen/MachMisc.lhs
++++ b/ghc/compiler/nativeGen/MachMisc.lhs
+@@ -138,7 +138,7 @@
+ sizeOf pr = case (primRepToSize pr) of
+   IF_ARCH_alpha({B -> 1; BU -> 1; {-W -> 2; WU -> 2; L -> 4; SF -> 4;-} _ -> 8},)
+   IF_ARCH_sparc({B -> 1; BU -> 1; {-HW -> 2; HWU -> 2;-} W -> 4; {-D -> 8;-} F -> 4; DF -> 8},)
+-  IF_ARCH_i386( {B -> 1; {-S -> 2;-} L -> 4; F -> 4; DF -> 8 },)
++  IF_ARCH_i386( {B -> fromInt_ num_witness_Integer 1; {-S -> 2;-} L -> fromInt_ num_witness_Integer 4; F -> fromInt_ num_witness_Integer 4; DF -> fromInt_ num_witness_Integer 8 },)
+ \end{code}
+ 
+ % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+@@ -185,8 +185,8 @@
+ \begin{code}
+ targetMinDouble = MachDouble (-1.7976931348623157e+308)
+ targetMaxDouble = MachDouble (1.7976931348623157e+308)
+-targetMinInt = mkMachInt (-2147483648)
+-targetMaxInt = mkMachInt 2147483647
++targetMinInt = mkMachInt (fromInt_ num_witness_Integer (-2147483647 - 1))
++targetMaxInt = mkMachInt (fromInt_ num_witness_Integer 2147483647)
+ \end{code}
+ 
+ % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+@@ -201,10 +201,10 @@
+ 
+ exactLog2 :: Integer -> Maybe Integer
+ exactLog2 x
+-  = if (x <= 0 || x >= 2147483648) then
++  = if (x <= fromInt_ num_witness_Integer 0 || x >= fromInt_ num_witness_Integer 2147483647 + fromInt_ num_witness_Integer 1) then
+        Nothing
+     else
+-       case (fromInteger x) of { I# x# ->
++       case (fromInteger_ num_witness_Int x) of { I# x# ->
+        if (w2i ((i2w x#) `and#` (i2w (0# -# x#))) /=# x#) then
+ 	  Nothing
+        else
+diff --git a/ghc/compiler/nativeGen/MachRegs.lhs b/ghc/compiler/nativeGen/MachRegs.lhs
+index d90d93ed3d..59369d5c1c 100644
+--- a/ghc/compiler/nativeGen/MachRegs.lhs
++++ b/ghc/compiler/nativeGen/MachRegs.lhs
+@@ -131,7 +131,7 @@
+       ImmAddr i off0	  -> Just (ImmAddr i (off0 + off))
+       AddrBaseIndex r i (ImmInt n) -> Just (AddrBaseIndex r i (ImmInt (n + off)))
+       AddrBaseIndex r i (ImmInteger n)
+-	-> Just (AddrBaseIndex r i (ImmInt (fromInteger (n + toInteger off))))
++	-> Just (AddrBaseIndex r i (ImmInt (fromInteger_ num_witness_Int (n + toInteger off))))
+       _ -> Nothing
+ #endif
+ #if sparc_TARGET_ARCH
+@@ -141,7 +141,7 @@
+        where n2 = n + off
+ 
+       AddrRegImm r (ImmInteger n)
+-       | fits13Bits n2 -> Just (AddrRegImm r (ImmInt (fromInteger n2)))
++       | fits13Bits n2 -> Just (AddrRegImm r (ImmInt (fromInteger_ num_witness_Int n2)))
+        | otherwise     -> Nothing
+        where n2 = n + toInteger off
+ 
+diff --git a/ghc/compiler/nativeGen/StixInfo.lhs b/ghc/compiler/nativeGen/StixInfo.lhs
+index 28e20cae24..a2e013ec40 100644
+--- a/ghc/compiler/nativeGen/StixInfo.lhs
++++ b/ghc/compiler/nativeGen/StixInfo.lhs
+@@ -54,27 +54,27 @@
+ 	-- ToDo: do this using .byte and .word directives.
+ 	type_info :: Word32
+ #ifdef WORDS_BIGENDIAN
+-        type_info = (fromInt flags `shiftL` 24) .|.
+-		    (fromInt closure_type `shiftL` 16) .|.
+-		    (fromInt srt_len)
++        type_info = (fromInt_ num_witness_Word32 flags `shiftL` 24) .|.
++		    (fromInt_ num_witness_Word32 closure_type `shiftL` 16) .|.
++		    (fromInt_ num_witness_Word32 srt_len)
+ #else 
+-        type_info = (fromInt flags) .|.
+-		    (fromInt closure_type `shiftL` 8) .|.
+-		    (fromInt srt_len `shiftL` 16)
++        type_info = (fromInt_ num_witness_Word32 flags) .|.
++		    (fromInt_ num_witness_Word32 closure_type `shiftL` 8) .|.
++		    (fromInt_ num_witness_Word32 srt_len `shiftL` 16)
+ #endif	     
+ 	     
+ 	(srt_label,srt_len) = 
+ 	     case srt of
+-		(lbl, NoSRT) -> (StInt 0, 0)
++		(lbl, NoSRT) -> (StInt (fromInt_ num_witness_Integer 0), 0)
+ 		(lbl, SRT off len) -> 
+ 			(StIndex DataPtrRep (StCLbl lbl) 
+ 				(StInt (toInteger off)), len)
+ 
+ 	layout_info :: Word32
+ #ifdef WORDS_BIGENDIAN
+-	layout_info = (fromInt ptrs `shiftL` 16) .|. fromInt nptrs
++	layout_info = (fromInt_ num_witness_Word32 ptrs `shiftL` 16) .|. fromInt_ num_witness_Word32 nptrs
+ #else 
+-	layout_info = (fromInt ptrs) .|. (fromInt nptrs `shiftL` 16)
++	layout_info = (fromInt_ num_witness_Word32 ptrs) .|. (fromInt_ num_witness_Word32 nptrs `shiftL` 16)
+ #endif	     
+ 
+     	ptrs    = closurePtrsSize cl_info
+@@ -116,18 +116,18 @@
+ 
+ 	type_info :: Word32
+ #ifdef WORDS_BIGENDIAN
+-        type_info = (fromInt flags `shiftL` 24) .|.
+-		    (fromInt closure_type `shiftL` 16) .|.
+-		    (fromInt srt_len)
++        type_info = (fromInt_ num_witness_Word32 flags `shiftL` 24) .|.
++		    (fromInt_ num_witness_Word32 closure_type `shiftL` 16) .|.
++		    (fromInt_ num_witness_Word32 srt_len)
+ #else 
+-        type_info = (fromInt flags) .|.
+-		    (fromInt closure_type `shiftL` 8) .|.
+-		    (fromInt srt_len `shiftL` 16)
++        type_info = (fromInt_ num_witness_Word32 flags) .|.
++		    (fromInt_ num_witness_Word32 closure_type `shiftL` 8) .|.
++		    (fromInt_ num_witness_Word32 srt_len `shiftL` 16)
+ #endif	     
+ 
+ 	(srt_label,srt_len) = 
+ 	     case srt of
+-		(lbl, NoSRT) -> (StInt 0, 0)
++		(lbl, NoSRT) -> (StInt (fromInt_ num_witness_Integer 0), 0)
+ 		(lbl, SRT off len) -> 
+ 			(StIndex DataPtrRep (StCLbl lbl) 
+ 				(StInt (toInteger off)), len)
+diff --git a/ghc/compiler/nativeGen/StixInteger.lhs b/ghc/compiler/nativeGen/StixInteger.lhs
+index 6b9ad9c113..3102b4f0aa 100644
+--- a/ghc/compiler/nativeGen/StixInteger.lhs
++++ b/ghc/compiler/nativeGen/StixInteger.lhs
+@@ -124,8 +124,8 @@
+ 
+ mpAlloc, mpSize, mpData :: StixTree -> StixTree
+ mpAlloc base = StInd IntRep base
+-mpSize base = StInd IntRep (StIndex IntRep base (StInt 1))
+-mpData base = StInd PtrRep (StIndex IntRep base (StInt 2))
++mpSize base = StInd IntRep (StIndex IntRep base (StInt (fromInt_ num_witness_Integer 1)))
++mpData base = StInd PtrRep (StIndex IntRep base (StInt (fromInt_ num_witness_Integer 2)))
+ \end{code}
+ 
+ \begin{code}
+diff --git a/ghc/compiler/nativeGen/StixMacro.lhs b/ghc/compiler/nativeGen/StixMacro.lhs
+index 2597734479..3da5f1cd34 100644
+--- a/ghc/compiler/nativeGen/StixMacro.lhs
++++ b/ghc/compiler/nativeGen/StixMacro.lhs
+@@ -268,8 +268,8 @@
+ 	
+ -- Various canned heap-check routines
+ 
+-gc_chk (StInt n)   = StJump (StLitLbl (ptext SLIT("stg_chk_") <> int (fromInteger n)))
+-gc_enter (StInt n) = StJump (StLitLbl (ptext SLIT("stg_gc_enter_") <> int (fromInteger n)))
++gc_chk (StInt n)   = StJump (StLitLbl (ptext SLIT("stg_chk_") <> int (fromInteger_ num_witness_Int n)))
++gc_enter (StInt n) = StJump (StLitLbl (ptext SLIT("stg_gc_enter_") <> int (fromInteger_ num_witness_Int n)))
+ gc_noregs          = StJump (StLitLbl (ptext SLIT("stg_gc_noregs")))
+ gc_unpt_r1         = StJump (StLitLbl (ptext SLIT("stg_gc_unpt_r1")))
+ gc_unbx_r1         = StJump (StLitLbl (ptext SLIT("stg_gc_unbx_r1")))
+diff --git a/ghc/compiler/nativeGen/StixPrim.lhs b/ghc/compiler/nativeGen/StixPrim.lhs
+index ee1b861fc3..ff3655f687 100644
+--- a/ghc/compiler/nativeGen/StixPrim.lhs
++++ b/ghc/compiler/nativeGen/StixPrim.lhs
+@@ -335,7 +335,7 @@
+ amodeToStix (CIntLike (CLit (MachInt i _)))
+   = StLitLbl ((<>) (ptext SLIT("INTLIKE_closure+")) (int off))
+   where
+-    off = intLikeSize * (fromInteger (i - mIN_INTLIKE))
++    off = intLikeSize * (fromInteger_ num_witness_Int (i - mIN_INTLIKE))
+ 
+ amodeToStix (CIntLike x)
+   = panic "CIntLike"
+@@ -363,8 +363,8 @@
+       ARG_TAG    -> amodeToStix arg -- just an integer no. of words
+       GET_TAG    -> StPrim SrlOp 
+ 			[StInd WordRep (StPrim IntSubOp [amodeToStix arg,
+-							 StInt 1]),
+-			 StInt 16]
++							 StInt (fromInt_ num_witness_Integer 1)]),
++			 StInt (fromInt_ num_witness_Integer 16)]
+ 
+ -- XXX!!!
+ -- GET_TAG(info_ptr) is supposed to be  get_itbl(info_ptr)->srt_len,
+@@ -396,6 +396,6 @@
+ 
+ mutArrPtrsFrozen_info = sStLitLbl SLIT("MUT_ARR_PTRS_FROZEN_info")
+ 
+-charLikeSize = (fixedHdrSize + 1) * (fromInteger (sizeOf PtrRep))
+-intLikeSize  = (fixedHdrSize + 1) * (fromInteger (sizeOf PtrRep))
++charLikeSize = (fixedHdrSize + 1) * (fromInteger_ num_witness_Int (sizeOf PtrRep))
++intLikeSize  = (fixedHdrSize + 1) * (fromInteger_ num_witness_Int (sizeOf PtrRep))
+ \end{code}
+diff --git a/ghc/compiler/reader/Lex.lhs b/ghc/compiler/reader/Lex.lhs
+index c362f3bc35..71e0f46454 100644
+--- a/ghc/compiler/reader/Lex.lhs
++++ b/ghc/compiler/reader/Lex.lhs
+@@ -381,7 +381,7 @@
+ 		in let v = readRational__ (lexemeToString l) in
+ 	           cont (ITrational v) (stepOverLexeme l)
+ 
+-         _ -> cont (ITinteger (fromInt (minus acc'))) (stepOverLexeme buf')
++         _ -> cont (ITinteger (fromInt_ num_witness_Integer (minus acc'))) (stepOverLexeme buf')
+ 
+ -----------
+ lex_cstring cont buf =
+@@ -398,7 +398,7 @@
+ #if __GLASGOW_HASKELL__ >= 303
+ is_ctype :: Word8 -> Char# -> Bool
+ is_ctype mask = \c ->
+-   (indexWord8OffAddr (``char_types'' :: Addr) (ord (C# c)) .&. mask) /= 0
++   (indexWord8OffAddr (``char_types'' :: Addr) (ord (C# c)) .&. mask) /= fromInt_ num_witness_Word8 0
+ #else
+ is_ctype :: Int -> Char# -> Bool
+ is_ctype (I# mask) = \c ->
+@@ -408,12 +408,12 @@
+ 	(flag_word `and#` (int2Word# mask)) `neWord#` (int2Word# 0#)
+ #endif
+ 
+-is_ident  = is_ctype 1
+-is_symbol = is_ctype 2
+-is_any    = is_ctype 4
+-is_space  = is_ctype 8
+-is_upper  = is_ctype 16
+-is_digit  = is_ctype 32
++is_ident  = is_ctype (fromInt_ num_witness_Word8 1)
++is_symbol = is_ctype (fromInt_ num_witness_Word8 2)
++is_any    = is_ctype (fromInt_ num_witness_Word8 4)
++is_space  = is_ctype (fromInt_ num_witness_Word8 8)
++is_upper  = is_ctype (fromInt_ num_witness_Word8 16)
++is_digit  = is_ctype (fromInt_ num_witness_Word8 32)
+ 
+ -----------------------------------------------------------------------------
+ -- identifiers, symbols etc.
+@@ -745,7 +745,7 @@
+ -}
+ checkVersion :: Maybe Integer -> IfM ()
+ checkVersion mb@(Just v) s l
+- | (v==0) || (v == fromInt opt_HiVersion) || opt_NoHiCheck = Succeeded ()
++ | (v==fromInt_ num_witness_Integer 0) || (v == fromInt_ num_witness_Integer opt_HiVersion) || opt_NoHiCheck = Succeeded ()
+  | otherwise = Failed (ifaceVersionErr mb l ([]::[IfaceToken]){-Todo-})
+ checkVersion mb@Nothing  s l 
+  | "hi-boot" `isSuffixOf` (_UNPK_ (srcLocFile l)) = Succeeded ()
+diff --git a/ghc/compiler/reader/PrefixSyn.lhs b/ghc/compiler/reader/PrefixSyn.lhs
+index 696c4b5c03..cf8aea36f3 100644
+--- a/ghc/compiler/reader/PrefixSyn.lhs
++++ b/ghc/compiler/reader/PrefixSyn.lhs
+@@ -65,27 +65,27 @@
+ readInteger :: String -> Integer
+ 
+ readInteger ('-' : xs)	     = - (readInteger xs)
+-readInteger ('0' : 'o' : xs) = chk (stoo 0 xs)
+-readInteger ('0' : 'x' : xs) = chk (stox 0 xs)
+-readInteger ['0']	     = 0    -- efficiency shortcut?
+-readInteger ['1']	     = 1    -- ditto?
+-readInteger xs		     = chk (stoi 0 xs)
++readInteger ('0' : 'o' : xs) = chk (stoo (fromInt_ num_witness_Integer 0) xs)
++readInteger ('0' : 'x' : xs) = chk (stox (fromInt_ num_witness_Integer 0) xs)
++readInteger ['0']	     = fromInt_ num_witness_Integer 0    -- efficiency shortcut?
++readInteger ['1']	     = fromInt_ num_witness_Integer 1    -- ditto?
++readInteger xs		     = chk (stoi (fromInt_ num_witness_Integer 0) xs)
+ 
+ chk (i, "")   = i
+ chk (i, junk) = panic ("readInteger: junk after reading:"++junk)
+ 
+ stoo, stoi, stox :: Integer -> String -> (Integer, String)
+ 
+-stoo a (c:cs) | is_oct c  = stoo (a*8 + ord_ c - ord_0) cs
++stoo a (c:cs) | is_oct c  = stoo (a*fromInt_ num_witness_Integer 8 + ord_ c - ord_0) cs
+ stoo a cs                 = (a, cs)
+ 
+-stoi a (c:cs) | isDigit c = stoi (a*10 + ord_ c - ord_0) cs
++stoi a (c:cs) | isDigit c = stoi (a*fromInt_ num_witness_Integer 10 + ord_ c - ord_0) cs
+ stoi a cs                 = (a, cs)
+ 
+ stox a (c:cs) | isDigit c = stox (a_16_ord_c - ord_0)      cs
+-	      | is_hex  c = stox (a_16_ord_c - ord_a + 10) cs
+-	      | is_Hex  c = stox (a_16_ord_c - ord_A + 10) cs
+-	      where a_16_ord_c = a*16 + ord_ c
++	      | is_hex  c = stox (a_16_ord_c - ord_a + fromInt_ num_witness_Integer 10) cs
++	      | is_Hex  c = stox (a_16_ord_c - ord_A + fromInt_ num_witness_Integer 10) cs
++	      where a_16_ord_c = a*fromInt_ num_witness_Integer 16 + ord_ c
+ stox a cs = (a, cs)
+ 
+ is_oct c = c >= '0' && c <= '7'
+diff --git a/ghc/compiler/rename/ParseIface.y b/ghc/compiler/rename/ParseIface.y
+index 8b8a6223b0..935c595710 100644
+--- a/ghc/compiler/rename/ParseIface.y
++++ b/ghc/compiler/rename/ParseIface.y
+@@ -165,7 +165,7 @@
+ 		  decls_part
+ 		  { ParsedIface 
+ 		        $2  		        -- Module name
+-			(fromInteger $3) 	-- Module version
++			(fromInteger_ num_witness_Int $3) 	-- Module version
+ 			(reverse $6)	        -- Usages
+ 			(reverse $8)	        -- Exports
+ 			(reverse $7)	        -- Instance import modules
+@@ -181,7 +181,7 @@
+ 	    
+ import_decl :: { ImportVersion OccName }
+ import_decl : 'import' mod_fs opt_bang INTEGER '::' whats_imported ';'
+-			{ (mkSysModuleFS $2 $3, fromInteger $4, $6) }
++			{ (mkSysModuleFS $2 $3, fromInteger_ num_witness_Int $4, $6) }
+ 
+ whats_imported      :: { WhatsImported OccName }
+ whats_imported      :                                           { Everything }
+@@ -192,8 +192,8 @@
+ 		    |  name_version_pair name_version_pairs	{ $1 : $2 }
+ 
+ name_version_pair   ::	{ LocalVersion OccName }
+-name_version_pair   :  var_occ INTEGER			        { ($1, fromInteger $2) }
+-                    |  tc_occ  INTEGER                          { ($1, fromInteger $2) }
++name_version_pair   :  var_occ INTEGER			        { ($1, fromInteger_ num_witness_Int $2) }
++                    |  tc_occ  INTEGER                          { ($1, fromInteger_ num_witness_Int $2) }
+ 
+ instance_import_part :: { [Module] }
+ instance_import_part : 						{   []    }
+@@ -242,7 +242,7 @@
+    
+ mb_fix      :: { Int }
+ mb_fix	    : {-nothing-}				{ 9 }
+-	    | INTEGER					{ (fromInteger $1) }
++	    | INTEGER					{ (fromInteger_ num_witness_Int $1) }
+ 
+ -----------------------------------------------------------------------------
+ 
+@@ -310,7 +310,7 @@
+ -----------------------------------------------------------------------------
+ 
+ version		:: { Version }
+-version		:  INTEGER				{ fromInteger $1 }
++version		:  INTEGER				{ fromInteger_ num_witness_Int $1 }
+ 
+ decl_context	:: { RdrNameContext }
+ decl_context	:  					{ [] }
+@@ -541,7 +541,7 @@
+ 	
+ 
+ arity_info	:: { ArityInfo }
+-arity_info	: INTEGER			{ exactArity (fromInteger $1) }
++arity_info	: INTEGER			{ exactArity (fromInteger_ num_witness_Int $1) }
+ 
+ strict_info	:: { HsStrictnessInfo RdrName }
+ strict_info	: '__S' qvar_name '{' qdata_names '}' 	
+@@ -711,7 +711,7 @@
+ 
+ checkVersion :: { () }
+ 	   : {-empty-}			{% checkVersion Nothing }
+-	   | INTEGER			{% checkVersion (Just (fromInteger $1)) }
++	   | INTEGER			{% checkVersion (Just (fromInteger_ num_witness_Integer $1)) }
+ 
+ ------------------------------------------------------------------- 
+ 
+diff --git a/ghc/compiler/simplCore/ConFold.lhs b/ghc/compiler/simplCore/ConFold.lhs
+index 8d74489c3b..25a6d1394f 100644
+--- a/ghc/compiler/simplCore/ConFold.lhs
++++ b/ghc/compiler/simplCore/ConFold.lhs
+@@ -144,13 +144,13 @@
+ 
+ 	---------   Ints --------------
+     oneIntLit IntNegOp     i = return_int (-i)
+-    oneIntLit ChrOp        i = return_char (chr (fromInteger i))
++    oneIntLit ChrOp        i = return_char (chr (fromInteger_ num_witness_Int i))
+ -- SIGH: these two cause trouble in unfoldery
+ -- as we can't distinguish unsigned literals in interfaces (ToDo?)
+ --  oneIntLit Int2WordOp   i = ASSERT( i>=0 ) return_word i
+ --  oneIntLit Int2AddrOp   i = ASSERT( i>=0 ) return_lit (MachAddr i)
+-    oneIntLit Int2FloatOp  i = return_float (fromInteger i)
+-    oneIntLit Int2DoubleOp i = return_double (fromInteger i)
++    oneIntLit Int2FloatOp  i = return_float (fromInteger_ num_witness_Ratio i)
++    oneIntLit Int2DoubleOp i = return_double (fromInteger_ num_witness_Ratio i)
+     oneIntLit _            _ = {-trace "oneIntLit: giving up"-} give_up
+ 
+     oneWordLit Word2IntOp   w = {-lazy:ASSERT( w<= maxInt)-} return_int w
+@@ -160,8 +160,8 @@
+     twoIntLits IntAddOp	 i1 i2		 = checkRange (i1+i2)
+     twoIntLits IntSubOp	 i1 i2		 = checkRange (i1-i2)
+     twoIntLits IntMulOp	 i1 i2		 = checkRange (i1*i2)
+-    twoIntLits IntQuotOp i1 i2 | i2 /= 0 = return_int (i1 `quot` i2)
+-    twoIntLits IntRemOp  i1 i2 | i2 /= 0 = return_int (i1 `rem` i2)
++    twoIntLits IntQuotOp i1 i2 | i2 /= fromInt_ num_witness_Integer 0 = return_int (i1 `quot` i2)
++    twoIntLits IntRemOp  i1 i2 | i2 /= fromInt_ num_witness_Integer 0 = return_int (i1 `rem` i2)
+     twoIntLits IntGtOp	 i1 i2		 = return_bool (i1 >  i2)
+     twoIntLits IntGeOp	 i1 i2		 = return_bool (i1 >= i2)
+     twoIntLits IntEqOp	 i1 i2		 = return_bool (i1 == i2)
+@@ -197,7 +197,7 @@
+     twoFloatLits FloatAddOp   f1 f2	      = return_float (f1 + f2)
+     twoFloatLits FloatSubOp   f1 f2	      = return_float (f1 - f2)
+     twoFloatLits FloatMulOp   f1 f2	      = return_float (f1 * f2)
+-    twoFloatLits FloatDivOp   f1 f2 | f2 /= 0 = return_float (f1 / f2)
++    twoFloatLits FloatDivOp   f1 f2 | f2 /= fromInt_ num_witness_Ratio 0 = return_float (f1 / f2)
+     twoFloatLits _	      _  _	      = give_up
+ 
+ 	---------   Doubles --------------
+@@ -213,11 +213,11 @@
+     twoDoubleLits DoubleAddOp   d1 d2		= return_double (d1 + d2)
+     twoDoubleLits DoubleSubOp   d1 d2		= return_double (d1 - d2)
+     twoDoubleLits DoubleMulOp   d1 d2		= return_double (d1 * d2)
+-    twoDoubleLits DoubleDivOp   d1 d2 | d2 /= 0 = return_double (d1 / d2)
++    twoDoubleLits DoubleDivOp   d1 d2 | d2 /= fromInt_ num_witness_Ratio 0 = return_double (d1 / d2)
+     twoDoubleLits _             _  _ 	        = give_up
+ 
+ 	---------   Characters --------------
+-    oneCharLit OrdOp c = return_int (fromInt (ord c))
++    oneCharLit OrdOp c = return_int (fromInt_ num_witness_Integer (ord c))
+     oneCharLit _     _ = give_up
+ 
+     twoCharLits CharGtOp c1 c2 = return_bool (c1 >  c2)
+@@ -229,7 +229,7 @@
+     twoCharLits _        _  _  = give_up
+ 
+ 	---------   Miscellaneous --------------
+-    oneLit Addr2IntOp (MachAddr i) = return_int (fromInteger i)
++    oneLit Addr2IntOp (MachAddr i) = return_int (fromInteger_ num_witness_Integer i)
+     oneLit op         lit          = give_up
+ 
+ 	---------   Equality and inequality for Int/Char --------------
+@@ -261,7 +261,7 @@
+ 
+     checkRange :: Integer -> Maybe CoreExpr
+     checkRange val
+-     | (val > fromInt maxInt) || (val < fromInt minInt)  = 
++     | (val > fromInt_ num_witness_Integer maxInt) || (val < fromInt_ num_witness_Integer minInt)  = 
+ 	-- Better tell the user that we've overflowed...
+        pprTrace "Warning:" (text "Integer overflow in expression: " <> 
+ 	                   ppr ((mkPrimApp op args)::CoreExpr)) $
+diff --git a/ghc/compiler/simplCore/SimplCore.lhs b/ghc/compiler/simplCore/SimplCore.lhs
+index 97e38a3488..f07dcc3d34 100644
+--- a/ghc/compiler/simplCore/SimplCore.lhs
++++ b/ghc/compiler/simplCore/SimplCore.lhs
+@@ -640,10 +640,10 @@
+ litToRep (NoRepInteger i integer_ty)
+   = returnPM (integer_ty, rhs)
+   where
+-    rhs | i == 0    = Var integerZeroId		-- Extremely convenient to look out for
+-  	| i == 1    = Var integerPlusOneId	-- a few very common Integer literals!
+-  	| i == 2    = Var integerPlusTwoId
+-  	| i == (-1) = Var integerMinusOneId
++    rhs | i == fromInt_ num_witness_Integer 0    = Var integerZeroId		-- Extremely convenient to look out for
++  	| i == fromInt_ num_witness_Integer 1    = Var integerPlusOneId	-- a few very common Integer literals!
++  	| i == fromInt_ num_witness_Integer 2    = Var integerPlusTwoId
++  	| i == (-fromInt_ num_witness_Integer 1) = Var integerMinusOneId
+   
+   	| i > tARGET_MIN_INT &&		-- Small enough, so start from an Int
+ 	  i < tARGET_MAX_INT
+diff --git a/ghc/compiler/typecheck/TcGenDeriv.lhs b/ghc/compiler/typecheck/TcGenDeriv.lhs
+index d6ec7f47c7..052280bb75 100644
+--- a/ghc/compiler/typecheck/TcGenDeriv.lhs
++++ b/ghc/compiler/typecheck/TcGenDeriv.lhs
+@@ -467,19 +467,19 @@
+ 	     (HsApp (HsVar (tag2con_RDR tycon))
+ 		    (HsApp (HsApp (HsVar plus_RDR)
+ 				  (mk_easy_App mkInt_RDR [ah_RDR]))
+- 			   (HsLit (HsInt 1))))
++ 			   (HsLit (HsInt (fromInt_ num_witness_Integer 1)))))
+ 	     tycon_loc
+ 		    
+     pred_enum
+       = mk_easy_FunMonoBind tycon_loc pred_RDR [a_Pat] [] $
+ 	untag_Expr tycon [(a_RDR, ah_RDR)] $
+-	HsIf (HsApp (HsApp (HsVar eq_RDR) (HsLit (HsInt 0)))
++	HsIf (HsApp (HsApp (HsVar eq_RDR) (HsLit (HsInt (fromInt_ num_witness_Integer 0))))
+ 		    (mk_easy_App mkInt_RDR [ah_RDR]))
+ 	     (illegal_Expr "pred" occ_nm "tried to take `pred' of first tag in enumeration")
+ 	     (HsApp (HsVar (tag2con_RDR tycon))
+ 			   (HsApp (HsApp (HsVar plus_RDR)
+ 					 (mk_easy_App mkInt_RDR [ah_RDR]))
+-				  (HsLit (HsInt (-1)))))
++				  (HsLit (HsInt (-fromInt_ num_witness_Integer 1)))))
+ 	     tycon_loc
+ 
+     to_enum
+@@ -488,7 +488,7 @@
+ 	            (HsVar and_RDR)
+ 		    (HsApp (HsApp (HsVar ge_RDR)
+ 				  (HsVar a_RDR))
+-				  (HsLit (HsInt 0))))
++				  (HsLit (HsInt (fromInt_ num_witness_Integer 0)))))
+                     (HsApp (HsApp (HsVar le_RDR)
+ 				  (HsVar a_RDR))
+ 				  (HsVar (maxtag_RDR tycon))))
+@@ -514,7 +514,7 @@
+ 		    (HsIf  (HsApp (HsApp (HsVar gt_RDR)
+ 					 (mk_easy_App mkInt_RDR [ah_RDR]))
+ 					 (mk_easy_App mkInt_RDR [bh_RDR]))
+-			   (HsLit (HsInt 0))
++			   (HsLit (HsInt (fromInt_ num_witness_Integer 0)))
+ 			   (HsVar (maxtag_RDR tycon))
+ 			   tycon_loc))
+ 
+@@ -718,7 +718,7 @@
+       = mk_easy_FunMonoBind tycon_loc index_RDR 
+ 		[TuplePatIn [con_pat as_needed, con_pat bs_needed] True, 
+ 		 con_pat cs_needed] [range_size] (
+-	foldl mk_index (HsLit (HsInt 0)) (zip3 as_needed bs_needed cs_needed))
++	foldl mk_index (HsLit (HsInt (fromInt_ num_witness_Integer 0))) (zip3 as_needed bs_needed cs_needed))
+       where
+ 	mk_index multiply_by (l, u, i)
+ 	  = genOpApp (
+@@ -737,7 +737,7 @@
+ 		genOpApp (
+ 		    (HsApp (HsApp (HsVar index_RDR) 
+ 			   (ExplicitTuple [a_Expr, b_Expr] True)) b_Expr)
+-		) plus_RDR (HsLit (HsInt 1)))
++		) plus_RDR (HsLit (HsInt (fromInt_ num_witness_Integer 1))))
+ 
+     ------------------
+     single_con_inRange
+@@ -769,7 +769,7 @@
+     tycon_loc = getSrcLoc tycon
+     -----------------------------------------------------------------------
+     read_list = mk_easy_FunMonoBind tycon_loc readList_RDR [] []
+-		  (HsApp (HsVar readList___RDR) (HsPar (HsApp (HsVar readsPrec_RDR) (HsLit (HsInt 0)))))
++		  (HsApp (HsVar readList___RDR) (HsPar (HsApp (HsVar readsPrec_RDR) (HsLit (HsInt (fromInt_ num_witness_Integer 0))))))
+     -----------------------------------------------------------------------
+     reads_prec
+       = let
+@@ -845,7 +845,7 @@
+ 		mk_read_qual con_field res draw_from =
+ 		  BindStmt
+ 		   (TuplePatIn [VarPatIn con_field, VarPatIn res] True)
+-		   (HsApp (HsApp (HsVar readsPrec_RDR) (HsLit (HsInt 10))) draw_from)
++		   (HsApp (HsApp (HsVar readsPrec_RDR) (HsLit (HsInt (fromInt_ num_witness_Integer 10)))) draw_from)
+ 		   tycon_loc
+ 
+ 		result_expr = ExplicitTuple [con_expr, if null bs_needed 
+@@ -858,7 +858,7 @@
+ 		  = if nullary_con then -- must be False (parens are surely optional)
+ 		       false_Expr
+ 		    else -- parens depend on precedence...
+-		       HsPar (genOpApp a_Expr gt_RDR (HsLit (HsInt 9)))
++		       HsPar (genOpApp a_Expr gt_RDR (HsLit (HsInt (fromInt_ num_witness_Integer 9))))
+ 	    in
+ 	    HsApp (
+ 	      readParen_Expr read_paren_arg $ HsPar $
+@@ -885,7 +885,7 @@
+     tycon_loc = getSrcLoc tycon
+     -----------------------------------------------------------------------
+     show_list = mk_easy_FunMonoBind tycon_loc showList_RDR [] []
+-		  (HsApp (HsVar showList___RDR) (HsPar (HsApp (HsVar showsPrec_RDR) (HsLit (HsInt 0)))))
++		  (HsApp (HsVar showList___RDR) (HsPar (HsApp (HsVar showsPrec_RDR) (HsLit (HsInt (fromInt_ num_witness_Integer 0))))))
+     -----------------------------------------------------------------------
+     shows_prec
+       = mk_FunMonoBind tycon_loc showsPrec_RDR (map pats_etc (tyConDataCons tycon))
+@@ -929,7 +929,7 @@
+ 					      (HsLit (mkHsString str))
+ 
+ 		real_show_thingies =
+-		     [ HsApp (HsApp (HsVar showsPrec_RDR) (HsLit (HsInt 10))) (HsVar b)
++		     [ HsApp (HsApp (HsVar showsPrec_RDR) (HsLit (HsInt (fromInt_ num_witness_Integer 10)))) (HsVar b)
+ 		     | b <- bs_needed ]
+ 
+                 real_show_thingies_with_labs
+@@ -950,7 +950,7 @@
+ 		([a_Pat, con_pat], show_con)
+ 	    else
+ 		([a_Pat, con_pat],
+-		    showParen_Expr (HsPar (genOpApp a_Expr ge_RDR (HsLit (HsInt 10))))
++		    showParen_Expr (HsPar (genOpApp a_Expr ge_RDR (HsLit (HsInt (fromInt_ num_witness_Integer 10)))))
+ 				   (HsPar (nested_compose_Expr show_thingies)))
+ \end{code}
+ 
+@@ -1217,14 +1217,14 @@
+ 	               (HsLit (HsString (_PK_ ("toEnum{" ++ tp ++ "}: tag (")))))
+ 	               (HsApp (HsApp (HsApp 
+ 		           (HsVar showsPrec_RDR)
+-			   (HsLit (HsInt 0)))
++			   (HsLit (HsInt (fromInt_ num_witness_Integer 0))))
+    		           (HsVar a_RDR))
+ 			   (HsApp (HsApp 
+ 			       (HsVar append_RDR)
+ 			       (HsLit (HsString (_PK_ ") is outside of enumeration's range (0,"))))
+ 			       (HsApp (HsApp (HsApp 
+ 					(HsVar showsPrec_RDR)
+-				        (HsLit (HsInt 0)))
++				        (HsLit (HsInt (fromInt_ num_witness_Integer 0))))
+ 					(HsVar maxtag))
+ 					(HsLit (HsString (_PK_ ")")))))))
+ 
+diff --git a/ghc/compiler/utils/Pretty.lhs b/ghc/compiler/utils/Pretty.lhs
+index b4eeed4dbc..0b493bb67b 100644
+--- a/ghc/compiler/utils/Pretty.lhs
++++ b/ghc/compiler/utils/Pretty.lhs
+@@ -912,7 +912,7 @@
+     best_doc = best mode hacked_line_length ribbon_length (reduceDoc doc)
+ 
+     hacked_line_length, ribbon_length :: Int
+-    ribbon_length = round (fromInt line_length / ribbons_per_line)
++    ribbon_length = round (fromInt_ num_witness_Float line_length / ribbons_per_line)
+     hacked_line_length = case mode of { ZigZagMode -> MAXINT; other -> line_length }
+ 
+ display mode IBOX(page_width) IBOX(ribbon_width) txt end doc
+diff --git a/ghc/compiler/utils/StringBuffer.lhs b/ghc/compiler/utils/StringBuffer.lhs
+index 18d275672a..41a8e0128f 100644
+--- a/ghc/compiler/utils/StringBuffer.lhs
++++ b/ghc/compiler/utils/StringBuffer.lhs
+@@ -115,7 +115,7 @@
+ #else
+     openFile fname ReadMode >>= \ hndl ->
+     hFileSize hndl          >>= \ len@(J# _ _ d#) ->
+-    let len_i = fromInteger len in
++    let len_i = fromInteger_ num_witness_Int len in
+       -- Allocate an array for system call to store its bytes into.
+       -- ToDo: make it robust
+ --    trace (show ((len_i::Int)+1)) $
+diff --git a/ghc/lib/exts/Int.lhs b/ghc/lib/exts/Int.lhs
+index 70dfc88d37..28d5c27f3c 100644
+--- a/ghc/lib/exts/Int.lhs
++++ b/ghc/lib/exts/Int.lhs
+@@ -13,12 +13,16 @@
+ module Int
+ 	( Int8
+ 	, bounded_witness_Int8
++	, num_witness_Int8
+ 	, Int16
+ 	, bounded_witness_Int16
++	, num_witness_Int16
+ 	, Int32
+ 	, bounded_witness_Int32
++	, num_witness_Int32
+ 	, Int64
+ 	, bounded_witness_Int64
++	, num_witness_Int64
+ 
+         , int8ToInt16   -- :: Int8  -> Int16
+         , int8ToInt32   -- :: Int8  -> Int32
+@@ -122,7 +126,7 @@
+ import Bits
+ import Ratio   ( (%) )
+ import Numeric ( readDec )
+-import Word    ( Word32 )
++import Word    ( Word32, num_witness_Word32 )
+ 
+ -----------------------------------------------------------------------------
+ -- The "official" coercion functions
+@@ -203,6 +207,7 @@
+  | otherwise = GT
+ 
+ instance Num Int8 where
++  num_witness = num_witness_Int8
+   (I8# x#) + (I8# y#) = I8# (intToInt8# (x# +# y#))
+   (I8# x#) - (I8# y#) = I8# (intToInt8# (x# -# y#))
+   (I8# x#) * (I8# y#) = I8# (intToInt8# (x# *# y#))
+@@ -213,24 +218,26 @@
+ 
+   abs           = absReal
+   signum        = signumReal
+-  fromInteger (J# a# s# d#)
+-                = case (integer2Int# a# s# d#) of { i# -> I8# (intToInt8# i#) }
+-  fromInt       = intToInt8
++
++num_witness_Int8 = NumWitness fromInteger_Int8 fromInt_Int8
++fromInteger_Int8 (J# a# s# d#)
++              = case (integer2Int# a# s# d#) of { i# -> I8# (intToInt8# i#) }
++fromInt_Int8       = intToInt8
+ 
+ instance Bounded Int8 where
+     bounded_witness = bounded_witness_Int8
+-    minBound = 0x80
++    minBound = fromInt_ num_witness_Int8 0x80
+ 
+ bounded_witness_Int8 = BoundedWitness maxBound_Int8
+-maxBound_Int8 = 0x7f 
++maxBound_Int8 = fromInt_ num_witness_Int8 0x7f 
+ 
+ instance Real Int8 where
+-    toRational x = toInteger x % 1
++    toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ instance Integral Int8 where
+     div x y
+-       | x > 0 && y < 0 = quotInt8 (x-y-1) y
+-       | x < 0 && y > 0	= quotInt8 (x-y+1) y
++       | x > fromInt_ num_witness_Int8 0 && y < fromInt_ num_witness_Int8 0 = quotInt8 (x-y-fromInt_ num_witness_Int8 1) y
++       | x < fromInt_ num_witness_Int8 0 && y > fromInt_ num_witness_Int8 0	= quotInt8 (x-y+fromInt_ num_witness_Int8 1) y
+        | otherwise      = quotInt8 x y
+ 
+     quot x@(I8# _) y@(I8# y#)
+@@ -240,7 +247,7 @@
+        | y# /=# 0#  = x `remInt8` y
+        | otherwise  = divZeroError "rem{Int8}" x
+     mod x y
+-       | x > 0 && y < 0 || x < 0 && y > 0 = if r/=0 then r+y else 0
++       | x > fromInt_ num_witness_Int8 0 && y < fromInt_ num_witness_Int8 0 || x < fromInt_ num_witness_Int8 0 && y > fromInt_ num_witness_Int8 0 = if r/=fromInt_ num_witness_Int8 0 then r+y else fromInt_ num_witness_Int8 0
+        | otherwise = r
+ 	where r = remInt8 x y
+ 
+@@ -263,10 +270,10 @@
+     enum_witness      = enum_witness_Int8
+     succ i
+       | i == maxBound_ bounded_witness_Int8 = succError "Int8"
+-      | otherwise     = i+1
++      | otherwise     = i+fromInt_ num_witness_Int8 1
+     pred i
+       | i == minBound = predError "Int8"
+-      | otherwise     = i-1
++      | otherwise     = i-fromInt_ num_witness_Int8 1
+ 
+     fromEnum           = int8ToInt
+     enumFrom e1        = map toEnum [fromEnum e1 .. fromEnum (maxBound::Int8)]
+@@ -316,11 +323,11 @@
+           where
+            i' = word2Int# (int2Word# i `and#` int2Word# 7#)
+            i2 = 8# -# i'
+-  bit i         = shift 1 i
++  bit i         = shift (fromInt_ num_witness_Int8 1) i
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+   complementBit x i = x `xor` bit i
+-  testBit x i   = (x .&. bit i) /= 0
++  testBit x i   = (x .&. bit i) /= fromInt_ num_witness_Int8 0
+   bitSize  _    = 8
+   isSigned _    = True
+ 
+@@ -331,7 +338,7 @@
+ pow2_64# x# = word64ToInt64# (shiftL64# (wordToWord64# (int2Word# 1#)) x#)
+ 
+ sizeofInt8 :: Word32
+-sizeofInt8 = 1
++sizeofInt8 = fromInt_ num_witness_Word32 1
+ \end{code}
+ 
+ \subsection[Int16]{The @Int16@ interface}
+@@ -361,6 +368,7 @@
+   compare (I16# x#) (I16# y#) = compareInt# (i16ToInt# x#) (i16ToInt# y#)
+ 
+ instance Num Int16 where
++  num_witness = num_witness_Int16
+   (I16# x#) + (I16# y#) = I16# (intToInt16# (x# +# y#))
+   (I16# x#) - (I16# y#) = I16# (intToInt16# (x# -# y#))
+   (I16# x#) * (I16# y#) = I16# (intToInt16# (x# *# y#))
+@@ -370,24 +378,26 @@
+       else I16# (0x10000# -# x#)
+   abs           = absReal
+   signum        = signumReal
+-  fromInteger (J# a# s# d#)
+-                = case (integer2Int# a# s# d#) of { i# -> I16# (intToInt16# i#) }
+-  fromInt       = intToInt16
++
++num_witness_Int16 = NumWitness fromInteger_Int16 fromInt_Int16
++fromInteger_Int16 (J# a# s# d#)
++              = case (integer2Int# a# s# d#) of { i# -> I16# (intToInt16# i#) }
++fromInt_Int16       = intToInt16
+ 
+ instance Bounded Int16 where
+     bounded_witness = bounded_witness_Int16
+-    minBound = 0x8000
++    minBound = fromInt_ num_witness_Int16 0x8000
+ 
+ bounded_witness_Int16 = BoundedWitness maxBound_Int16
+-maxBound_Int16 = 0x7fff 
++maxBound_Int16 = fromInt_ num_witness_Int16 0x7fff 
+ 
+ instance Real Int16 where
+-    toRational x = toInteger x % 1
++    toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ instance Integral Int16 where
+     div x y
+-       | x > 0 && y < 0	= quotInt16 (x-y-1) y
+-       | x < 0 && y > 0	= quotInt16 (x-y+1) y
++       | x > fromInt_ num_witness_Int16 0 && y < fromInt_ num_witness_Int16 0	= quotInt16 (x-y-fromInt_ num_witness_Int16 1) y
++       | x < fromInt_ num_witness_Int16 0 && y > fromInt_ num_witness_Int16 0	= quotInt16 (x-y+fromInt_ num_witness_Int16 1) y
+        | otherwise	= quotInt16 x y
+ 
+     quot x@(I16# _) y@(I16# y#)
+@@ -397,7 +407,7 @@
+        | y# /=# 0#      = x `remInt16` y
+        | otherwise      = divZeroError "rem{Int16}" x
+     mod x y
+-       | x > 0 && y < 0 || x < 0 && y > 0 = if r/=0 then r+y else 0
++       | x > fromInt_ num_witness_Int16 0 && y < fromInt_ num_witness_Int16 0 || x < fromInt_ num_witness_Int16 0 && y > fromInt_ num_witness_Int16 0 = if r/=fromInt_ num_witness_Int16 0 then r+y else fromInt_ num_witness_Int16 0
+        | otherwise			  = r
+ 	where r = remInt16 x y
+ 
+@@ -420,11 +430,11 @@
+     enum_witness      = enum_witness_Int16
+     succ i
+       | i == maxBound_ bounded_witness_Int16 = succError "Int16"
+-      | otherwise     = i+1
++      | otherwise     = i+fromInt_ num_witness_Int16 1
+ 
+     pred i
+       | i == minBound = predError "Int16"
+-      | otherwise     = i-1
++      | otherwise     = i-fromInt_ num_witness_Int16 1
+ 
+     fromEnum         = int16ToInt
+ 
+@@ -471,16 +481,16 @@
+           where
+            i' = word2Int# (int2Word# i `and#` int2Word# 15#)
+            i2 = 16# -# i'
+-  bit i             = shift 1 i
++  bit i             = shift (fromInt_ num_witness_Int16 1) i
+   setBit x i        = x .|. bit i
+   clearBit x i      = x .&. complement (bit i)
+   complementBit x i = x `xor` bit i
+-  testBit x i       = (x .&. bit i) /= 0
++  testBit x i       = (x .&. bit i) /= fromInt_ num_witness_Int16 0
+   bitSize  _        = 16
+   isSigned _        = True
+ 
+ sizeofInt16 :: Word32
+-sizeofInt16 = 2
++sizeofInt16 = fromInt_ num_witness_Word32 2
+ \end{code}
+ 
+ %
+@@ -521,6 +531,7 @@
+   compare (I32# x#) (I32# y#) = compareInt# (i32ToInt# x#) (i32ToInt# y#)
+ 
+ instance Num Int32 where
++  num_witness = num_witness_Int32
+   (I32# x#) + (I32# y#) = I32# (intToInt32# (x# +# y#))
+   (I32# x#) - (I32# y#) = I32# (intToInt32# (x# -# y#))
+   (I32# x#) * (I32# y#) = I32# (intToInt32# (x# *# y#))
+@@ -534,24 +545,26 @@
+ #endif
+   abs           = absReal
+   signum        = signumReal
+-  fromInteger (J# a# s# d#)
+-                = case (integer2Int# a# s# d#) of { i# -> I32# (intToInt32# i#) }
+-  fromInt       = intToInt32
++
++num_witness_Int32 = NumWitness fromInteger_Int32 fromInt_Int32
++fromInteger_Int32 (J# a# s# d#)
++              = case (integer2Int# a# s# d#) of { i# -> I32# (intToInt32# i#) }
++fromInt_Int32       = intToInt32
+ 
+ instance Bounded Int32 where 
+     bounded_witness = bounded_witness_Int32
+-    minBound = fromInt minBound
++    minBound = fromInt_ num_witness_Int32 minBound
+ 
+ bounded_witness_Int32 = BoundedWitness maxBound_Int32
+-maxBound_Int32 = fromInt (maxBound_ bounded_witness_Int)
++maxBound_Int32 = fromInt_ num_witness_Int32 maxBound
+ 
+ instance Real Int32 where
+-    toRational x = toInteger x % 1
++    toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ instance Integral Int32 where
+     div x y
+-       | x > 0 && y < 0	= quotInt32 (x-y-1) y
+-       | x < 0 && y > 0	= quotInt32 (x-y+1) y
++       | x > fromInt_ num_witness_Int32 0 && y < fromInt_ num_witness_Int32 0	= quotInt32 (x-y-fromInt_ num_witness_Int32 1) y
++       | x < fromInt_ num_witness_Int32 0 && y > fromInt_ num_witness_Int32 0	= quotInt32 (x-y+fromInt_ num_witness_Int32 1) y
+        | otherwise      = quotInt32 x y
+     quot x@(I32# _) y@(I32# y#)
+        | y# /=# 0#  = x `quotInt32` y
+@@ -560,7 +573,7 @@
+        | y# /=# 0#  = x `remInt32` y
+        | otherwise  = divZeroError "rem{Int32}" x
+     mod x y
+-       | x > 0 && y < 0 || x < 0 && y > 0 = if r/=0 then r+y else 0
++       | x > fromInt_ num_witness_Int32 0 && y < fromInt_ num_witness_Int32 0 || x < fromInt_ num_witness_Int32 0 && y > fromInt_ num_witness_Int32 0 = if r/=fromInt_ num_witness_Int32 0 then r+y else fromInt_ num_witness_Int32 0
+        | otherwise			  = r
+ 	where r = remInt32 x y
+ 
+@@ -583,11 +596,11 @@
+     enum_witness      = enum_witness_Int32
+     succ i
+       | i == maxBound_ bounded_witness_Int32 = succError "Int32"
+-      | otherwise     = i+1
++      | otherwise     = i+fromInt_ num_witness_Int32 1
+ 
+     pred i
+       | i == minBound = predError "Int32"
+-      | otherwise     = i-1
++      | otherwise     = i-fromInt_ num_witness_Int32 1
+ 
+     fromEnum           = int32ToInt
+ 
+@@ -642,16 +655,16 @@
+            i' = word2Int# (int2Word# i `and#` int2Word# 31#)
+            i2 = 32# -# i'
+            (I32# maxBound#) = maxBound_ bounded_witness_Int32
+-  bit i        	= shift 1 i
++  bit i        	= shift (fromInt_ num_witness_Int32 1) i
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+   complementBit x i = x `xor` bit i
+-  testBit x i   = (x .&. bit i) /= 0
++  testBit x i   = (x .&. bit i) /= fromInt_ num_witness_Int32 0
+   bitSize  _    = 32
+   isSigned _    = True
+ 
+ sizeofInt32 :: Word32
+-sizeofInt32 = 4
++sizeofInt32 = fromInt_ num_witness_Word32 4
+ \end{code}
+ 
+ \subsection[Int64]{The @Int64@ interface}
+@@ -678,14 +691,17 @@
+   compare (I64# x#) (I64# y#) = compareInt# x# y#
+ 
+ instance Num Int64 where
++  num_witness = num_witness_Int64
+   (I64# x) + (I64# y) = I64# (x +# y)
+   (I64# x) - (I64# y) = I64# (x -# y)
+   (I64# x) * (I64# y) = I64# (x *# y)
+   negate w@(I64# x)   = I64# (negateInt# x)
+   abs x               = absReal
+   signum              = signumReal
+-  fromInteger (J# a# s# d#) = case (integer2Int# a# s# d#) of { i# -> I64# i# }
+-  fromInt       = intToInt64
++
++num_witness_Int64 = NumWitness fromInteger_Int64 fromInt_Int64
++fromInteger_Int64 (J# a# s# d#) = case (integer2Int# a# s# d#) of { i# -> I64# i# }
++fromInt_Int64       = intToInt64
+ 
+ instance Bounded Int64 where
+   bounded_witness = bounded_witness_Int64
+@@ -759,7 +775,7 @@
+ int64ToInteger (I64# i#) = toInteger (I# i#)
+ 
+ integerToInt64 :: Integer -> Int64
+-integerToInt64 i = case fromInteger i of { I# i# -> I64# i# }
++integerToInt64 i = case fromInteger_ num_witness_Int64 i of { I# i# -> I64# i# }
+ 
+ intToInt64 :: Int -> Int64
+ intToInt64 (I# i#) = I64# i#
+@@ -801,14 +817,17 @@
+      case (compareInt64# x# y#) of { LT -> x ; EQ -> x ; GT -> y }
+ 
+ instance Num Int64 where
++  num_witness = num_witness_Int64
+   (I64# x) + (I64# y) = I64# (x `plusInt64#`  y)
+   (I64# x) - (I64# y) = I64# (x `minusInt64#` y)
+   (I64# x) * (I64# y) = I64# (x `timesInt64#` y)
+   negate (I64# x)     = I64# (negateInt64# x)
+   abs x               = absReal x
+   signum              = signumReal
+-  fromInteger i       = integerToInt64 i
+-  fromInt     i       = intToInt64 i
++
++num_witness_Int64 = NumWitness fromInteger_Int64 fromInt_Int64
++fromInteger_Int64 i       = integerToInt64 i
++fromInt_Int64     i       = intToInt64 i
+ 
+ compareInt64# :: Int64# -> Int64# -> Ordering
+ compareInt64# i# j# 
+@@ -818,15 +837,15 @@
+ 
+ instance Bounded Int64 where
+   bounded_witness = bounded_witness_Int64
+-  minBound = integerToInt64 (-0x8000000000000000)
++  minBound = integerToInt64 (fromInt_ num_witness_Integer (-0x80) * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100)
+ 
+ bounded_witness_Int64 = BoundedWitness maxBound_Int64
+-maxBound_Int64 = integerToInt64 0x7fffffffffffffff
++maxBound_Int64 = integerToInt64 (fromInt_ num_witness_Integer 0x80 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 * fromInt_ num_witness_Integer 0x100 - fromInt_ num_witness_Integer 0x01)
+ 
+ instance Integral Int64 where
+     div x y
+-      | x > 0 && y < 0	= quotInt64 (x-y-1) y
+-      | x < 0 && y > 0	= quotInt64 (x-y+1) y
++      | x > fromInt_ num_witness_Int64 0 && y < fromInt_ num_witness_Int64 0	= quotInt64 (x-y-fromInt_ num_witness_Int64 1) y
++      | x < fromInt_ num_witness_Int64 0 && y > fromInt_ num_witness_Int64 0	= quotInt64 (x-y+fromInt_ num_witness_Int64 1) y
+       | otherwise       = quotInt64 x y
+ 
+     quot x@(I64# _) y@(I64# y#)
+@@ -838,7 +857,7 @@
+        | otherwise = divZeroError "rem{Int64}" x
+ 
+     mod x y
+-       | x > 0 && y < 0 || x < 0 && y > 0 = if r/=0 then r+y else 0
++       | x > fromInt_ num_witness_Int64 0 && y < fromInt_ num_witness_Int64 0 || x < fromInt_ num_witness_Int64 0 && y > fromInt_ num_witness_Int64 0 = if r/=fromInt_ num_witness_Int64 0 then r+y else fromInt_ num_witness_Int64 0
+        | otherwise = r
+ 	where r = remInt64 x y
+ 
+@@ -868,11 +887,11 @@
+            i' = word2Int# (int2Word# i `and#` int2Word# 63#)
+            i2 = 64# -# i'
+            (I64# maxBound#) = maxBound_ bounded_witness_Int64
+-  bit i        	= shift 1 i
++  bit i        	= shift (fromInt_ num_witness_Int64 1) i
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+   complementBit x i = x `xor` bit i
+-  testBit x i   = (x .&. bit i) /= 0
++  testBit x i   = (x .&. bit i) /= fromInt_ num_witness_Int64 0
+   bitSize  _    = 64
+   isSigned _    = True
+ 
+@@ -1039,11 +1058,11 @@
+     enum_witness      = enum_witness_Int64
+     succ i
+       | i == maxBound_ bounded_witness_Int64 = succError "Int64"
+-      | otherwise     = i+1
++      | otherwise     = i+fromInt_ num_witness_Int64 1
+ 
+     pred i
+       | i == minBound = predError "Int64"
+-      | otherwise     = i-1
++      | otherwise     = i-fromInt_ num_witness_Int64 1
+ 
+     fromEnum  x
+       | x >= intToInt64 (minBound::Int) && x <= intToInt64 (maxBound_ bounded_witness_Int::Int)
+@@ -1081,11 +1100,11 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Real Int64 where
+-  toRational x = toInteger x % 1
++  toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ 
+ sizeofInt64 :: Word32
+-sizeofInt64 = 8
++sizeofInt64 = fromInt_ num_witness_Word32 8
+ 
+ int8ToInteger :: Int8 -> Integer
+ int8ToInteger i = toInteger i
+@@ -1103,13 +1122,13 @@
+ int64ToInt16 = int32ToInt16 . int64ToInt32
+ 
+ integerToInt8 :: Integer -> Int8
+-integerToInt8 = fromInteger
++integerToInt8 = fromInteger_ num_witness_Int8
+ 
+ integerToInt16 :: Integer -> Int16
+-integerToInt16 = fromInteger
++integerToInt16 = fromInteger_ num_witness_Int16
+ 
+ integerToInt32 :: Integer -> Int32
+-integerToInt32 = fromInteger
++integerToInt32 = fromInteger_ num_witness_Int32
+ 
+ \end{code}
+ 
+@@ -1123,13 +1142,13 @@
+ 
+ \begin{code}
+ absReal :: (Ord a, Num a) => a -> a
+-absReal x    | x >= 0    = x
++absReal x    | x >= fromInt_ num_witness 0    = x
+ 	     | otherwise = -x
+ 
+ signumReal :: (Ord a, Num a) => a -> a
+-signumReal x | x == 0    =  0
+-	     | x > 0     =  1
+-	     | otherwise = -1
++signumReal x | x == fromInt_ num_witness 0    =  fromInt_ num_witness 0
++	     | x > fromInt_ num_witness 0     =  fromInt_ num_witness 1
++	     | otherwise = -fromInt_ num_witness 1
+ \end{code}
+ 
+ \begin{code}
+diff --git a/ghc/lib/exts/MutableArray.lhs b/ghc/lib/exts/MutableArray.lhs
+index a312909c6f..774b02f3f2 100644
+--- a/ghc/lib/exts/MutableArray.lhs
++++ b/ghc/lib/exts/MutableArray.lhs
+@@ -262,7 +262,7 @@
+   where
+     h       = word64ToWord32 h'
+     l       = word64ToWord32 l'
+-    (h',l') = w `divMod` (word32ToWord64 (maxBound_ bounded_witness_Word32::Word32) + 1)
++    (h',l') = w `divMod` (word32ToWord64 (maxBound_ bounded_witness_Word32::Word32) + fromInt_ num_witness_Word64 1)
+ 
+ 
+ \end{code}
+@@ -368,7 +368,7 @@
+   where
+     h       = int64ToInt32 h'
+     l       = int64ToInt32 l'
+-    (h',l') = w `divMod` (int32ToInt64 (maxBound_ bounded_witness_Int32::Int32) * 2 - 1)
++    (h',l') = w `divMod` (int32ToInt64 (maxBound_ bounded_witness_Int32::Int32) * fromInt_ num_witness_Int64 2 - fromInt_ num_witness_Int64 1)
+ 
+ \end{code}
+ 
+diff --git a/ghc/lib/exts/NativeInfo.lhs b/ghc/lib/exts/NativeInfo.lhs
+index b26e805528..e05ef3442e 100644
+--- a/ghc/lib/exts/NativeInfo.lhs
++++ b/ghc/lib/exts/NativeInfo.lhs
+@@ -71,20 +71,20 @@
+ 
+ \begin{code}
+ sizeofAddr :: Word32
+-sizeofAddr = ADDR_SIZE_IN_BYTES
++sizeofAddr = fromInt_ num_witness_Word32 ADDR_SIZE_IN_BYTES
+ 
+ sizeofDouble :: Word32
+-sizeofDouble = DOUBLE_SIZE_IN_BYTES
++sizeofDouble = fromInt_ num_witness_Word32 DOUBLE_SIZE_IN_BYTES
+ 
+ sizeofFloat :: Word32
+-sizeofFloat  = FLOAT_SIZE_IN_BYTES
++sizeofFloat  = fromInt_ num_witness_Word32 FLOAT_SIZE_IN_BYTES
+ 
+ sizeofInt   :: Word32
+-sizeofInt     = INT_SIZE_IN_BYTES
++sizeofInt     = fromInt_ num_witness_Word32 INT_SIZE_IN_BYTES
+ 
+ sizeofWord   :: Word32
+-sizeofWord     = WORD_SIZE_IN_BYTES
++sizeofWord     = fromInt_ num_witness_Word32 WORD_SIZE_IN_BYTES
+ 
+ sizeofChar  :: Word32
+-sizeofChar    = CHAR_SIZE_IN_BYTES
++sizeofChar    = fromInt_ num_witness_Word32 CHAR_SIZE_IN_BYTES
+ \end{code}
+diff --git a/ghc/lib/exts/Word.lhs b/ghc/lib/exts/Word.lhs
+index 8e2bd3e548..23dc7776e6 100644
+--- a/ghc/lib/exts/Word.lhs
++++ b/ghc/lib/exts/Word.lhs
+@@ -13,12 +13,16 @@
+ module Word
+ 	( Word8		 -- all abstract.
+ 	, bounded_witness_Word8
++	, num_witness_Word8
+ 	, Word16         -- instances: Eq, Ord
+ 	, bounded_witness_Word16
++	, num_witness_Word16
+ 	, Word32         --  Num, Bounded, Real,
+ 	, bounded_witness_Word32
++	, num_witness_Word32
+ 	, Word64         --  Integral, Ix, Enum,
+ 	, bounded_witness_Word64
++	, num_witness_Word64
+ 	                 --  Read, Show, Bits,
+ 			 --  CCallable, CReturnable
+ 			 --  (last two are GHC specific.)
+@@ -156,8 +160,8 @@
+ intToWord16     = word32ToWord16  . intToWord32
+ word8ToInteger  = word32ToInteger . word8ToWord32
+ word16ToInteger = word32ToInteger . word16ToWord32
+-integerToWord8  = fromInteger
+-integerToWord16 = fromInteger
++integerToWord8  = fromInteger_ num_witness_Word8
++integerToWord16 = fromInteger_ num_witness_Word16
+ 
+ intToWord32 :: Int -> Word32
+ intToWord32 (I# x)   = W32# ((int2Word# x) `and#` (case (maxBound_ bounded_witness_Word32::Word32) of W32# x# -> x#))
+@@ -170,7 +174,7 @@
+ word32ToInteger (W32# x) = word2Integer x
+ 
+ integerToWord32 :: Integer -> Word32
+-integerToWord32 = fromInteger
++integerToWord32 = fromInteger_ num_witness_Word32
+ 
+ wordToInt :: Word -> Int
+ wordToInt (W# w#) = I# (word2Int# w#)
+@@ -226,6 +230,7 @@
+  | otherwise       = GT
+ 
+ instance Num Word8 where
++  num_witness = num_witness_Word8
+   (W8# x) + (W8# y) = 
+       W8# (intToWord8# (word2Int# x +# word2Int# y))
+   (W8# x) - (W8# y) = 
+@@ -240,18 +245,20 @@
+       x' = word2Int# x
+   abs x         = x
+   signum        = signumReal
+-  fromInteger (J# a# s# d#) = W8# (wordToWord8# (integer2Word# a# s# d#))
+-  fromInt       = intToWord8
++
++num_witness_Word8 = NumWitness fromInteger_Word8 fromInt_Word8
++fromInteger_Word8 (J# a# s# d#) = W8# (wordToWord8# (integer2Word# a# s# d#))
++fromInt_Word8       = intToWord8
+ 
+ instance Bounded Word8 where
+   bounded_witness = bounded_witness_Word8
+-  minBound = 0
++  minBound = fromInt_ num_witness_Word8 0
+ 
+ bounded_witness_Word8 = BoundedWitness maxBound_Word8
+-maxBound_Word8 = 0xff
++maxBound_Word8 = fromInt_ num_witness_Word8 0xff
+ 
+ instance Real Word8 where
+-  toRational x = toInteger x % 1
++  toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ -- Note: no need to mask results here 
+ -- as they cannot overflow.
+@@ -289,10 +296,10 @@
+     enum_witness      = enum_witness_Word8
+     succ w	    
+       | w == maxBound_ bounded_witness_Word8 = succError "Word8"
+-      | otherwise     = w+1
++      | otherwise     = w+fromInt_ num_witness_Word8 1
+     pred w	    
+       | w == minBound = predError "Word8"
+-      | otherwise     = w-1
++      | otherwise     = w-fromInt_ num_witness_Word8 1
+ 
+     fromEnum  (W8# w) = I# (word2Int# w)
+     enumFrom c        = map (toEnum_ enum_witness_Word8) [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word8::Word8)]
+@@ -341,7 +348,7 @@
+ 
+   bit (I# i#)
+ 	| i# >=# 0# && i# <=# 7# = W8# (wordToWord8# (shiftL# (int2Word# 1#) i#))
+-	| otherwise = 0 -- We'll be overbearing, for now..
++	| otherwise = fromInt_ num_witness_Word8 0 -- We'll be overbearing, for now..
+ 
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+@@ -365,7 +372,7 @@
+ pow2_64# x# = word64ToInt64# (shiftL64# (wordToWord64# (int2Word# 1#)) x#)
+ 
+ sizeofWord8 :: Word32
+-sizeofWord8 = 1
++sizeofWord8 = fromInt_ num_witness_Word32 1
+ 
+ \end{code}
+ 
+@@ -411,6 +418,7 @@
+      case (compareWord# x# y#) of { LT -> x ; EQ -> x ; GT -> y }
+ 
+ instance Num Word16 where
++  num_witness = num_witness_Word16
+   (W16# x) + (W16# y) = 
+        W16# (intToWord16# (word2Int# x +# word2Int# y))
+   (W16# x) - (W16# y) = 
+@@ -425,18 +433,20 @@
+         x' = word2Int# x
+   abs x         = x
+   signum        = signumReal
+-  fromInteger (J# a# s# d#) = W16# (wordToWord16# (integer2Word# a# s# d#))
+-  fromInt       = intToWord16
++
++num_witness_Word16 = NumWitness fromInteger_Word16 fromInt_Word16
++fromInteger_Word16 (J# a# s# d#) = W16# (wordToWord16# (integer2Word# a# s# d#))
++fromInt_Word16       = intToWord16
+ 
+ instance Bounded Word16 where
+   bounded_witness = bounded_witness_Word16
+-  minBound = 0
++  minBound = fromInt_ num_witness_Word16 0
+ 
+ bounded_witness_Word16 = BoundedWitness maxBound_Word16
+-maxBound_Word16 = 0xffff
++maxBound_Word16 = fromInt_ num_witness_Word16 0xffff
+ 
+ instance Real Word16 where
+-  toRational x = toInteger x % 1
++  toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ instance Integral Word16 where
+   div  x@(W16# x#)  (W16# y#)
+@@ -472,10 +482,10 @@
+     enum_witness      = enum_witness_Word16
+     succ w	    
+       | w == maxBound_ bounded_witness_Word16 = succError "Word16"
+-      | otherwise     = w+1
++      | otherwise     = w+fromInt_ num_witness_Word16 1
+     pred w
+       | w == minBound = predError "Word16"
+-      | otherwise     = w-1
++      | otherwise     = w-fromInt_ num_witness_Word16 1
+ 
+     fromEnum  (W16# w) = I# (word2Int# w)
+     enumFrom c       = map (toEnum_ enum_witness_Word16) [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word16::Word16)]
+@@ -519,7 +529,7 @@
+            i2 = 16# -# i'
+   bit (I# i#)
+ 	| i# >=# 0# && i# <=# 15# = W16# (shiftL# (int2Word# 1#) i#)
+-	| otherwise = 0 -- We'll be overbearing, for now..
++	| otherwise = fromInt_ num_witness_Word16 0 -- We'll be overbearing, for now..
+ 
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+@@ -534,7 +544,7 @@
+ 
+ 
+ sizeofWord16 :: Word32
+-sizeofWord16 = 2
++sizeofWord16 = fromInt_ num_witness_Word32 2
+ 
+ \end{code}
+ 
+@@ -569,6 +579,7 @@
+      case (compareWord# x# y#) of { LT -> x ; EQ -> x ; GT -> y }
+ 
+ instance Num Word32 where
++  num_witness = num_witness_Word32
+   (W32# x) + (W32# y) = 
+        W32# (intToWord32# (word2Int# x +# word2Int# y))
+   (W32# x) - (W32# y) =
+@@ -587,10 +598,12 @@
+ #endif
+   abs x           = x
+   signum          = signumReal
+-  fromInteger (J# a# s# d#) = W32# (integer2Word# a# s# d#)
+-  fromInt (I# x)  = W32# (intToWord32# x)
+     -- ToDo: restrict fromInt{eger} range.
+ 
++num_witness_Word32 = NumWitness fromInteger_Word32 fromInt_Word32
++fromInteger_Word32 (J# a# s# d#) = W32# (integer2Word# a# s# d#)
++fromInt_Word32 (I# x)  = W32# (intToWord32# x)
++
+ intToWord32#  :: Int#  -> Word#
+ wordToWord32# :: Word# -> Word#
+ 
+@@ -606,33 +619,33 @@
+ 
+ instance Bounded Word32 where
+     bounded_witness = bounded_witness_Word32
+-    minBound = 0
++    minBound = fromInt_ num_witness_Word32 0
+ 
+ bounded_witness_Word32 = BoundedWitness maxBound_Word32
+ #if WORD_SIZE_IN_BYTES == 8
+ maxBound_Word32 = 0xffffffff
+ #else
+-maxBound_Word32 = minBound - 1
++maxBound_Word32 = minBound - fromInt_ num_witness_Word32 1
+ #endif
+ 
+ instance Real Word32 where
+-    toRational x = toInteger x % 1
++    toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ instance Integral Word32 where
+     div  x y 
+-      | y /= 0         = quotWord32 x y
++      | y /= fromInt_ num_witness_Word32 0         = quotWord32 x y
+       | otherwise      = divZeroError "div{Word32}" x
+ 
+     quot x y
+-      | y /= 0         = quotWord32 x y
++      | y /= fromInt_ num_witness_Word32 0         = quotWord32 x y
+       | otherwise      = divZeroError "quot{Word32}" x
+ 
+     rem	 x y
+-      | y /= 0         = remWord32 x y
++      | y /= fromInt_ num_witness_Word32 0         = remWord32 x y
+       | otherwise      = divZeroError "rem{Word32}" x
+ 
+     mod  x y
+-      | y /= 0         = remWord32 x y
++      | y /= fromInt_ num_witness_Word32 0         = remWord32 x y
+       | otherwise      = divZeroError "mod{Word32}" x
+ 
+     quotRem a b        = (a `quotWord32` b, a `remWord32` b)
+@@ -658,10 +671,10 @@
+     enum_witness      = enum_witness_Word32
+     succ w	    
+       | w == maxBound_ bounded_witness_Word32 = succError "Word32"
+-      | otherwise     = w+1
++      | otherwise     = w+fromInt_ num_witness_Word32 1
+     pred w	    
+       | w == minBound = predError "Word32"
+-      | otherwise     = w-1
++      | otherwise     = w-fromInt_ num_witness_Word32 1
+ 
+      -- the toEnum/fromEnum will fail if the mapping isn't legal,
+      -- use the intTo* & *ToInt coercion functions to 'bypass' these range checks.
+@@ -677,7 +690,7 @@
+        | otherwise	 = []
+ 	where
+          last = (> w2)
+-	 diff_f x = x + 1 
++	 diff_f x = x + fromInt_ num_witness_Word32 1 
+ 	  
+     enumFromThen w1 w2   = [w1,w2 .. last]
+        where
+@@ -747,7 +760,7 @@
+ 
+   bit (I# i#)
+ 	| i# >=# 0# && i# <=# 31# = W32# (shiftL# (int2Word# 1#) i#)
+-	| otherwise = 0 -- We'll be overbearing, for now..
++	| otherwise = fromInt_ num_witness_Word32 0 -- We'll be overbearing, for now..
+ 
+   setBit x i        = x .|. bit i
+   clearBit x i      = x .&. complement (bit i)
+@@ -760,7 +773,7 @@
+   isSigned _        = False
+ 
+ sizeofWord32 :: Word32
+-sizeofWord32 = 4
++sizeofWord32 = fromInt_ num_witness_Word32 4
+ \end{code}
+ 
+ \subsection[Word64]{The @Word64@ interface}
+@@ -809,6 +822,7 @@
+      case (compareWord# x# y#) of { LT -> x ; EQ -> x ; GT -> y }
+ 
+ instance Num Word64 where
++  num_witness = num_witness_Word64
+   (W64# x) + (W64# y) = 
+       W64# (intToWord64# (word2Int# x +# word2Int# y))
+   (W64# x) - (W64# y) = 
+@@ -823,8 +837,10 @@
+       x' = word2Int# x
+   abs x         = x
+   signum        = signumReal
+-  fromInteger (J# a# s# d#) = W64# (integer2Word# a# s# d#)
+-  fromInt       = intToWord64
++
++num_witness_Word64 = NumWitness fromInteger_Word64 fromInt_Word64
++fromInteger_Word64 (J# a# s# d#) = W64# (integer2Word# a# s# d#)
++fromInt_Word64       = intToWord64
+ 
+ -- Note: no need to mask results here 
+ -- as they cannot overflow.
+@@ -918,7 +934,7 @@
+ 
+ word64ToInt :: Word64 -> Int
+ word64ToInt w = 
+-   case w `quotRem` 0x100000000 of 
++   case w `quotRem` (fromInt_ num_witness_Word64 0x100 * fromInt_ num_witness_Word64 0x100 * fromInt_ num_witness_Word64 0x100 * fromInt_ num_witness_Word64 0x100) of 
+      (_,l) -> toInt (word64ToWord32 l)
+ 
+ intToWord64# :: Int# -> Word64#
+@@ -946,6 +962,7 @@
+      case (compareWord64# x# y#) of { LT -> x ; EQ -> x ; GT -> y }
+ 
+ instance Num Word64 where
++  num_witness = num_witness_Word64
+   (W64# x) + (W64# y) = 
+       W64# (int64ToWord64# (word64ToInt64# x `plusInt64#` word64ToInt64# y))
+   (W64# x) - (W64# y) = 
+@@ -953,13 +970,15 @@
+   (W64# x) * (W64# y) = 
+       W64# (int64ToWord64# (word64ToInt64# x `timesInt64#` word64ToInt64# y))
+   negate w
+-     | w == 0     = w
++     | w == fromInt_ num_witness_Word64 0     = w
+      | otherwise  = maxBound_ bounded_witness_Word64 - w
+ 
+   abs x         = x
+   signum        = signumReal
+-  fromInteger i = integerToWord64 i
+-  fromInt       = intToWord64
++
++num_witness_Word64 = NumWitness fromInteger_Word64 fromInt_Word64
++fromInteger_Word64 i = integerToWord64 i
++fromInt_Word64       = intToWord64
+ 
+ -- Note: no need to mask results here 
+ -- as they cannot overflow.
+@@ -999,7 +1018,7 @@
+ 
+   bit (I# i#)
+ 	| i# >=# 0# && i# <=# 63# = W64# (shiftL64# (wordToWord64# (int2Word# 1#)) i#)
+-	| otherwise = 0 -- We'll be overbearing, for now..
++	| otherwise = fromInt_ num_witness_Word64 0 -- We'll be overbearing, for now..
+ 
+   setBit x i    = x .|. bit i
+   clearBit x i  = x .&. complement (bit i)
+@@ -1153,10 +1172,10 @@
+     enum_witness      = enum_witness_Word64
+     succ w	    
+       | w == maxBound_ bounded_witness_Word64 = succError "Word64"
+-      | otherwise     = w+1
++      | otherwise     = w+fromInt_ num_witness_Word64 1
+     pred w	    
+       | w == minBound = predError "Word64"
+-      | otherwise     = w-1
++      | otherwise     = w-fromInt_ num_witness_Word64 1
+ 
+     fromEnum w
+       | w <= intToWord64 (maxBound_ bounded_witness_Int::Int)
+@@ -1196,16 +1215,16 @@
+ 
+ instance Bounded Word64 where
+   bounded_witness = bounded_witness_Word64
+-  minBound = 0
++  minBound = fromInt_ num_witness_Word64 0
+ 
+ bounded_witness_Word64 = BoundedWitness maxBound_Word64
+-maxBound_Word64 = minBound - 1
++maxBound_Word64 = minBound - fromInt_ num_witness_Word64 1
+ 
+ instance Real Word64 where
+-  toRational x = toInteger x % 1
++  toRational x = toInteger x % fromInt_ num_witness_Integer 1
+ 
+ sizeofWord64 :: Word32
+-sizeofWord64 = 8
++sizeofWord64 = fromInt_ num_witness_Word32 8
+ 
+ \end{code}
+ 
+@@ -1258,9 +1277,9 @@
+ 
+ \begin{code}
+ signumReal :: (Ord a, Num a) => a -> a
+-signumReal x | x == 0    =  0
+-	     | x > 0     =  1
+-	     | otherwise = -1
++signumReal x | x == fromInt_ num_witness 0    =  fromInt_ num_witness 0
++	     | x > fromInt_ num_witness 0     =  fromInt_ num_witness 1
++	     | otherwise = -fromInt_ num_witness 1
+ 
+ \end{code}
+ 
+diff --git a/ghc/lib/std/CPUTime.lhs b/ghc/lib/std/CPUTime.lhs
+index a90c8ae1e3..eb301d589d 100644
+--- a/ghc/lib/std/CPUTime.lhs
++++ b/ghc/lib/std/CPUTime.lhs
+@@ -89,7 +89,7 @@
+ 
+ cpuTimePrecision :: Integer
+ cpuTimePrecision = round ((1000000000000::Integer) % 
+-                          fromInt (unsafePerformIO (CCALL(clockTicks) )))
++                          fromInt_ num_witness_Integer (unsafePerformIO (CCALL(clockTicks) )))
+ \end{code}
+ 
+ \begin{code}
+diff --git a/ghc/lib/std/Complex.lhs b/ghc/lib/std/Complex.lhs
+index 53f0f53681..83fdcc7c93 100644
+--- a/ghc/lib/std/Complex.lhs
++++ b/ghc/lib/std/Complex.lhs
+@@ -89,6 +89,7 @@
+ 
+ \begin{code}
+ instance  (RealFloat a) => Num (Complex a)  where
++    num_witness		= num_witness_Complex
+     (x:+y) + (x':+y')	=  (x+x') :+ (y+y')
+     (x:+y) - (x':+y')	=  (x-x') :+ (y-y')
+     (x:+y) * (x':+y')	=  (x*x'-y*y') :+ (x*y'+y*x')
+@@ -96,7 +97,11 @@
+     abs z		=  magnitude z :+ 0
+     signum 0		=  0
+     signum z@(x:+y)	=  x/r :+ y/r  where r = magnitude z
+-    fromInteger n	=  fromInteger n :+ 0
++
++num_witness_Complex :: RealFloat a => NumWitness (Complex a)
++num_witness_Complex = NumWitness fromInteger_Complex
++fromInteger_Complex :: RealFloat a => Integer -> Complex a
++fromInteger_Complex n	=  fromInteger_ num_witness n :+ 0
+ 
+ instance  (RealFloat a) => Fractional (Complex a)  where
+     (x:+y) / (x':+y')	=  (x*x''+y*y'') / d :+ (y*x''-x*y'') / d
+diff --git a/ghc/lib/std/Directory.lhs b/ghc/lib/std/Directory.lhs
+index fb76a2efef..8f98dc5173 100644
+--- a/ghc/lib/std/Directory.lhs
++++ b/ghc/lib/std/Directory.lhs
+@@ -503,7 +503,7 @@
+     i1 <- malloc1
+     setFileMode i1 stat
+     secs <- cvtUnsigned i1
+-    return (TOD secs 0)
++    return (TOD secs (fromInt_ num_witness 0))
+   where
+     malloc1 = IO $ \ s# ->
+ 	case newIntArray# 1# s# of 
+@@ -519,7 +519,7 @@
+ 	case readIntArray# arr# 0# s# of 
+ 	  (# s2#, r# #) ->
+             if r# ==# 0# then
+-                (# s2#, 0 #)
++                (# s2#, fromInt_ num_witness 0 #)
+             else
+                 case unsafeFreezeByteArray# arr# s2# of
+                   (# s3#, frozen# #) -> 
+diff --git a/ghc/lib/std/List.lhs b/ghc/lib/std/List.lhs
+index 990b040fde..fbbb43b5ff 100644
+--- a/ghc/lib/std/List.lhs
++++ b/ghc/lib/std/List.lhs
+@@ -313,33 +313,33 @@
+ minimumBy min xs	=  foldl1 min xs
+ 
+ genericLength           :: (Num i) => [b] -> i
+-genericLength []        =  0
+-genericLength (_:l)     =  1 + genericLength l
++genericLength []        =  fromInt_ num_witness 0
++genericLength (_:l)     =  fromInt_ num_witness 1 + genericLength l
+ 
+ genericTake		:: (Integral i) => i -> [a] -> [a]
+ genericTake 0 _         =  []
+ genericTake _ []        =  []
+-genericTake n (x:xs) | n > 0  =  x : genericTake (n-1) xs
++genericTake n (x:xs) | n > fromInt_ num_witness 0  =  x : genericTake (n-fromInt_ num_witness 1) xs
+ genericTake _  _        =  error "List.genericTake: negative argument"
+ 
+ genericDrop		:: (Integral i) => i -> [a] -> [a]
+ genericDrop 0 xs        =  xs
+ genericDrop _ []        =  []
+-genericDrop n (_:xs) | n > 0  =  genericDrop (n-1) xs
++genericDrop n (_:xs) | n > fromInt_ num_witness 0  =  genericDrop (n-fromInt_ num_witness 1) xs
+ genericDrop _ _		=  error "List.genericDrop: negative argument"
+ 
+ genericSplitAt          :: (Integral i) => i -> [b] -> ([b],[b])
+ genericSplitAt 0 xs     =  ([],xs)
+ genericSplitAt _ []     =  ([],[])
+-genericSplitAt n (x:xs) | n > 0  =  (x:xs',xs'') where
+-                               (xs',xs'') = genericSplitAt (n-1) xs
++genericSplitAt n (x:xs) | n > fromInt_ num_witness 0  =  (x:xs',xs'') where
++                               (xs',xs'') = genericSplitAt (n-fromInt_ num_witness 1) xs
+ genericSplitAt _ _      =  error "List.genericSplitAt: negative argument"
+ 
+ 
+ genericIndex :: (Integral a) => [b] -> a -> b
+ genericIndex (x:_)  0 = x
+ genericIndex (_:xs) n 
+- | n > 0     = genericIndex xs (n-1)
++ | n > fromInt_ num_witness 0     = genericIndex xs (n-fromInt_ num_witness 1)
+  | otherwise = error "List.genericIndex: negative argument."
+ genericIndex _ _      = error "List.genericIndex: index too large."
+ 
+diff --git a/ghc/lib/std/Numeric.lhs b/ghc/lib/std/Numeric.lhs
+index f38e426824..2899cdef82 100644
+--- a/ghc/lib/std/Numeric.lhs
++++ b/ghc/lib/std/Numeric.lhs
+@@ -47,16 +47,16 @@
+ \begin{code}
+ showInt :: Integral a => a -> ShowS
+ showInt i rs
+-  | i < 0     = error "Numeric.showInt: can't show negative numbers"
++  | i < fromInt_ num_witness 0     = error "Numeric.showInt: can't show negative numbers"
+   | otherwise = go i rs
+     where
+      go n r = 
+-      case quotRem n 10 of                 { (n', d) ->
++      case quotRem n (fromInt_ num_witness 10) of                 { (n', d) ->
+       case chr (ord_0 + fromIntegral d) of { C# c# -> -- stricter than necessary
+       let
+ 	r' = C# c# : r
+       in
+-      if n' == 0 then r' else go n' r'
++      if n' == fromInt_ num_witness 0 then r' else go n' r'
+       }}
+ \end{code}
+ 
+diff --git a/ghc/lib/std/PrelBase.lhs b/ghc/lib/std/PrelBase.lhs
+index e5517a61f7..0ef20ea8b8 100644
+--- a/ghc/lib/std/PrelBase.lhs
++++ b/ghc/lib/std/PrelBase.lhs
+@@ -128,19 +128,33 @@
+ toEnum_ :: EnumWitness a -> Int -> a
+ toEnum_ (EnumWitness toEnum) = toEnum
+ 
++data NumWitness a = NumWitness (Integer -> a) (Int -> a)
++
+ class  (Eq a, Show a) => Num a  where
++    num_witness		:: NumWitness a
+     (+), (-), (*)	:: a -> a -> a
+     negate		:: a -> a
+     abs, signum		:: a -> a
+     fromInteger		:: Integer -> a
+     fromInt		:: Int -> a -- partain: Glasgow extension
+ 
++    num_witness		= NumWitness fromInteger fromInt
+     x - y		= x + negate y
+-    negate x		= 0 - x
+-    fromInt (I# i#)	= fromInteger (case int2Integer# i# of 
++    negate x		= fromInt_ num_witness 0 - x
++    fromInteger		= fromInteger_ num_witness
++    fromInt		= fromInt_ num_witness
++
++fromInteger_ :: NumWitness a -> Integer -> a
++fromInteger_ (NumWitness fromInteger _) = fromInteger
++
++fromInt_default :: NumWitness a -> Int -> a
++fromInt_default num_witness_ (I# i#)	= fromInteger_ num_witness_ (case int2Integer# i# of 
+ 					  (# a, s, d #) -> J# a s d)
+ 					-- Go via the standard class-op if the
+ 					-- non-standard one ain't provided
++
++fromInt_ :: NumWitness a -> Int -> a
++fromInt_ (NumWitness _ fromInt) = fromInt
+ \end{code}
+ 
+ \begin{code}
+@@ -150,7 +164,7 @@
+ ord = fromEnum
+ 
+ ord_0 :: Num a => a
+-ord_0 = fromInt (ord '0')
++ord_0 = fromInt_ num_witness (ord '0')
+ 
+ {-# SPECIALISE subtract :: Int -> Int -> Int #-}
+ subtract	:: (Num a) => a -> a -> a
+@@ -527,7 +541,7 @@
+ 
+ instance  Bounded Int where
+     bounded_witness = bounded_witness_Int
+-    minBound =  -2147483648		-- GHC <= 2.09 had this at -2147483647
++    minBound =  -2147483647 - 1		-- GHC <= 2.09 had this at -2147483647
+ 
+ bounded_witness_Int = BoundedWitness maxBound_Int
+ maxBound_Int =   2147483647
+@@ -582,6 +596,7 @@
+       nxt = now +# step
+ 
+ instance  Num Int  where
++    num_witness = num_witness_Int
+     (+)	   x y =  plusInt x y
+     (-)	   x y =  minusInt x y
+     negate x   =  negateInt x
+@@ -592,10 +607,10 @@
+ 	     | n `eqInt` 0 = 0
+ 	     | otherwise   = 1
+ 
+-    fromInteger (J# a# s# d#)
+-      = case (integer2Int# a# s# d#) of { i# -> I# i# }
+-
+-    fromInt n		= n
++num_witness_Int = NumWitness fromInteger_Int fromInt_Int
++fromInteger_Int (J# a# s# d#)
++  = case (integer2Int# a# s# d#) of { i# -> I# i# }
++fromInt_Int n		= n
+ 
+ instance  Show Int  where
+     showsPrec p n = showSignedInt p n
+diff --git a/ghc/lib/std/PrelHandle.lhs b/ghc/lib/std/PrelHandle.lhs
+index bbc06b2b8e..8bf178e8d4 100644
+--- a/ghc/lib/std/PrelHandle.lhs
++++ b/ghc/lib/std/PrelHandle.lhs
+@@ -957,7 +957,7 @@
+   if sz > toInteger (maxBound_ bounded_witness_Int::Int) then 
+     ioError (userError "slurpFile: file too big")
+    else do
+-     let sz_i = fromInteger sz
++     let sz_i = fromInteger_ num_witness_Int sz
+      chunk <- CCALL(allocMemory__) (sz_i::Int)
+      if chunk == nullAddr 
+       then do
+diff --git a/ghc/lib/std/PrelList.lhs b/ghc/lib/std/PrelList.lhs
+index 5e99d90e67..6cfac73161 100644
+--- a/ghc/lib/std/PrelList.lhs
++++ b/ghc/lib/std/PrelList.lhs
+@@ -344,11 +344,11 @@
+ sum                     =  foldl (+) 0  
+ product                 =  foldl (*) 1
+ #else
+-sum	l	= sum' l 0
++sum	l	= sum' l (fromInt_ num_witness 0)
+   where
+     sum' []     a = a
+     sum' (x:xs) a = sum' xs (a+x)
+-product	l	= prod l 1
++product	l	= prod l (fromInt_ num_witness 1)
+   where
+     prod []     a = a
+     prod (x:xs) a = prod xs (a*x)
+diff --git a/ghc/lib/std/PrelNum.lhs b/ghc/lib/std/PrelNum.lhs
+index 2980262019..52ac68a9c9 100644
+--- a/ghc/lib/std/PrelNum.lhs
++++ b/ghc/lib/std/PrelNum.lhs
+@@ -37,7 +37,7 @@
+     n `rem` d		=  r  where (_,r) = quotRem n d
+     n `div` d		=  q  where (q,_) = divMod n d
+     n `mod` d		=  r  where (_,r) = divMod n d
+-    divMod n d 		=  if signum r == negate (signum d) then (q-1, r+d) else qr
++    divMod n d 		=  if signum r == negate (signum d) then (q-fromInt_ num_witness 1, r+d) else qr
+ 			   where qr@(q,r) = quotRem n d
+ 
+ class  (Num a) => Fractional a  where
+@@ -45,7 +45,7 @@
+     recip		:: a -> a
+     fromRational	:: Rational -> a
+ 
+-    recip x		=  1 / x
++    recip x		=  fromInt_ num_witness 1 / x
+     x / y		= x * recip y
+ 
+ class  (Fractional a) => Floating a  where
+@@ -71,16 +71,16 @@
+     truncate x		=  m  where (m,_) = properFraction x
+     
+     round x		=  let (n,r) = properFraction x
+-    			       m     = if r < 0 then n - 1 else n + 1
++    			       m     = if r < fromInt_ num_witness 0 then n - fromInt_ num_witness 1 else n + fromInt_ num_witness 1
+     			   in case signum (abs r - 0.5) of
+     				-1 -> n
+     			 	0  -> if even n then n else m
+     				1  -> m
+     
+-    ceiling x		=  if r > 0 then n + 1 else n
++    ceiling x		=  if r > fromInt_ num_witness 0 then n + fromInt_ num_witness 1 else n
+     			   where (n,r) = properFraction x
+     
+-    floor x		=  if r < 0 then n - 1 else n
++    floor x		=  if r < fromInt_ num_witness 0 then n - fromInt_ num_witness 1 else n
+     			   where (n,r) = properFraction x
+ 
+ class  (RealFrac a, Floating a) => RealFloat a  where
+@@ -97,7 +97,7 @@
+     atan2	        :: a -> a -> a
+ 
+ 
+-    exponent x		=  if m == 0 then 0 else n + floatDigits x
++    exponent x		=  if m == fromInt_ num_witness 0 then 0 else n + floatDigits x
+ 			   where (m,n) = decodeFloat x
+ 
+     significand x	=  encodeFloat m (negate (floatDigits x))
+@@ -107,16 +107,16 @@
+ 			   where (m,n) = decodeFloat x
+ 			   
+     atan2 y x
+-      | x > 0            =  atan (y/x)
+-      | x == 0 && y > 0  =  pi/2
+-      | x <  0 && y > 0  =  pi + atan (y/x) 
+-      |(x <= 0 && y < 0)            ||
+-       (x <  0 && isNegativeZero y) ||
++      | x > fromInt_ num_witness 0            =  atan (y/x)
++      | x == fromInt_ num_witness 0 && y > fromInt_ num_witness 0  =  pi/fromInt_ num_witness 2
++      | x <  fromInt_ num_witness 0 && y > fromInt_ num_witness 0  =  pi + atan (y/x) 
++      |(x <= fromInt_ num_witness 0 && y < fromInt_ num_witness 0)            ||
++       (x <  fromInt_ num_witness 0 && isNegativeZero y) ||
+        (isNegativeZero x && isNegativeZero y)
+                          = -atan2 (-y) x
+-      | y == 0 && (x < 0 || isNegativeZero x)
++      | y == fromInt_ num_witness 0 && (x < fromInt_ num_witness 0 || isNegativeZero x)
+                           =  pi    -- must be after the previous test on zero y
+-      | x==0 && y==0      =  y     -- must be after the other double zero tests
++      | x==fromInt_ num_witness 0 && y==fromInt_ num_witness 0      =  y     -- must be after the other double zero tests
+       | otherwise         =  x + y -- x or y is a NaN, return a NaN (via +)
+ 
+ \end{code}
+@@ -129,7 +129,7 @@
+ 
+ \begin{code}
+ instance  Real Int  where
+-    toRational x	=  toInteger x % 1
++    toRational x	=  toInteger x % fromInt_ num_witness 1
+ 
+ instance  Integral Int	where
+     a@(I# _) `quotRem` b@(I# _)	= (a `quotInt` b, a `remInt` b)
+@@ -196,6 +196,7 @@
+ 	 }
+ 
+ instance  Num Integer  where
++    num_witness = num_witness_Integer
+     (+) (J# a1 s1 d1) (J# a2 s2 d2)
+       = case plusInteger# a1 s1 d1 a2 s2 d2 of (# a, s, d #) -> J# a s d
+ 
+@@ -211,28 +212,28 @@
+     -- ORIG: abs n = if n >= 0 then n else -n
+ 
+     abs n@(J# a1 s1 d1)
+-      = case 0 of { J# a2 s2 d2 ->
++      = case fromInt_ num_witness 0 of { J# a2 s2 d2 ->
+ 	if (cmpInteger# a1 s1 d1 a2 s2 d2) >=# 0#
+ 	then n
+ 	else case negateInteger# a1 s1 d1 of (# a, s, d #) -> J# a s d
+ 	}
+ 
+     signum (J# a1 s1 d1)
+-      = case 0 of { J# a2 s2 d2 ->
++      = case fromInt_ num_witness 0 of { J# a2 s2 d2 ->
+ 	let
+ 	    cmp = cmpInteger# a1 s1 d1 a2 s2 d2
+ 	in
+-	if      cmp >#  0# then 1
+-	else if cmp ==# 0# then 0
+-	else			(negate 1)
++	if      cmp >#  0# then fromInt_ num_witness 1
++	else if cmp ==# 0# then fromInt_ num_witness 0
++	else			(negate (fromInt_ num_witness 1))
+ 	}
+ 
+-    fromInteger	x	=  x
+-
+-    fromInt (I# i)	=  int2Integer i
++num_witness_Integer = NumWitness fromInteger_Integer fromInt_Integer
++fromInteger_Integer	x	=  x
++fromInt_Integer (I# i)	=  int2Integer i
+ 
+ instance  Real Integer  where
+-    toRational x	=  x % 1
++    toRational x	=  x % fromInt_ num_witness 1
+ 
+ instance  Integral Integer where
+     quotRem (J# a1 s1 d1) (J# a2 s2 d2)
+@@ -253,25 +254,25 @@
+     -- the rest are identical to the report default methods;
+     -- you get slightly better code if you let the compiler
+     -- see them right here:
+-    n `quot` d	=  if d /= 0 then q else 
++    n `quot` d	=  if d /= fromInt_ num_witness 0 then q else 
+ 		     error "Prelude.Integral.quot{Integer}: divide by 0"  
+ 		   where (q,_) = quotRem n d
+-    n `rem` d	=  if d /= 0 then r else 
++    n `rem` d	=  if d /= fromInt_ num_witness 0 then r else 
+ 		     error "Prelude.Integral.rem{Integer}: divide by 0"  
+ 		   where (_,r) = quotRem n d
+     n `div` d	=  q  where (q,_) = divMod n d
+     n `mod` d	=  r  where (_,r) = divMod n d
+ 
+     divMod n d 	=  case (quotRem n d) of { qr@(q,r) ->
+-		   if signum r == negate (signum d) then (q - 1, r+d) else qr }
++		   if signum r == negate (signum d) then (q - fromInt_ num_witness 1, r+d) else qr }
+ 		   -- Case-ified by WDP 94/10
+ 
+ instance  Enum Integer  where
+     enum_witness	 = enum_witness_Integer
+-    succ x		 = x + 1
+-    pred x		 = x - 1
++    succ x		 = x + fromInt_ num_witness 1
++    pred x		 = x - fromInt_ num_witness 1
+     fromEnum n		 =  toInt n
+-    enumFrom n           =  n : enumFrom (n + 1)
++    enumFrom n           =  n : enumFrom (n + fromInt_ num_witness 1)
+     enumFromThen e1 e2   =  en' e1 (e2 - e1)
+ 	                    where en' a b = a : en' (a + b) b
+     enumFromTo n m
+@@ -296,7 +297,7 @@
+       | otherwise       =  []
+ 
+     index b@(m,_) i
+-	| inRange b i	=  fromInteger (i - m)
++	| inRange b i	=  fromInteger_ num_witness_Int (i - m)
+ 	| otherwise	=  indexIntegerError i b
+     inRange (m,n) i	=  m <= i && i <= n
+ 
+@@ -312,20 +313,20 @@
+ 
+ showSignedInteger :: Int -> Integer -> ShowS
+ showSignedInteger p n r
+-  | n < 0 && p > 6 = '(':jtos n (')':r)
++  | n < fromInt_ num_witness 0 && p > 6 = '(':jtos n (')':r)
+   | otherwise      = jtos n r
+ 
+ jtos :: Integer -> String -> String
+ jtos i rs
+- | i < 0     = '-' : jtos' (-i) rs
++ | i < fromInt_ num_witness 0     = '-' : jtos' (-i) rs
+  | otherwise = jtos' i rs
+  where
+   jtos' :: Integer -> String -> String
+   jtos' n cs
+-   | n < 10    = chr (fromInteger n + (ord_0::Int)) : cs
++   | n < fromInt_ num_witness 10    = chr (fromInteger_ num_witness_Int n + (ord_0::Int)) : cs
+    | otherwise = jtos' q (chr (toInt r + (ord_0::Int)) : cs)
+     where
+-     (q,r) = n `quotRem` 10
++     (q,r) = n `quotRem` fromInt_ num_witness 10
+ \end{code}
+ 
+ %*********************************************************
+@@ -370,7 +371,7 @@
+ 
+ \begin{code}
+ even, odd	:: (Integral a) => a -> Bool
+-even n		=  n `rem` 2 == 0
++even n		=  n `rem` fromInt_ num_witness 2 == fromInt_ num_witness 0
+ odd		=  not . even
+ 
+ {-# SPECIALISE gcd ::
+@@ -386,8 +387,8 @@
+ 	Int -> Int -> Int,
+ 	Integer -> Integer -> Integer #-}
+ lcm		:: (Integral a) => a -> a -> a
+-lcm _ 0		=  0
+-lcm 0 _		=  0
++lcm _ 0		=  fromInt_ num_witness 0
++lcm 0 _		=  fromInt_ num_witness 0
+ lcm x y		=  abs ((x `quot` (gcd x y)) * y)
+ 
+ {-# SPECIALISE (^) ::
+@@ -395,19 +396,19 @@
+ 	Integer -> Int -> Integer,
+ 	Int -> Int -> Int #-}
+ (^)		:: (Num a, Integral b) => a -> b -> a
+-_ ^ 0		=  1
+-x ^ n | n > 0	=  f x (n-1) x
++_ ^ 0		=  fromInt_ num_witness 1
++x ^ n | n > fromInt_ num_witness 0	=  f x (n-fromInt_ num_witness 1) x
+ 		   where f _ 0 y = y
+ 		         f a d y = g a d  where
+-			           g b i | even i  = g (b*b) (i `quot` 2)
+-				         | otherwise = f b (i-1) (b*y)
++			           g b i | even i  = g (b*b) (i `quot` fromInt_ num_witness 2)
++				         | otherwise = f b (i-fromInt_ num_witness 1) (b*y)
+ _ ^ _		= error "Prelude.^: negative exponent"
+ 
+ {- SPECIALISE (^^) ::
+ 	Double -> Int -> Double,
+ 	Rational -> Int -> Rational #-}
+ (^^)		:: (Fractional a, Integral b) => a -> b -> a
+-x ^^ n		=  if n >= 0 then x^n else recip (x^(negate n))
++x ^^ n		=  if n >= fromInt_ num_witness 0 then x^n else recip (x^(negate n))
+ 
+ \end{code}
+ 
+diff --git a/ghc/lib/std/PrelNumExtra.lhs b/ghc/lib/std/PrelNumExtra.lhs
+index 05c2579659..fc473c1b7b 100644
+--- a/ghc/lib/std/PrelNumExtra.lhs
++++ b/ghc/lib/std/PrelNumExtra.lhs
+@@ -50,20 +50,23 @@
+     (F# x) >  (F# y) = x `gtFloat#`  y
+ 
+ instance  Num Float  where
++    num_witness		= num_witness_Float
+     (+)		x y 	=  plusFloat x y
+     (-)		x y 	=  minusFloat x y
+     negate	x  	=  negateFloat x
+     (*)		x y 	=  timesFloat x y
+     abs x | x >= 0.0	=  x
+ 	  | otherwise	=  negateFloat x
+-    signum x | x == 0.0	 = 0
+-	     | x > 0.0	 = 1
+-	     | otherwise = negate 1
+-    fromInteger n	=  encodeFloat n 0
+-    fromInt i		=  int2Float i
++    signum x | x == 0.0	 = fromInt_ num_witness 0
++	     | x > 0.0	 = fromInt_ num_witness 1
++	     | otherwise = negate (fromInt_ num_witness 1)
++
++num_witness_Float = NumWitness fromInteger_Float fromInt_Float
++fromInteger_Float n	=  encodeFloat n 0
++fromInt_Float i		=  int2Float i
+ 
+ instance  Real Float  where
+-    toRational x	=  (m%1)*(b%1)^^n
++    toRational x	=  (m%fromInt_ num_witness 1)*(b%fromInt_ num_witness 1)^^n
+ 			   where (m,n) = decodeFloat x
+ 				 b     = floatRadix  x
+ 
+@@ -111,10 +114,10 @@
+       = case (decodeFloat x)      of { (m,n) ->
+     	let  b = floatRadix x     in
+     	if n >= 0 then
+-	    (fromInteger m * fromInteger b ^ n, 0.0)
++	    (fromInteger_ num_witness m * fromInteger_ num_witness b ^ n, 0.0)
+     	else
+ 	    case (quotRem m (b^(negate n))) of { (w,r) ->
+-	    (fromInteger w, encodeFloat r n)
++	    (fromInteger_ num_witness w, encodeFloat r n)
+ 	    }
+         }
+ 
+@@ -123,7 +126,7 @@
+ 
+     round x	= case properFraction x of
+ 		     (n,r) -> let
+-			      	m         = if r < 0.0 then n - 1 else n + 1
++			      	m         = if r < 0.0 then n - fromInt_ num_witness 1 else n + fromInt_ num_witness 1
+ 		  	      	half_down = abs r - 0.5
+     		   	      in
+     		   	      case (compare half_down 0.0) of
+@@ -132,13 +135,13 @@
+       		     		GT -> m
+ 
+     ceiling x   = case properFraction x of
+-		    (n,r) -> if r > 0.0 then n + 1 else n
++		    (n,r) -> if r > 0.0 then n + fromInt_ num_witness 1 else n
+ 
+     floor x	= case properFraction x of
+-		    (n,r) -> if r < 0.0 then n - 1 else n
++		    (n,r) -> if r < 0.0 then n - fromInt_ num_witness 1 else n
+ 
+ instance  RealFloat Float  where
+-    floatRadix _	=  FLT_RADIX	    -- from float.h
++    floatRadix _	=  fromInt_ num_witness FLT_RADIX	    -- from float.h
+     floatDigits _	=  FLT_MANT_DIG	    -- ditto
+     floatRange _	=  (FLT_MIN_EXP, FLT_MAX_EXP) -- ditto
+ 
+@@ -150,7 +153,7 @@
+       = case encodeFloat# a# s# d# e# of { flt# -> F# flt# }
+ 
+     exponent x		= case decodeFloat x of
+-			    (m,n) -> if m == 0 then 0 else n + floatDigits x
++			    (m,n) -> if m == fromInt_ num_witness 0 then 0 else n + floatDigits x
+ 
+     significand x	= case decodeFloat x of
+ 			    (m,_) -> encodeFloat m (negate (floatDigits x))
+@@ -193,20 +196,23 @@
+     (D# x) >  (D# y) = x >##  y
+ 
+ instance  Num Double  where
++    num_witness		= num_witness_Double
+     (+)		x y 	=  plusDouble x y
+     (-)		x y 	=  minusDouble x y
+     negate	x  	=  negateDouble x
+     (*)		x y 	=  timesDouble x y
+     abs x | x >= 0.0	=  x
+ 	  | otherwise	=  negateDouble x
+-    signum x | x == 0.0	 = 0
+-	     | x > 0.0	 = 1
+-	     | otherwise = negate 1
+-    fromInteger n	=  encodeFloat n 0
+-    fromInt (I# n#)	=  case (int2Double# n#) of { d# -> D# d# }
++    signum x | x == 0.0	 = fromInt_ num_witness 0
++	     | x > 0.0	 = fromInt_ num_witness 1
++	     | otherwise = negate (fromInt_ num_witness 1)
++
++num_witness_Double = NumWitness fromInteger_Double fromInt_Double
++fromInteger_Double n	=  encodeFloat n 0
++fromInt_Double (I# n#)	=  case (int2Double# n#) of { d# -> D# d# }
+ 
+ instance  Real Double  where
+-    toRational x	=  (m%1)*(b%1)^^n
++    toRational x	=  (m%fromInt_ num_witness 1)*(b%fromInt_ num_witness 1)^^n
+ 			   where (m,n) = decodeFloat x
+ 				 b     = floatRadix  x
+ 
+@@ -262,10 +268,10 @@
+       = case (decodeFloat x)      of { (m,n) ->
+     	let  b = floatRadix x     in
+     	if n >= 0 then
+-	    (fromInteger m * fromInteger b ^ n, 0.0)
++	    (fromInteger_ num_witness m * fromInteger_ num_witness b ^ n, 0.0)
+     	else
+ 	    case (quotRem m (b^(negate n))) of { (w,r) ->
+-	    (fromInteger w, encodeFloat r n)
++	    (fromInteger_ num_witness w, encodeFloat r n)
+ 	    }
+         }
+ 
+@@ -274,7 +280,7 @@
+ 
+     round x	= case properFraction x of
+ 		     (n,r) -> let
+-			      	m         = if r < 0.0 then n - 1 else n + 1
++			      	m         = if r < 0.0 then n - fromInt_ num_witness 1 else n + fromInt_ num_witness 1
+ 		  	      	half_down = abs r - 0.5
+     		   	      in
+     		   	      case (compare half_down 0.0) of
+@@ -283,13 +289,13 @@
+       		     		GT -> m
+ 
+     ceiling x   = case properFraction x of
+-		    (n,r) -> if r > 0.0 then n + 1 else n
++		    (n,r) -> if r > 0.0 then n + fromInt_ num_witness 1 else n
+ 
+     floor x	= case properFraction x of
+-		    (n,r) -> if r < 0.0 then n - 1 else n
++		    (n,r) -> if r < 0.0 then n - fromInt_ num_witness 1 else n
+ 
+ instance  RealFloat Double  where
+-    floatRadix _	=  FLT_RADIX	    -- from float.h
++    floatRadix _	=  fromInt_ num_witness FLT_RADIX	    -- from float.h
+     floatDigits _	=  DBL_MANT_DIG	    -- ditto
+     floatRange _	=  (DBL_MIN_EXP, DBL_MAX_EXP) -- ditto
+ 
+@@ -301,7 +307,7 @@
+       = case encodeDouble# a# s# d# e#	of { dbl# -> D# dbl# }
+ 
+     exponent x		= case decodeFloat x of
+-			    (m,n) -> if m == 0 then 0 else n + floatDigits x
++			    (m,n) -> if m == fromInt_ num_witness 0 then 0 else n + floatDigits x
+ 
+     significand x	= case decodeFloat x of
+ 			    (m,_) -> encodeFloat m (negate (floatDigits x))
+@@ -342,7 +348,7 @@
+     Integer	-> Float,
+     Integer	-> Double #-}
+ fromIntegral	:: (Integral a, Num b) => a -> b
+-fromIntegral	=  fromInteger . toInteger
++fromIntegral	=  fromInteger_ num_witness . toInteger
+ 
+ {- SPECIALIZE realToFrac ::
+     Double	-> Rational, 
+@@ -380,9 +386,9 @@
+ \begin{code}
+ instance  Enum Float  where
+     enum_witness   = enum_witness_Float
+-    succ x	   = x + 1
+-    pred x	   = x - 1
+-    fromEnum       =  fromInteger . truncate   -- may overflow
++    succ x	   = x + fromInt_ num_witness 1
++    pred x	   = x - fromInt_ num_witness 1
++    fromEnum       =  fromInteger_ num_witness_Int . truncate   -- may overflow
+     enumFrom	   =  numericEnumFrom
+     enumFromTo     =  numericEnumFromTo
+     enumFromThen   =  numericEnumFromThen
+@@ -393,9 +399,9 @@
+ 
+ instance  Enum Double  where
+     enum_witness   = enum_witness_Double
+-    succ x	   = x + 1
+-    pred x	   = x - 1
+-    fromEnum       =  fromInteger . truncate   -- may overflow
++    succ x	   = x + fromInt_ num_witness 1
++    pred x	   = x - fromInt_ num_witness 1
++    fromEnum       =  fromInteger_ num_witness_Int . truncate   -- may overflow
+     enumFrom	   =  numericEnumFrom
+     enumFromTo     =  numericEnumFromTo
+     enumFromThen   =  numericEnumFromThen
+@@ -405,18 +411,18 @@
+ toEnum_Double         =  fromIntegral
+ 
+ numericEnumFrom		:: (Fractional a) => a -> [a]
+-numericEnumFrom		=  iterate (+1)
++numericEnumFrom		=  iterate (+fromInt_ num_witness 1)
+ 
+ numericEnumFromThen	:: (Fractional a) => a -> a -> [a]
+ numericEnumFromThen n m	=  iterate (+(m-n)) n
+ 
+ numericEnumFromTo       :: (Ord a, Fractional a) => a -> a -> [a]
+-numericEnumFromTo n m   = takeWhile (<= m + 1/2) (numericEnumFrom n)
++numericEnumFromTo n m   = takeWhile (<= m + fromInt_ num_witness 1/fromInt_ num_witness 2) (numericEnumFrom n)
+ 
+ numericEnumFromThenTo   :: (Ord a, Fractional a) => a -> a -> a -> [a]
+ numericEnumFromThenTo e1 e2 e3 = takeWhile pred (numericEnumFromThen e1 e2)
+ 				where
+-				 mid = (e2 - e1) / 2
++				 mid = (e2 - e1) / fromInt_ num_witness 2
+ 				 pred | e2 > e1   = (<= e3 + mid)
+ 				      | otherwise = (>= e3 + mid)
+ 				      
+@@ -438,9 +444,9 @@
+ approxRational rat eps	=  simplest (rat-eps) (rat+eps)
+ 	where simplest x y | y < x	=  simplest y x
+ 			   | x == y	=  xr
+-			   | x > 0	=  simplest' n d n' d'
+-			   | y < 0	=  - simplest' (-n') d' (-n) d
+-			   | otherwise	=  0 :% 1
++			   | x > fromInt_ num_witness 0	=  simplest' n d n' d'
++			   | y < fromInt_ num_witness 0	=  - simplest' (-n') d' (-n) d
++			   | otherwise	=  fromInt_ num_witness 0 :% fromInt_ num_witness 1
+ 					where xr  = toRational x
+ 					      n   = numerator xr
+ 					      d   = denominator xr
+@@ -449,8 +455,8 @@
+ 					      d'  = denominator nd'
+ 
+ 	      simplest' n d n' d'	-- assumes 0 < n%d < n'%d'
+-			| r == 0     =	q :% 1
+-			| q /= q'    =	(q+1) :% 1
++			| r == fromInt_ num_witness 0     =	q :% fromInt_ num_witness 1
++			| q /= q'    =	(q+fromInt_ num_witness 1) :% fromInt_ num_witness 1
+ 			| otherwise  =	(q*n''+d'') :% n''
+ 				     where (q,r)      =	 quotRem n d
+ 					   (q',r')    =	 quotRem n' d'
+@@ -466,21 +472,26 @@
+     (x:%y) <  (x':%y')	=  x * y' <  x' * y
+ 
+ instance  (Integral a)	=> Num (Ratio a)  where
++    num_witness		= num_witness_Ratio
+     (x:%y) + (x':%y')	=  reduce (x*y' + x'*y) (y*y')
+     (x:%y) - (x':%y')	=  reduce (x*y' - x'*y) (y*y')
+     (x:%y) * (x':%y')	=  reduce (x * x') (y * y')
+     negate (x:%y)	=  (-x) :% y
+     abs (x:%y)		=  abs x :% y
+-    signum (x:%_)	=  signum x :% 1
+-    fromInteger x	=  fromInteger x :% 1
++    signum (x:%_)	=  signum x :% fromInt_ num_witness 1
++
++num_witness_Ratio :: Integral a => NumWitness (Ratio a)
++num_witness_Ratio = NumWitness fromInteger_Ratio (fromInt_default num_witness)
++fromInteger_Ratio :: Integral a => Integer -> Ratio a
++fromInteger_Ratio x	=  fromInteger_ num_witness x :% fromInt_ num_witness 1
+ 
+ instance  (Integral a)	=> Real (Ratio a)  where
+     toRational (x:%y)	=  toInteger x :% toInteger y
+ 
+ instance  (Integral a)	=> Fractional (Ratio a)  where
+     (x:%y) / (x':%y')	=  (x*y') % (y*x')
+-    recip (x:%y)	=  if x < 0 then (-y) :% (-x) else y :% x
+-    fromRational (x:%y) =  fromInteger x :% fromInteger y
++    recip (x:%y)	=  if x < fromInt_ num_witness 0 then (-y) :% (-x) else y :% x
++    fromRational (x:%y) =  fromInteger_ num_witness x :% fromInteger_ num_witness y
+ 
+ instance  (Integral a)	=> RealFrac (Ratio a)  where
+     properFraction (x:%y) = (fromIntegral q, r:%y)
+@@ -488,19 +499,19 @@
+ 
+ instance  (Integral a)	=> Enum (Ratio a)  where
+     enum_witness        =  enum_witness_Ratio
+-    succ x	        =  x + 1
+-    pred x	        =  x - 1
++    succ x	        =  x + fromInt_ num_witness 1
++    pred x	        =  x - fromInt_ num_witness 1
+ 
+-    fromEnum            =  fromInteger . truncate
++    fromEnum            =  fromInteger_ num_witness . truncate
+ 
+-    enumFrom		=  bounded_iterator True (1)
+-    enumFromThen n m	=  bounded_iterator (diff >= 0) diff n 
++    enumFrom		=  bounded_iterator True (fromInt_ num_witness 1)
++    enumFromThen n m	=  bounded_iterator (diff >= fromInt_ num_witness 0) diff n 
+ 			  where diff = m - n
+ 
+ enum_witness_Ratio :: Integral a => EnumWitness (Ratio a)
+ enum_witness_Ratio = EnumWitness toEnum_Ratio
+ toEnum_Ratio :: Integral a => Int -> Ratio a
+-toEnum_Ratio n            =  fromIntegral n :% fromInt 1
++toEnum_Ratio n            =  fromIntegral n :% fromInt_ num_witness 1
+ 
+ 
+ bounded_iterator :: (Ord a, Num a) => Bool -> a -> a -> [a]
+@@ -528,7 +539,7 @@
+ \begin{code}
+ showRational :: Int -> Rational -> String
+ showRational n r =
+-    if r == 0 then
++    if r == fromInt_ num_witness 0 then
+     	"0.0"
+     else
+ 	let (r', e) = normalize r
+@@ -539,8 +550,8 @@
+ 
+ -- make sure 1 <= r < 10
+ normalize :: Rational -> (Rational, Int)
+-normalize r = if r < 1 then
+-		  case norm startExpExp (1 / r) 0 of (r', e) -> (10 / r', -e-1)
++normalize r = if r < fromInt_ num_witness 1 then
++		  case norm startExpExp (fromInt_ num_witness 1 / r) 0 of (r', e) -> (fromInt_ num_witness 10 / r', -e-1)
+ 	      else
+ 		  norm startExpExp r 0
+ 	where norm :: Int -> Rational -> Int -> (Rational, Int)
+@@ -548,18 +559,18 @@
+ 	      norm 0  x e = (x, e)
+ 	      norm ee x e =
+ 		let n = 10^ee
+-		    tn = 10^n
++		    tn = fromInt_ num_witness 10^n
+ 		in  if x >= tn then norm ee (x/tn) (e+n) else norm (ee-1) x e
+ 
+ prR :: Int -> Rational -> Int -> String
+-prR n r e  | r <  1  = prR n (r*10) (e-1)		-- final adjustment
+-prR n r e  | r >= 10 = prR n (r/10) (e+1)
++prR n r e  | r <  fromInt_ num_witness 1  = prR n (r*fromInt_ num_witness 10) (e-1)		-- final adjustment
++prR n r e  | r >= fromInt_ num_witness 10 = prR n (r/fromInt_ num_witness 10) (e+1)
+ prR n r e0
+   | e > 0 && e < 8   = takeN e s ('.' : drop0 (drop e s) [])
+   | e <= 0 && e > -3 = '0': '.' : takeN (-e) (repeat '0') (drop0 s [])
+   | otherwise	     =  h : '.' : drop0 t ('e':show e0)
+    where
+-	s@(h:t) = show ((round (r * 10^n))::Integer)
++	s@(h:t) = show ((round (r * fromInt_ num_witness 10^n))::Integer)
+ 	e       = e0+1
+ 	
+ 	takeN (I# n#) ls rs = takeUInt_append n# ls rs
+@@ -626,8 +637,8 @@
+ --		result, because of an accumulation of three rounding
+ --		errors.
+ 
+-	      (s,e) = decodeFloat (fromInteger (numerator x) `asTypeOf` x'
+-					/ fromInteger (denominator x))
++	      (s,e) = decodeFloat (fromInteger_ num_witness (numerator x) `asTypeOf` x'
++					/ fromInteger_ num_witness (denominator x))
+ \end{pseudocode}
+ 
+ Now, here's Lennart's code.
+@@ -635,8 +646,8 @@
+ \begin{code}
+ fromRat :: (RealFloat a) => Rational -> a
+ fromRat x 
+-  | x == 0    =  encodeFloat 0 0 		-- Handle exceptional cases
+-  | x <  0    =  - fromRat' (-x)		-- first.
++  | x == fromInt_ num_witness 0    =  encodeFloat (fromInt_ num_witness 0) 0 		-- Handle exceptional cases
++  | x <  fromInt_ num_witness 0    =  - fromRat' (-x)		-- first.
+   | otherwise =  fromRat' x
+ 
+ -- Conversion process:
+@@ -656,7 +667,7 @@
+ 	xMin   = toRational (expt b (p-1))
+ 	xMax   = toRational (expt b p)
+ 	p0 = (integerLogBase b (numerator x) - integerLogBase b (denominator x) - p) `max` minExp
+-	f = if p0 < 0 then 1 % expt b (-p0) else expt b p0 % 1
++	f = if p0 < 0 then fromInt_ num_witness 1 % expt b (-p0) else expt b p0 % fromInt_ num_witness 1
+ 	(x', p') = scaleRat (toRational b) minExp xMin xMax p0 (x / f)
+ 	r = encodeFloat (round x') p'
+ 
+@@ -675,13 +686,13 @@
+ 
+ expt :: Integer -> Int -> Integer
+ expt base n =
+-    if base == 2 && n >= minExpt && n <= maxExpt then
++    if base == fromInt_ num_witness 2 && n >= minExpt && n <= maxExpt then
+         expts!n
+     else
+         base^n
+ 
+ expts :: Array Int Integer
+-expts = array (minExpt,maxExpt) [(n,2^n) | n <- [minExpt .. maxExpt]]
++expts = array (minExpt,maxExpt) [(n,fromInt_ num_witness 2^n) | n <- [minExpt .. maxExpt]]
+ 
+ -- Compute the (floor of the) log of i in base b.
+ -- Simplest way would be just divide i by b until it's smaller then b, but that would
+@@ -712,7 +723,7 @@
+ --avoid mut. rec. between PrelNum and Numeric.
+ showSigned :: (Real a) => (a -> ShowS) -> Int -> a -> ShowS
+ showSigned showPos p x 
+-   | x < 0     = showParen (p > 6) (showChar '-' . showPos (-x))
++   | x < fromInt_ num_witness 0     = showParen (p > 6) (showChar '-' . showPos (-x))
+    | otherwise = showPos x
+ 
+ showFloat :: (RealFloat a) => a -> ShowS
+@@ -725,8 +736,8 @@
+ formatRealFloat :: (RealFloat a) => FFFormat -> Maybe Int -> a -> String
+ formatRealFloat fmt decs x
+    | isNaN x		       = "NaN"
+-   | isInfinite x              = if x < 0 then "-Infinity" else "Infinity"
+-   | x < 0 || isNegativeZero x = '-':doFmt fmt (floatToDigits (toInteger base) (-x))
++   | isInfinite x              = if x < fromInt_ num_witness 0 then "-Infinity" else "Infinity"
++   | x < fromInt_ num_witness 0 || isNegativeZero x = '-':doFmt fmt (floatToDigits (toInteger base) (-x))
+    | otherwise		       = doFmt fmt (floatToDigits (toInteger base) x)
+  where 
+   base = 10
+@@ -825,28 +836,28 @@
+    if e >= 0 then
+     let be = b^ e in
+     if f == b^(p-1) then
+-      (f*be*b*2, 2*b, be*b, b)
++      (f*be*b*fromInt_ num_witness 2, fromInt_ num_witness 2*b, be*b, b)
+     else
+-      (f*be*2, 2, be, be)
++      (f*be*fromInt_ num_witness 2, fromInt_ num_witness 2, be, be)
+    else
+     if e > minExp && f == b^(p-1) then
+-      (f*b*2, b^(-e+1)*2, b, 1)
++      (f*b*fromInt_ num_witness 2, b^(-e+1)*fromInt_ num_witness 2, b, fromInt_ num_witness 1)
+     else
+-      (f*2, b^(-e)*2, 1, 1)
++      (f*fromInt_ num_witness 2, b^(-e)*fromInt_ num_witness 2, fromInt_ num_witness 1, fromInt_ num_witness 1)
+   k =
+    let 
+     k0 =
+-     if b == 2 && base == 10 then
++     if b == fromInt_ num_witness 2 && base == fromInt_ num_witness 10 then
+         -- logBase 10 2 is slightly bigger than 3/10 so
+ 	-- the following will err on the low side.  Ignoring
+ 	-- the fraction will make it err even more.
+ 	-- Haskell promises that p-1 <= logBase b f < p.
+ 	(p - 1 + e0) * 3 `div` 10
+      else
+-        ceiling ((log (fromInteger (f+1)) +
+-	         fromInt e * log (fromInteger b)) /
+-		   log (fromInteger base))
+---WAS:		  fromInt e * log (fromInteger b))
++        ceiling ((log (fromInteger_ num_witness (f+fromInt_ num_witness 1)) +
++	         fromInt_ num_witness e * log (fromInteger_ num_witness b)) /
++		   log (fromInteger_ num_witness base))
++--WAS:		  fromInt_ num_witness e * log (fromInteger_ num_witness b))
+ 
+     fixup n =
+       if n >= 0 then
+@@ -864,8 +875,8 @@
+    in
+    case (rn' < mDnN', rn' + mUpN' > sN) of
+     (True,  False) -> dn : ds
+-    (False, True)  -> dn+1 : ds
+-    (True,  True)  -> if rn' * 2 < sN then dn : ds else dn+1 : ds
++    (False, True)  -> dn+fromInt_ num_witness 1 : ds
++    (True,  True)  -> if rn' * fromInt_ num_witness 2 < sN then dn : ds else dn+fromInt_ num_witness 1 : ds
+     (False, False) -> gen (dn:ds) rn' sN mUpN' mDnN'
+   
+   rds = 
+diff --git a/ghc/lib/std/PrelRead.lhs b/ghc/lib/std/PrelRead.lhs
+index 1ef7b43d3c..dc1142c5c9 100644
+--- a/ghc/lib/std/PrelRead.lhs
++++ b/ghc/lib/std/PrelRead.lhs
+@@ -472,26 +472,26 @@
+ 		ReadS Int,
+ 		ReadS Integer #-}
+ readDec :: (Integral a) => ReadS a
+-readDec = readInt 10 isDigit (\d -> ord d - ord_0)
++readDec = readInt (fromInt_ num_witness 10) isDigit (\d -> ord d - ord_0)
+ 
+ {-# SPECIALISE readOct :: 
+ 		ReadS Int,
+ 		ReadS Integer #-}
+ readOct :: (Integral a) => ReadS a
+-readOct = readInt 8 isOctDigit (\d -> ord d - ord_0)
++readOct = readInt (fromInt_ num_witness 8) isOctDigit (\d -> ord d - ord_0)
+ 
+ {-# SPECIALISE readHex :: 
+ 		ReadS Int,
+ 		ReadS Integer #-}
+ readHex :: (Integral a) => ReadS a
+-readHex = readInt 16 isHexDigit hex
++readHex = readInt (fromInt_ num_witness 16) isHexDigit hex
+ 	    where hex d = ord d - (if isDigit d then ord_0
+ 				   else ord (if isUpper d then 'A' else 'a') - 10)
+ 
+ readInt :: (Integral a) => a -> (Char -> Bool) -> (Char -> Int) -> ReadS a
+ readInt radix isDig digToInt s = do
+     (ds,r) <- nonnull isDig s
+-    return (foldl1 (\n d -> n * radix + d) (map (fromInt . digToInt) ds), r)
++    return (foldl1 (\n d -> n * radix + d) (map (fromInt_ num_witness . digToInt) ds), r)
+ 
+ {-# SPECIALISE readSigned ::
+ 		ReadS Int     -> ReadS Int,
+@@ -530,13 +530,13 @@
+    (do 
+       (n,d,s) <- readFix r
+       (k,t)   <- readExp s
+-      return ((n%1)*10^^(k-d), t )) ++
++      return ((n%fromInt_ num_witness 1)*fromInt_ num_witness 10^^(k-d), t )) ++
+    (do
+       ("NaN",t) <- lex r
+-      return (0/0,t) ) ++
++      return (fromInt_ num_witness 0/fromInt_ num_witness 0,t) ) ++
+    (do
+       ("Infinity",t) <- lex r
+-      return (1/0,t) )
++      return (fromInt_ num_witness 1/fromInt_ num_witness 0,t) )
+  where
+      readFix r = do
+ 	(ds,s)  <- lexDecDigits r
+diff --git a/ghc/lib/std/Prelude.lhs b/ghc/lib/std/Prelude.lhs
+index 9849ee7ab7..bd56769947 100644
+--- a/ghc/lib/std/Prelude.lhs
++++ b/ghc/lib/std/Prelude.lhs
+@@ -30,7 +30,11 @@
+     Ordering(..), 
+     Char, String, Int, Integer, Float, Double, IO,
+     bounded_witness_Int,
++    num_witness_Int,
++    num_witness_Integer,
++    num_witness_Float,
+     Rational,
++    num_witness_Ratio,
+     []((:), []),
+     
+     module PrelTup,
+@@ -43,7 +47,9 @@
+     Enum(..),
+     Bounded(..), 
+     maxBound_,
+-    Num((+), (-), (*), negate, abs, signum, fromInteger, fromInt{-glaExt-}),
++    Num(num_witness, (+), (-), (*), negate, abs, signum, fromInteger, fromInt{-glaExt-}),
++    fromInteger_,
++    fromInt_,
+     Real(..),
+     Integral(quot, rem, div, mod, quotRem, divMod, toInteger, toInt{-partain-}),
+     Fractional(..),
+diff --git a/ghc/lib/std/Random.lhs b/ghc/lib/std/Random.lhs
+index 433ae5e21e..fef6bf229d 100644
+--- a/ghc/lib/std/Random.lhs
++++ b/ghc/lib/std/Random.lhs
+@@ -164,7 +164,7 @@
+ randomIvalInteger :: (RandomGen g, Num a) => (Integer, Integer) -> g -> (a, g)
+ randomIvalInteger (l,h) rng
+  | l > h     = randomIvalInteger (h,l) rng
+- | otherwise = case (f n 1 rng) of (v, rng') -> (fromInteger (v `mod` (k+1)), rng')
++ | otherwise = case (f n 1 rng) of (v, rng') -> (fromInteger_ (v `mod` (k+1)), rng')
+      where
+        k = h - l + 1
+        b = 2147483561
+@@ -175,7 +175,7 @@
+           let
+ 	   (x,g')   = next g
+ 	  in
+-	  f (n-1) (fromInt x + acc * b) g'
++	  f (n-1) (fromInt_ x + acc * b) g'
+ 
+ randomIvalDouble :: (RandomGen g, Fractional a) => (Double, Double) -> (Double -> a) -> g -> (a, g)
+ randomIvalDouble (l,h) fromDouble rng 
+diff --git a/ghc/lib/std/Time.lhs b/ghc/lib/std/Time.lhs
+index e3eaa743d2..27e746b6fc 100644
+--- a/ghc/lib/std/Time.lhs
++++ b/ghc/lib/std/Time.lhs
+@@ -203,7 +203,7 @@
+ 	then do
+ 	    sec  <- cvtUnsigned i1
+ 	    nsec <- cvtUnsigned i2
+-	    return (TOD sec (nsec * 1000))
++	    return (TOD sec (nsec * fromInt_ num_witness_Integer 1000))
+     	else
+ 	    constructErrorAndFail "getClockTime"
+   where
+@@ -221,7 +221,7 @@
+ 	case readIntArray# arr# 0# s# of 
+ 	  (# s2#, r# #) ->
+             if r# ==# 0# 
+-		then (# s2#, 0 #)
++		then (# s2#, fromInt_ num_witness_Integer 0 #)
+             	else case unsafeFreezeByteArray# arr# s2# of
+                         (# s3#, frozen# #) -> 
+ 				(# s3#, J# 1# 1# frozen# #)
+@@ -399,7 +399,7 @@
+ 
+ toClockTime :: CalendarTime -> ClockTime
+ toClockTime (CalendarTime year mon mday hour min sec psec _wday _yday _tzname tz isdst) =
+-    if psec < 0 || psec > 999999999999 then
++    if psec < fromInt_ num_witness_Integer 0 || psec > fromInt_ num_witness_Integer 1000 * fromInt_ num_witness_Integer 1000 * fromInt_ num_witness_Integer 1000 * fromInt_ num_witness_Integer 1000 - fromInt_ num_witness_Integer 1 then
+         error "Time.toClockTime: picoseconds out of range"
+     else if tz < -43200 || tz > 43200 then
+         error "Time.toClockTime: timezone offset out of range"

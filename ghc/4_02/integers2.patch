@@ -1,0 +1,11 @@
+--- a/ghc/lib/std/Prelude.lhs
++++ b/ghc/lib/std/Prelude.lhs
+@@ -28,7 +28,7 @@
+     Maybe(..),
+     Either(..),
+     Ordering(..), 
+-    Char, String, Int, Integer, Float, Double, IO,
++    Char, String, Int(..), Integer, Float, Double, IO,
+     bounded_witness_Int,
+     num_witness_Int,
+     num_witness_Integer,

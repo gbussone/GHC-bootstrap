@@ -1,0 +1,515 @@
+--- a/ghc/compiler/reader/Lex.lhs
++++ b/ghc/compiler/reader/Lex.lhs
+@@ -16,7 +16,6 @@
+ --------------------------------------------------------
+ 
+ \begin{code}
+-{-# OPTIONS -#include "ctypes.h" #-}
+ 
+ module Lex (
+ 
+diff --git a/ghc/compiler/utils/DirUtils.lhs b/ghc/compiler/utils/DirUtils.lhs
+index dffd408e9b..9262e8236b 100644
+--- a/ghc/compiler/utils/DirUtils.lhs
++++ b/ghc/compiler/utils/DirUtils.lhs
+@@ -4,7 +4,6 @@
+ \section[DirUtils]{Directory functions}
+ 
+ \begin{code}
+-{-# OPTIONS -#include <dirent.h> #-}
+ module DirUtils
+        (
+ 	getDirectoryContents
+diff --git a/ghc/compiler/utils/Outputable.lhs b/ghc/compiler/utils/Outputable.lhs
+index dfefd854b3..cf3f6c03f5 100644
+--- a/ghc/compiler/utils/Outputable.lhs
++++ b/ghc/compiler/utils/Outputable.lhs
+@@ -7,7 +7,6 @@
+ ``output.''
+ 
+ \begin{code}
+-{-# OPTIONS -fno-prune-tydecls #-}
+ -- Hopefully temporary; 3.02 complained about not being able
+ -- to see the consructors for ForeignObj
+ 
+diff --git a/ghc/compiler/utils/StringBuffer.lhs b/ghc/compiler/utils/StringBuffer.lhs
+index 18d275672a..c20bf674b5 100644
+--- a/ghc/compiler/utils/StringBuffer.lhs
++++ b/ghc/compiler/utils/StringBuffer.lhs
+@@ -6,7 +6,6 @@
+ Buffers for scanning string input stored in external arrays.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-prune-tydecls #-}
+ module StringBuffer
+        (
+         StringBuffer,
+diff --git a/ghc/lib/exts/Bits.lhs b/ghc/lib/exts/Bits.lhs
+index 22da720029..c5d9998c6f 100644
+--- a/ghc/lib/exts/Bits.lhs
++++ b/ghc/lib/exts/Bits.lhs
+@@ -8,7 +8,6 @@
+ individual operations.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Bits where
+ 
+diff --git a/ghc/lib/exts/IOExts.lhs b/ghc/lib/exts/IOExts.lhs
+index 612b37dd38..1e62b28432 100644
+--- a/ghc/lib/exts/IOExts.lhs
++++ b/ghc/lib/exts/IOExts.lhs
+@@ -11,7 +11,6 @@
+ extension.)
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module IOExts
+         ( fixIO
+diff --git a/ghc/lib/exts/ST.lhs b/ghc/lib/exts/ST.lhs
+index e7d6fc87dc..da0e5551d2 100644
+--- a/ghc/lib/exts/ST.lhs
++++ b/ghc/lib/exts/ST.lhs
+@@ -4,7 +4,6 @@
+ \section[module_ST]{The State Transformer Monad, @ST@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module ST (
+ 
+diff --git a/ghc/lib/std/Array.lhs b/ghc/lib/std/Array.lhs
+index b5dfbf95a8..ca2d5deb6d 100644
+--- a/ghc/lib/std/Array.lhs
++++ b/ghc/lib/std/Array.lhs
+@@ -5,7 +5,6 @@
+ \section[Array]{Module @Array@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module  Array 
+ 
+diff --git a/ghc/lib/std/Char.lhs b/ghc/lib/std/Char.lhs
+index a471bec621..82117c9258 100644
+--- a/ghc/lib/std/Char.lhs
++++ b/ghc/lib/std/Char.lhs
+@@ -5,7 +5,6 @@
+ \section[Char]{Module @Char@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Char 
+     ( 
+diff --git a/ghc/lib/std/Directory.lhs b/ghc/lib/std/Directory.lhs
+index fb76a2efef..8444269656 100644
+--- a/ghc/lib/std/Directory.lhs
++++ b/ghc/lib/std/Directory.lhs
+@@ -17,7 +17,6 @@
+ are relative to the current directory.
+ 
+ \begin{code}
+-{-# OPTIONS -#include <sys/stat.h> -#include <dirent.h> -#include "cbits/stgio.h" #-}
+ module Directory 
+    ( 
+       Permissions               -- abstract
+diff --git a/ghc/lib/std/IO.lhs b/ghc/lib/std/IO.lhs
+index 6670ff3172..5a21f5a2f0 100644
+--- a/ghc/lib/std/IO.lhs
++++ b/ghc/lib/std/IO.lhs
+@@ -8,7 +8,6 @@
+ definition.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude -#include "cbits/stgio.h" #-}
+ 
+ #ifndef BODY /* Hugs just includes this in PreludeBuiltin so no header needed */
+ module IO (
+diff --git a/ghc/lib/std/Ix.lhs b/ghc/lib/std/Ix.lhs
+index 5f121d8542..786a76578d 100644
+--- a/ghc/lib/std/Ix.lhs
++++ b/ghc/lib/std/Ix.lhs
+@@ -5,7 +5,6 @@
+ \section[Ix]{Module @Ix@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Ix 
+     (
+diff --git a/ghc/lib/std/Maybe.lhs b/ghc/lib/std/Maybe.lhs
+index 32d4490684..bc24cf0b99 100644
+--- a/ghc/lib/std/Maybe.lhs
++++ b/ghc/lib/std/Maybe.lhs
+@@ -7,7 +7,6 @@
+ @Maybe@ values.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Maybe
+    (
+diff --git a/ghc/lib/std/Monad.lhs b/ghc/lib/std/Monad.lhs
+index fcb59a0a58..2e81fc1df1 100644
+--- a/ghc/lib/std/Monad.lhs
++++ b/ghc/lib/std/Monad.lhs
+@@ -4,7 +4,6 @@
+ \section[Monad]{Module @Monad@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Monad 
+     ( MonadPlus (   -- class context: Monad
+diff --git a/ghc/lib/std/Numeric.lhs b/ghc/lib/std/Numeric.lhs
+index f38e426824..88914db420 100644
+--- a/ghc/lib/std/Numeric.lhs
++++ b/ghc/lib/std/Numeric.lhs
+@@ -8,7 +8,6 @@
+ 
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ module Numeric
+ 
+         ( fromRat          -- :: (RealFloat a) => Rational -> a
+diff --git a/ghc/lib/std/PrelAddr.lhs b/ghc/lib/std/PrelAddr.lhs
+index d91ecf99ea..e66af80b4a 100644
+--- a/ghc/lib/std/PrelAddr.lhs
++++ b/ghc/lib/std/PrelAddr.lhs
+@@ -5,7 +5,6 @@
+ \section[PrelAddr]{Module @PrelAddr@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelAddr (
+ 	  Addr(..)
+diff --git a/ghc/lib/std/PrelArr.lhs b/ghc/lib/std/PrelArr.lhs
+index 331bc263f9..a4a5db01ce 100644
+--- a/ghc/lib/std/PrelArr.lhs
++++ b/ghc/lib/std/PrelArr.lhs
+@@ -7,7 +7,6 @@
+ types and operations.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelArr where
+ 
+diff --git a/ghc/lib/std/PrelArrExtra.lhs b/ghc/lib/std/PrelArrExtra.lhs
+index a09f051f31..2f89009c06 100644
+--- a/ghc/lib/std/PrelArrExtra.lhs
++++ b/ghc/lib/std/PrelArrExtra.lhs
+@@ -9,7 +9,6 @@
+ module.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelArrExtra where
+ 
+diff --git a/ghc/lib/std/PrelBase.lhs b/ghc/lib/std/PrelBase.lhs
+index 8ff06b7fe8..38a441a733 100644
+--- a/ghc/lib/std/PrelBase.lhs
++++ b/ghc/lib/std/PrelBase.lhs
+@@ -5,7 +5,6 @@
+ 
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelBase
+ 	(
+diff --git a/ghc/lib/std/PrelBounded.lhs b/ghc/lib/std/PrelBounded.lhs
+index de8699efeb..9f17aa735e 100644
+--- a/ghc/lib/std/PrelBounded.lhs
++++ b/ghc/lib/std/PrelBounded.lhs
+@@ -6,7 +6,6 @@
+ Instances of Bounded for various datatypes.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelBounded where
+ 
+diff --git a/ghc/lib/std/PrelCCall.lhs b/ghc/lib/std/PrelCCall.lhs
+index 55266993cc..0e508f6ea3 100644
+--- a/ghc/lib/std/PrelCCall.lhs
++++ b/ghc/lib/std/PrelCCall.lhs
+@@ -5,7 +5,6 @@
+ \section[PrelCCall]{Module @PrelCCall@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelCCall (
+ 	CCallable(..),
+diff --git a/ghc/lib/std/PrelConc.lhs b/ghc/lib/std/PrelConc.lhs
+index 9801d77d89..c7439438d5 100644
+--- a/ghc/lib/std/PrelConc.lhs
++++ b/ghc/lib/std/PrelConc.lhs
+@@ -7,7 +7,6 @@
+ Basic concurrency stuff
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelConc (
+ 
+diff --git a/ghc/lib/std/PrelDynamic.lhs b/ghc/lib/std/PrelDynamic.lhs
+index b90fafe36c..c43b03e925 100644
+--- a/ghc/lib/std/PrelDynamic.lhs
++++ b/ghc/lib/std/PrelDynamic.lhs
+@@ -7,7 +7,6 @@
+ available in exts/Dynamic.lhs.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ #ifndef __HUGS__
+ module PrelDynamic where
+diff --git a/ghc/lib/std/PrelEither.lhs b/ghc/lib/std/PrelEither.lhs
+index ada0a9679f..61bea8acee 100644
+--- a/ghc/lib/std/PrelEither.lhs
++++ b/ghc/lib/std/PrelEither.lhs
+@@ -6,7 +6,6 @@
+ The @Either@ Type.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelEither where
+ 
+diff --git a/ghc/lib/std/PrelErr.lhs b/ghc/lib/std/PrelErr.lhs
+index ee22bdab81..de14bae839 100644
+--- a/ghc/lib/std/PrelErr.lhs
++++ b/ghc/lib/std/PrelErr.lhs
+@@ -12,7 +12,6 @@
+ with what the typechecker figures out.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ module PrelErr 
+        (
+          irrefutPatError
+diff --git a/ghc/lib/std/PrelException.lhs b/ghc/lib/std/PrelException.lhs
+index 586d68ee2f..f3daa718f2 100644
+--- a/ghc/lib/std/PrelException.lhs
++++ b/ghc/lib/std/PrelException.lhs
+@@ -7,7 +7,6 @@
+ Exceptions and exception-handling functions.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ #ifndef __HUGS__
+ module PrelException where
+diff --git a/ghc/lib/std/PrelForeign.lhs b/ghc/lib/std/PrelForeign.lhs
+index f149108df7..583ff16d64 100644
+--- a/ghc/lib/std/PrelForeign.lhs
++++ b/ghc/lib/std/PrelForeign.lhs
+@@ -5,7 +5,6 @@
+ \section[Foreign]{Module @Foreign@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelForeign (
+ 	module PrelForeign,
+diff --git a/ghc/lib/std/PrelHandle.lhs b/ghc/lib/std/PrelHandle.lhs
+index a11d913e3c..93ac6ed195 100644
+--- a/ghc/lib/std/PrelHandle.lhs
++++ b/ghc/lib/std/PrelHandle.lhs
+@@ -8,7 +8,6 @@
+ which are supported for them.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude -#include "cbits/stgio.h" #-}
+ #include "cbits/error.h"
+ 
+ #ifndef __HUGS__ /* Hugs just includes this in PreludeBuiltin so no header needed */
+diff --git a/ghc/lib/std/PrelIOBase.lhs b/ghc/lib/std/PrelIOBase.lhs
+index 32c255860e..27fe302b89 100644
+--- a/ghc/lib/std/PrelIOBase.lhs
++++ b/ghc/lib/std/PrelIOBase.lhs
+@@ -10,7 +10,6 @@
+ concretely; the @IO@ module itself exports abstractly.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude -#include "cbits/stgio.h" #-}
+ #include "cbits/error.h"
+ 
+ #ifndef __HUGS__ /* Hugs just includes this in PreludeBuiltin so no header needed */
+diff --git a/ghc/lib/std/PrelList.lhs b/ghc/lib/std/PrelList.lhs
+index 5e99d90e67..71821a16c0 100644
+--- a/ghc/lib/std/PrelList.lhs
++++ b/ghc/lib/std/PrelList.lhs
+@@ -7,7 +7,6 @@
+ The List data type and its operations
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelList (
+    [] (..),
+diff --git a/ghc/lib/std/PrelMain.lhs b/ghc/lib/std/PrelMain.lhs
+index 05aae47814..5339517b06 100644
+--- a/ghc/lib/std/PrelMain.lhs
++++ b/ghc/lib/std/PrelMain.lhs
+@@ -5,7 +5,6 @@
+ \section[PrelMain]{Module @PrelMain@}
+ 
+ \begin{code}
+-{-# OPTIONS -#include "cbits/stgio.h" #-}
+ 
+ module PrelMain( mainIO ) where
+ 
+diff --git a/ghc/lib/std/PrelMaybe.lhs b/ghc/lib/std/PrelMaybe.lhs
+index 20de4cc9c2..de1c48871a 100644
+--- a/ghc/lib/std/PrelMaybe.lhs
++++ b/ghc/lib/std/PrelMaybe.lhs
+@@ -6,7 +6,6 @@
+ The @Maybe@ type.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelMaybe where
+ 
+diff --git a/ghc/lib/std/PrelNum.lhs b/ghc/lib/std/PrelNum.lhs
+index 70e826c37a..a53ba7fd7d 100644
+--- a/ghc/lib/std/PrelNum.lhs
++++ b/ghc/lib/std/PrelNum.lhs
+@@ -5,7 +5,6 @@
+ \section[PrelNum]{Module @PrelNum@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelNum where
+ 
+diff --git a/ghc/lib/std/PrelNumExtra.lhs b/ghc/lib/std/PrelNumExtra.lhs
+index 7fb14a89ad..8b570500e3 100644
+--- a/ghc/lib/std/PrelNumExtra.lhs
++++ b/ghc/lib/std/PrelNumExtra.lhs
+@@ -5,8 +5,6 @@
+ \section[PrelNumExtra]{Module @PrelNumExtra@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+-{-# OPTIONS -H20m #-}
+ 
+ #include "../includes/ieee-flpt.h"
+ 
+diff --git a/ghc/lib/std/PrelPack.lhs b/ghc/lib/std/PrelPack.lhs
+index f126c56b42..d00538726b 100644
+--- a/ghc/lib/std/PrelPack.lhs
++++ b/ghc/lib/std/PrelPack.lhs
+@@ -11,7 +11,6 @@
+ system library PackedString.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelPack
+        (
+diff --git a/ghc/lib/std/PrelRead.lhs b/ghc/lib/std/PrelRead.lhs
+index 1ef7b43d3c..96c062ebe4 100644
+--- a/ghc/lib/std/PrelRead.lhs
++++ b/ghc/lib/std/PrelRead.lhs
+@@ -7,7 +7,6 @@
+ Instances of the Read class.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelRead where
+ 
+diff --git a/ghc/lib/std/PrelST.lhs b/ghc/lib/std/PrelST.lhs
+index 6addc5cbe9..018245c5e5 100644
+--- a/ghc/lib/std/PrelST.lhs
++++ b/ghc/lib/std/PrelST.lhs
+@@ -4,7 +4,6 @@
+ \section[PrelST]{The @ST@ monad}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelST where
+ 
+diff --git a/ghc/lib/std/PrelStable.lhs b/ghc/lib/std/PrelStable.lhs
+index 664ade7b79..a67ecdfb9f 100644
+--- a/ghc/lib/std/PrelStable.lhs
++++ b/ghc/lib/std/PrelStable.lhs
+@@ -5,7 +5,6 @@
+ %
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelStable 
+ 	( StablePtr(..)
+diff --git a/ghc/lib/std/PrelTup.lhs b/ghc/lib/std/PrelTup.lhs
+index c375eb71da..3d4dbdfaf5 100644
+--- a/ghc/lib/std/PrelTup.lhs
++++ b/ghc/lib/std/PrelTup.lhs
+@@ -7,7 +7,6 @@
+ This modules defines the typle data types.
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelTup where
+ 
+diff --git a/ghc/lib/std/PrelWeak.lhs b/ghc/lib/std/PrelWeak.lhs
+index 901a385726..559ef6abb4 100644
+--- a/ghc/lib/std/PrelWeak.lhs
++++ b/ghc/lib/std/PrelWeak.lhs
+@@ -5,7 +5,6 @@
+ \section[PrelWeak]{Module @PrelWeak@}
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module PrelWeak where
+ 
+diff --git a/ghc/lib/std/Prelude.lhs b/ghc/lib/std/Prelude.lhs
+index 60b292e5e1..39bce750d1 100644
+--- a/ghc/lib/std/Prelude.lhs
++++ b/ghc/lib/std/Prelude.lhs
+@@ -3,7 +3,6 @@
+ and Prelude.-> (as they are normally). -- SDM 8/10/97
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module Prelude (
+ 
+diff --git a/ghc/lib/std/Ratio.lhs b/ghc/lib/std/Ratio.lhs
+index 7c8107f35f..c1aaf0b686 100644
+--- a/ghc/lib/std/Ratio.lhs
++++ b/ghc/lib/std/Ratio.lhs
+@@ -7,7 +7,6 @@
+ Standard functions on rational numbers
+ 
+ \begin{code}
+-{-# OPTIONS -fno-implicit-prelude #-}
+ 
+ module	Ratio
+     ( Ratio
+diff --git a/ghc/lib/std/Time.lhs b/ghc/lib/std/Time.lhs
+index b4adb2160c..a8b72ce08c 100644
+--- a/ghc/lib/std/Time.lhs
++++ b/ghc/lib/std/Time.lhs
+@@ -9,7 +9,6 @@
+ its use of Coordinated Universal Time (UTC).
+ 
+ \begin{code}
+-{-# OPTIONS -#include "cbits/timezone.h" -#include "cbits/stgio.h"  #-}
+ module Time 
+      (
+         Month(..)

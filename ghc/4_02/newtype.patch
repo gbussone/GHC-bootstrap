@@ -1,0 +1,97 @@
+--- a/ghc/compiler/simplStg/UpdAnal.lhs
++++ b/ghc/compiler/simplStg/UpdAnal.lhs
+@@ -99,7 +99,7 @@
+ type Closure = (IdEnvInt, Refs, AbFun)
+ 
+ type AbVal = IdEnvClosure -> Closure
+-newtype AbFun = Fun (Closure -> Closure)
++data AbFun = Fun (Closure -> Closure)
+ 
+ -- partain: speeding-up stuff
+ 
+diff --git a/ghc/compiler/stranal/SaLib.lhs b/ghc/compiler/stranal/SaLib.lhs
+index 9135e87ee3..4f90c24dac 100644
+--- a/ghc/compiler/stranal/SaLib.lhs
++++ b/ghc/compiler/stranal/SaLib.lhs
+@@ -96,7 +96,7 @@
+ pessimistic value---see @absEval@ of a @Var@.
+ 
+ \begin{code}
+-newtype AbsValEnv = AbsValEnv (IdEnv AbsVal)
++data AbsValEnv = AbsValEnv (IdEnv AbsVal)
+ 
+ type StrictEnv  = AbsValEnv	-- Environment for strictness analysis
+ type AbsenceEnv = AbsValEnv	-- Environment for absence analysis
+diff --git a/ghc/lib/exts/IOExts.lhs b/ghc/lib/exts/IOExts.lhs
+index 612b37dd38..2beb292b3d 100644
+--- a/ghc/lib/exts/IOExts.lhs
++++ b/ghc/lib/exts/IOExts.lhs
+@@ -95,7 +95,7 @@
+ readIORef  = readSTRef
+ writeIORef = writeSTRef
+ #else
+-newtype IORef a = IORef (MutableVar RealWorld a) 
++data IORef a = IORef (MutableVar RealWorld a) 
+     deriving Eq
+ 
+ newIORef v = stToIO (newVar v) >>= \ var -> return (IORef var)
+@@ -121,7 +121,7 @@
+ freezeIOArray = freezeSTArray
+ thawIOArray   = thawSTArray
+ #else
+-newtype IOArray ix elt = IOArray (MutableArray RealWorld ix elt)
++data IOArray ix elt = IOArray (MutableArray RealWorld ix elt)
+     deriving Eq
+ 
+ newIOArray ixs elt = 
+diff --git a/ghc/lib/exts/ST.lhs b/ghc/lib/exts/ST.lhs
+index e7d6fc87dc..f8dc9557ac 100644
+--- a/ghc/lib/exts/ST.lhs
++++ b/ghc/lib/exts/ST.lhs
+@@ -54,7 +54,7 @@
+ %*********************************************************
+ 
+ \begin{code}
+-newtype STRef s a = STRef (MutableVar s a) 
++data STRef s a = STRef (MutableVar s a) 
+     deriving Eq
+ 
+ newSTRef :: a -> ST s (STRef s a)
+@@ -131,7 +131,7 @@
+   copy arr arr' i = primWriteArray arr' i (primIndexArray arr i)
+   arrEleBottom = error "primFreezeArray: panic"
+ #else
+-newtype STArray s ix elt = STArray (MutableArray s ix elt)
++data STArray s ix elt = STArray (MutableArray s ix elt)
+     deriving Eq
+ 
+ newSTArray ixs elt = 
+diff --git a/ghc/lib/std/PrelIOBase.lhs b/ghc/lib/std/PrelIOBase.lhs
+index 32c255860e..7f1ddbef09 100644
+--- a/ghc/lib/std/PrelIOBase.lhs
++++ b/ghc/lib/std/PrelIOBase.lhs
+@@ -391,9 +391,9 @@
+ #endif /* ndef __HUGS__ */
+ 
+ #if defined(__CONCURRENT_HASKELL__)
+-newtype Handle = Handle (MVar Handle__)
++data Handle = Handle (MVar Handle__)
+ #else
+-newtype Handle = Handle (MutableVar RealWorld Handle__)
++data Handle = Handle (MutableVar RealWorld Handle__)
+ #endif
+ 
+ {-
+diff --git a/ghc/lib/std/PrelST.lhs b/ghc/lib/std/PrelST.lhs
+index 6addc5cbe9..383b2fedfe 100644
+--- a/ghc/lib/std/PrelST.lhs
++++ b/ghc/lib/std/PrelST.lhs
+@@ -23,7 +23,7 @@
+ too many people got bitten by space leaks when it was lazy.
+ 
+ \begin{code}
+-newtype ST s a = ST (State# s -> (# State# s, a #))
++data ST s a = ST (State# s -> (# State# s, a #))
+ 
+ instance Functor (ST s) where
+     fmap f (ST m) = ST $ \ s ->

@@ -1,0 +1,2650 @@
+--- a/ghc/compiler/HsVersions.h
++++ b/ghc/compiler/HsVersions.h
+@@ -44,7 +44,7 @@
+ # define _runST ST.runST
+ # define seqStrictlyST seqST
+ # define thenStrictlyST thenST
+-# define returnStrictlyST return
++# define returnStrictlyST return_ monad_witness_ST
+ # define MkST ST
+ # if __GLASGOW_HASKELL__ >= 209
+ #  define STATE_TOK(x)    x
+diff --git a/ghc/compiler/absCSyn/PprAbsC.lhs b/ghc/compiler/absCSyn/PprAbsC.lhs
+index 90267074bb..15cd294bc7 100644
+--- a/ghc/compiler/absCSyn/PprAbsC.lhs
++++ b/ghc/compiler/absCSyn/PprAbsC.lhs
+@@ -1562,7 +1562,7 @@
+ 	arr <- newFloatArray ((0::Int),0)
+ 	writeFloatArray arr 0 (fromRational r)
+ 	i <- readIntArray arr 0
+-	return (CLit (MachInt (toInteger i) True))
++	return_ monad_witness_ST (CLit (MachInt (toInteger i) True))
+     )
+ 
+ doubleToWords :: CAddrMode -> [CAddrMode]
+@@ -1573,7 +1573,7 @@
+ 	writeDoubleArray arr 0 (fromRational r)
+ 	i1 <- readIntArray arr 0
+ 	i2 <- readIntArray arr 1
+-	return [ CLit (MachInt (toInteger i1) True)
++	return_ monad_witness_ST [ CLit (MachInt (toInteger i1) True)
+ 	       , CLit (MachInt (toInteger i2) True)
+ 	       ]
+     )
+@@ -1582,6 +1582,6 @@
+ 	arr <- newDoubleArray ((0::Int),0)
+ 	writeDoubleArray arr 0 (fromRational r)
+ 	i <- readIntArray arr 0
+-	return [ CLit (MachInt (toInteger i) True) ]
++	return_ monad_witness_ST [ CLit (MachInt (toInteger i) True) ]
+     )
+ \end{code}
+diff --git a/ghc/compiler/basicTypes/UniqSupply.lhs b/ghc/compiler/basicTypes/UniqSupply.lhs
+index 4b8a7564f7..f24c29802f 100644
+--- a/ghc/compiler/basicTypes/UniqSupply.lhs
++++ b/ghc/compiler/basicTypes/UniqSupply.lhs
+@@ -83,11 +83,11 @@
+ 		mk_unique   >>= \ uniq ->
+ 		mk_supply#  >>= \ s1 ->
+ 		mk_supply#  >>= \ s2 ->
+-		return (MkSplitUniqSupply uniq s1 s2)
++		return_ monad_witness_IO (MkSplitUniqSupply uniq s1 s2)
+ 	    )
+ 
+ 	mk_unique = _ccall_ genSymZh		>>= \ (W# u#) ->
+-		    return (I# (w2i (mask# `or#` u#)))
++		    return_ monad_witness_IO (I# (w2i (mask# `or#` u#)))
+     in
+     mk_supply#
+ 
+diff --git a/ghc/compiler/basicTypes/Unique.lhs b/ghc/compiler/basicTypes/Unique.lhs
+index bdd8513ab9..02bd3a853c 100644
+--- a/ghc/compiler/basicTypes/Unique.lhs
++++ b/ghc/compiler/basicTypes/Unique.lhs
+@@ -363,7 +363,7 @@
+ # define RUN_ST	    ST.runST
+ # define AND_THEN   >>=
+ # define AND_THEN_  >>
+-# define RETURN	    return
++# define RETURN	    return_ monad_witness_ST
+ 
+ iToBase62 :: Int -> SDoc
+ 
+diff --git a/ghc/compiler/basicTypes/Var.lhs b/ghc/compiler/basicTypes/Var.lhs
+index e5c820d255..c97e107f51 100644
+--- a/ghc/compiler/basicTypes/Var.lhs
++++ b/ghc/compiler/basicTypes/Var.lhs
+@@ -174,7 +174,7 @@
+ newMutTyVar :: Name -> Kind -> IO TyVar
+ newMutTyVar name kind = 
+   do loc <- newIORef Nothing
+-     return (Var { varName = name, 
++     return_ monad_witness_IO (Var { varName = name, 
+ 		   realUnique = getKey (nameUnique name),
+ 		   varType = kind, 
+ 		   varDetails = MutTyVar loc })
+diff --git a/ghc/compiler/coreSyn/CoreLint.lhs b/ghc/compiler/coreSyn/CoreLint.lhs
+index 2e79cc75e6..226933e6e8 100644
+--- a/ghc/compiler/coreSyn/CoreLint.lhs
++++ b/ghc/compiler/coreSyn/CoreLint.lhs
+@@ -60,7 +60,7 @@
+   | opt_D_show_passes
+   = hPutStr stderr ("*** " ++ pass_name ++ "\n")
+   | otherwise
+-  = return ()
++  = return_ monad_witness_IO ()
+ 
+ 
+ endPass :: String -> Bool -> [CoreBind] -> IO [CoreBind]
+@@ -73,7 +73,7 @@
+ 	-- Type check
+ 	lintCoreBindings pass_name binds
+ 
+-	return binds
++	return_ monad_witness_IO binds
+ \end{code}
+ 
+ 
+@@ -112,7 +112,7 @@
+ 
+ lintCoreBindings whoDunnit binds
+   | not opt_DoCoreLinting
+-  = return ()
++  = return_ monad_witness_IO ()
+ 
+ lintCoreBindings whoDunnit binds
+   = case (initL (lint_binds binds)) of
+diff --git a/ghc/compiler/deSugar/Desugar.lhs b/ghc/compiler/deSugar/Desugar.lhs
+index 8e43035782..a327fca900 100644
+--- a/ghc/compiler/deSugar/Desugar.lhs
++++ b/ghc/compiler/deSugar/Desugar.lhs
+@@ -58,7 +58,7 @@
+ 
+ 	 -- Lint result if necessary
+         endPass "Desugar" opt_D_dump_ds ds_binds
+-        return (ds_binds, h_code, c_code)
++        return_ monad_witness_IO (ds_binds, h_code, c_code)
+   where
+     (us1, us2) = splitUniqSupply us
+     (us3, us4) = splitUniqSupply us2
+diff --git a/ghc/compiler/main/ErrUtils.lhs b/ghc/compiler/main/ErrUtils.lhs
+index 96c7b67130..305f9c827b 100644
+--- a/ghc/compiler/main/ErrUtils.lhs
++++ b/ghc/compiler/main/ErrUtils.lhs
+@@ -76,19 +76,19 @@
+ ghcExit val
+   = if val /= 0
+     then error "Compilation had errors\n"
+-    else return ()
++    else return_ monad_witness_IO ()
+ \end{code}
+ 
+ \begin{code}
+ doIfSet :: Bool -> IO () -> IO ()
+ doIfSet flag action | flag      = action
+-		    | otherwise = return ()
++		    | otherwise = return_ monad_witness_IO ()
+ \end{code}
+ 
+ \begin{code}
+ dumpIfSet :: Bool -> String -> SDoc -> IO ()
+ dumpIfSet flag hdr doc
+-  | not flag  = return ()
++  | not flag  = return_ monad_witness_IO ()
+   | otherwise = printDump dump
+   where
+     dump = vcat [text "", 
+diff --git a/ghc/compiler/main/Main.lhs b/ghc/compiler/main/Main.lhs
+index c38079e9e1..ad334a52ea 100644
+--- a/ghc/compiler/main/Main.lhs
++++ b/ghc/compiler/main/Main.lhs
+@@ -103,7 +103,7 @@
+ 	Nothing -> 	-- Hurrah!  Renamer reckons that there's no need to
+ 			-- go any further
+ 			reportCompile mod_name "Compilation NOT required!" >>
+-			return ();
++			return_ monad_witness_IO ();
+ 	
+ 	Just (rn_mod, iface_file_stuff, rn_name_supply, imported_modules) ->
+ 			-- Oh well, we've got to recompile for real
+@@ -253,11 +253,11 @@
+     show_pass
+       = if opt_D_show_passes
+ 	then \ what -> hPutStr stderr ("*** "++what++":\n")
+-	else \ what -> return ()
++	else \ what -> return_ monad_witness_IO ()
+ 
+     doOutput switch io_action
+       = case switch of
+-	  Nothing    -> return ()
++	  Nothing    -> return_ monad_witness_IO ()
+ 	  Just fname ->
+ 	    openFile fname WriteMode	>>= \ handle ->
+ 	    io_action handle		>>
+@@ -266,18 +266,18 @@
+     -- don't use doOutput for dumping the f. export stubs
+     -- since it is more than likely that the stubs file will
+     -- turn out to be empty, in which case no file should be created.
+-    outputCStub mod_name switch "" = return ()
++    outputCStub mod_name switch "" = return_ monad_witness_IO ()
+     outputCStub mod_name switch doc_str
+       = case switch of
+-	  Nothing    -> return ()
++	  Nothing    -> return_ monad_witness_IO ()
+ 	  Just fname -> writeFile fname ("#include \"Rts.h\"\n#include \"RtsAPI.h\"\n"++rest)
+ 	    where
+ 	     rest = "#include "++show (moduleString mod_name ++ "_stub.h") ++ '\n':doc_str
+ 	      
+-    outputHStub switch "" = return ()
++    outputHStub switch "" = return_ monad_witness_IO ()
+     outputHStub switch doc_str
+       = case switch of
+-	  Nothing    -> return ()
++	  Nothing    -> return_ monad_witness_IO ()
+ 	  Just fname -> writeFile fname ("#include \"Rts.h\"\n"++doc_str)
+ 
+ ppSourceStats short (HsModule name version exports imports decls src_loc)
+@@ -460,7 +460,7 @@
+   bindSocket s (SockAddrInet (mkPortNumber p) iNADDR_ANY)
+   return s
+ #else
+-reportCompile _ _ = return ()
++reportCompile _ _ = return_ monad_witness_IO ()
+ #endif
+ 
+ \end{code}
+diff --git a/ghc/compiler/main/MkIface.lhs b/ghc/compiler/main/MkIface.lhs
+index 5307d23915..5432c705a3 100644
+--- a/ghc/compiler/main/MkIface.lhs
++++ b/ghc/compiler/main/MkIface.lhs
+@@ -99,20 +99,20 @@
+ \begin{code}
+ startIface mod
+   = case opt_ProduceHi of
+-      Nothing -> return Nothing -- not producing any .hi file
++      Nothing -> return_ monad_witness_IO Nothing -- not producing any .hi file
+       Just fn -> do
+ 	if_hdl <- openFile fn WriteMode
+ 	hPutStr if_hdl ("__interface " ++ moduleString mod ++ ' ':show (opt_HiVersion :: Int))
+ 	hPutStrLn if_hdl " where"
+-	return (Just if_hdl)
++	return_ monad_witness_IO (Just if_hdl)
+ 
+-endIface Nothing	= return ()
++endIface Nothing	= return_ monad_witness_IO ()
+ endIface (Just if_hdl)	= hPutStr if_hdl "\n" >> hClose if_hdl
+ \end{code}
+ 
+ 
+ \begin{code}
+-ifaceMain Nothing iface_stuff = return ()
++ifaceMain Nothing iface_stuff = return_ monad_witness_IO ()
+ ifaceMain (Just if_hdl)
+ 	  (import_usages, ExportEnv avails fixities, instance_modules)
+   = do
+@@ -120,21 +120,21 @@
+     ifaceInstanceModules	if_hdl instance_modules
+     ifaceExports		if_hdl avails
+     ifaceFixities		if_hdl fixities
+-    return ()
++    return_ monad_witness_IO ()
+ 
+-ifaceDecls Nothing tycons classes inst_info final_ids simplified = return ()
++ifaceDecls Nothing tycons classes inst_info final_ids simplified = return_ monad_witness_IO ()
+ ifaceDecls (Just hdl)
+ 	   tycons classes
+ 	   inst_infos
+ 	   final_ids binds
+-  | null_decls = return ()		 
++  | null_decls = return_ monad_witness_IO ()		 
+ 	--  You could have a module with just (re-)exports/instances in it
+   | otherwise
+   = ifaceClasses hdl classes			>>
+     ifaceInstances hdl inst_infos		>>= \ needed_ids ->
+     ifaceTyCons hdl tycons			>>
+     ifaceBinds hdl needed_ids final_ids binds	>>
+-    return ()
++    return_ monad_witness_IO ()
+   where
+      null_decls = null binds      && 
+ 		  null tycons     &&
+@@ -159,7 +159,7 @@
+     upp_import_versions (Specifically nvs)
+       = hsep [ hsep [ppr_unqual_name n, int v] | (n,v) <- sort_versions nvs ]
+ 
+-ifaceInstanceModules if_hdl [] = return ()
++ifaceInstanceModules if_hdl [] = return_ monad_witness_IO ()
+ ifaceInstanceModules if_hdl imods
+   = let sorted = sortLt (<) imods
+ 	lines = map (\m -> ptext SLIT("__instimport ") <> pprModule m <>
+@@ -168,7 +168,7 @@
+     printForIface if_hdl (vcat lines) >>
+     hPutStr if_hdl "\n"
+ 
+-ifaceExports if_hdl [] = return ()
++ifaceExports if_hdl [] = return_ monad_witness_IO ()
+ ifaceExports if_hdl avails
+   = hPutCol if_hdl do_one_module (fmToList export_fm)
+   where
+@@ -189,7 +189,7 @@
+ 		hsep (map upp_avail (sortLt lt_avail avails))
+ 	  ] <> semi
+ 
+-ifaceFixities if_hdl [] = return ()
++ifaceFixities if_hdl [] = return_ monad_witness_IO ()
+ ifaceFixities if_hdl fixities 
+   = hPutCol if_hdl upp_fixity fixities
+ \end{code}			 
+@@ -204,9 +204,9 @@
+ \begin{code}			 
+ ifaceInstances :: Handle -> Bag InstInfo -> IO IdSet		-- The IdSet is the needed dfuns
+ ifaceInstances if_hdl inst_infos
+-  | null togo_insts = return emptyVarSet		 
++  | null togo_insts = return_ monad_witness_IO emptyVarSet		 
+   | otherwise 	    = hPutCol if_hdl pp_inst (sortLt lt_inst togo_insts) >>
+-		      return needed_ids
++		      return_ monad_witness_IO needed_ids
+   where				 
+     togo_insts	= filter is_togo_inst (bagToList inst_infos)
+     needed_ids  = mkVarSet [dfun_id | InstInfo _ _ _ _ dfun_id _ _ _ <- togo_insts]
+@@ -620,6 +620,6 @@
+ hPutCol hdl fmt xs = mapIO (printForIface hdl . fmt) xs
+ 
+ mapIO :: (a -> IO b) -> [a] -> IO ()
+-mapIO f []     = return ()
++mapIO f []     = return_ monad_witness_IO ()
+ mapIO f (x:xs) = f x >> mapIO f xs
+ \end{code}
+diff --git a/ghc/compiler/parser/UgenUtil.lhs b/ghc/compiler/parser/UgenUtil.lhs
+index 5530035f1d..4d5bc988bf 100644
+--- a/ghc/compiler/parser/UgenUtil.lhs
++++ b/ghc/compiler/parser/UgenUtil.lhs
+@@ -24,7 +24,7 @@
+ {-# INLINE returnUgn #-}
+ {-# INLINE thenUgn #-}
+ 
+-returnUgn x stuff = return x
++returnUgn x stuff = return_ monad_witness_IO x
+ 
+ thenUgn x y stuff
+   = x stuff	>>= \ z ->
+diff --git a/ghc/compiler/rename/Rename.lhs b/ghc/compiler/rename/Rename.lhs
+index f9aafff576..0bfd3cb08e 100644
+--- a/ghc/compiler/rename/Rename.lhs
++++ b/ghc/compiler/rename/Rename.lhs
+@@ -78,14 +78,14 @@
+ 
+ 	-- Dump output, if any
+     (case maybe_rn_stuff of
+-	Nothing  -> return ()
++	Nothing  -> return_ monad_witness_IO ()
+ 	Just results@(rn_mod, _, _, _)
+ 		 -> dumpIfSet opt_D_dump_rn "Renamer:"
+ 			      (ppr rn_mod)
+     )							>>
+ 
+ 	-- Return results
+-    return maybe_rn_stuff
++    return_ monad_witness_IO maybe_rn_stuff
+ \end{code}
+ 
+ 
+diff --git a/ghc/compiler/rename/RnMonad.lhs b/ghc/compiler/rename/RnMonad.lhs
+index feb0309864..687e2c0145 100644
+--- a/ghc/compiler/rename/RnMonad.lhs
++++ b/ghc/compiler/rename/RnMonad.lhs
+@@ -365,7 +365,7 @@
+ 
+ 	-- grab errors and return
+   (warns, errs) <- sstToIO (readMutVarSST errs_var)
+-  return (res, errs, warns)
++  return_ monad_witness_IO (res, errs, warns)
+ 
+ 
+ initRnMS :: RnEnv -> RnMode -> RnMS RealWorld r -> RnMG r
+@@ -404,7 +404,7 @@
+ 
+ \begin{code}
+ mkModuleHiMaps :: SearchPath -> IO (ModuleHiMap, ModuleHiMap)
+-mkModuleHiMaps dirs = foldM (getAllFilesMatching dirs) (env,env) dirs
++mkModuleHiMaps dirs = foldM monad_witness_IO (getAllFilesMatching dirs) (env,env) dirs
+  where
+   env = emptyFM
+ 
+@@ -415,7 +415,7 @@
+ getAllFilesMatching dirs hims (dir_path, suffix) = ( do
+     -- fpaths entries do not have dir_path prepended
+   fpaths <- getDirectoryContents dir_path
+-  return (foldl addModules hims fpaths)
++  return_ monad_witness_IO (foldl addModules hims fpaths)
+    )  -- soft failure
+       `catch` 
+         (\ err -> do
+@@ -426,7 +426,7 @@
+ 		      else
+ 	                "' couldn't read, ignoring.")
+ 	       
+-              return hims
++              return_ monad_witness_IO hims
+ 	    )
+  where
+    xiffus = reverse dotted_suffix 
+diff --git a/ghc/compiler/simplCore/SimplCore.lhs b/ghc/compiler/simplCore/SimplCore.lhs
+index 8a4f9d606d..11f580caef 100644
+--- a/ghc/compiler/simplCore/SimplCore.lhs
++++ b/ghc/compiler/simplCore/SimplCore.lhs
+@@ -99,10 +99,10 @@
+ 	final_binds <- tidyCorePgm module_name classes post_simpl_binds
+ 
+ 	-- Return results
+-	return final_binds
++	return_ monad_witness_IO final_binds
+ 
+ doCorePasses us binds []
+-  = return binds
++  = return_ monad_witness_IO binds
+ 
+ doCorePasses us binds (to_do : to_dos) 
+   = do
+@@ -168,7 +168,7 @@
+ 
+ 		-- Stop if nothing happened; don't dump output
+ 	   if isZeroSimplCount counts' then
+-		return ("Simplifier reached fixed point", iteration_no, all_counts, binds')
++		return_ monad_witness_IO ("Simplifier reached fixed point", iteration_no, all_counts, binds')
+ 	   else do {
+ 
+ 		-- Dump the result of this iteration
+@@ -186,9 +186,9 @@
+ 			    hPutStr stderr ("NOTE: Simplifier still going after " ++ 
+ 				    show max_iterations ++ 
+ 				    " iterations; bailing out.\n")
+-		    else return ();
++		    else return_ monad_witness_IO ();
+ 
+-		    return ("Simplifier baled out", iteration_no, all_counts, binds')
++		    return_ monad_witness_IO ("Simplifier baled out", iteration_no, all_counts, binds')
+ 		}
+ 
+ 		-- Else loop
+diff --git a/ghc/compiler/simplStg/SimplStg.lhs b/ghc/compiler/simplStg/SimplStg.lhs
+index abde3712bd..4611375e62 100644
+--- a/ghc/compiler/simplStg/SimplStg.lhs
++++ b/ghc/compiler/simplStg/SimplStg.lhs
+@@ -74,7 +74,7 @@
+ 	srt_binds       = computeSRTs annotated_binds
+     in
+ 
+-    return (srt_binds, cost_centres)
++    return_ monad_witness_IO (srt_binds, cost_centres)
+    }
+   where
+     do_let_no_escapes  = opt_StgDoLetNoEscapes
+@@ -130,18 +130,18 @@
+ 	    hPutStr stderr (show
+ 	      (text ("*** "++what++":") $$ vcat (map ppr binds2)
+ 	    ))
+-	 else return ()) >>
++	 else return_ monad_witness_IO ()) >>
+ 	let
+ 	    linted_binds = stg_linter what binds2
+ 	in
+-	return (linted_binds, us2, ccs)
++	return_ monad_witness_IO (linted_binds, us2, ccs)
+ 	    -- return: processed binds
+ 	    -- 	       UniqueSupply for the next guy to use
+ 	    --	       cost-centres to be declared/registered (specialised)
+ 	    --	       add to description of what's happened (reverse order)
+ 
+ -- here so it can be inlined...
+-foldl_mn f z []     = return z
++foldl_mn f z []     = return_ monad_witness_IO z
+ foldl_mn f z (x:xs) = f z x	>>= \ zz ->
+ 		     foldl_mn f zz xs
+ \end{code}
+diff --git a/ghc/compiler/typecheck/TcModule.lhs b/ghc/compiler/typecheck/TcModule.lhs
+index 14e6a7a6af..126aac0c1d 100644
+--- a/ghc/compiler/typecheck/TcModule.lhs
++++ b/ghc/compiler/typecheck/TcModule.lhs
+@@ -97,7 +97,7 @@
+     -- write the thin-air Id map
+     (case maybe_result of
+ 	Just (_, _, _, _, _, _, thin_air_ids) -> setThinAirIds thin_air_ids
+-	Nothing 		              -> return ()
++	Nothing 		              -> return_ monad_witness_IO ()
+     ) 									>>
+ 
+     dumpIfSet opt_D_dump_tc "Typechecked"
+@@ -105,13 +105,13 @@
+ 	    Just (binds, _, _, _, _, _, _) -> ppr binds
+ 	    Nothing 		          -> text "Typecheck failed") 	>>
+ 
+-    return (if isEmptyBag errs then 
++    return_ monad_witness_IO (if isEmptyBag errs then 
+ 		maybe_result 
+ 	    else 
+ 		Nothing)
+ 
+ print_errs errs
+-  | isEmptyBag errs = return ()
++  | isEmptyBag errs = return_ monad_witness_IO ()
+   | otherwise       = printErrs (pprBagOfErrors errs)
+ \end{code}
+ 
+diff --git a/ghc/compiler/typecheck/TcMonad.lhs b/ghc/compiler/typecheck/TcMonad.lhs
+index 0e81a32c7e..01f813d522 100644
+--- a/ghc/compiler/typecheck/TcMonad.lhs
++++ b/ghc/compiler/typecheck/TcMonad.lhs
+@@ -134,18 +134,18 @@
+       ;
+ 
+       maybe_res <- catch (do {  res <- do_this init_down init_env ;
+-				return (Just res)})
+-			 (\_ -> return Nothing) ;
++				return_ monad_witness_IO (Just res)})
++			 (\_ -> return_ monad_witness_IO Nothing) ;
+         
+       (warns,errs) <- readIORef errs_var ;
+-      return (maybe_res, warns, errs)
++      return_ monad_witness_IO (maybe_res, warns, errs)
+     }
+ 
+ -- Monadic operations
+ 
+ returnNF_Tc :: a -> NF_TcM s a
+ returnTc    :: a -> TcM s a
+-returnTc v down env = return v
++returnTc v down env = return_ monad_witness_IO v
+ 
+ thenTc    :: TcM s a ->    (a -> TcM s b)        -> TcM s b
+ thenNF_Tc :: NF_TcM s a -> (a -> Either_TcM s b) -> Either_TcM s b
+@@ -325,12 +325,12 @@
+     loc      = getLoc down
+ 
+ do_ctxt tidy_env [] down env
+-  = return []
++  = return_ monad_witness_IO []
+ do_ctxt tidy_env (c:cs) down env
+   = do 
+ 	(tidy_env', m) <- c tidy_env down env
+ 	ms	       <- do_ctxt tidy_env' cs down env
+-	return (m:ms)
++	return_ monad_witness_IO (m:ms)
+ 
+ -- warnings don't have an 'M' variant
+ warnTc :: Bool -> Message -> NF_TcM s ()
+@@ -343,7 +343,7 @@
+ 	           vcat (warn_msg : ctxt_to_use ctxt_msgs)
+ 	writeIORef errs_var (warns `snocBag` warn, errs)
+   | otherwise
+-  = return ()
++  = return_ monad_witness_IO ()
+   where
+     errs_var = getTcErrs down
+     ctxt     = getErrCtxt down
+@@ -375,7 +375,7 @@
+ 		-- errors along the way.
+ 	    (m_warns, m_errs) <- readIORef m_errs_var
+ 	    if isEmptyBag m_errs then
+-		return result
++		return_ monad_witness_IO result
+ 	      else
+ 		give_up		-- This triggers the catch
+ 
+@@ -442,7 +442,7 @@
+ ~~~~~~~~~~~
+ \begin{code}
+ tcGetEnv :: NF_TcM s TcEnv
+-tcGetEnv down env = return env
++tcGetEnv down env = return_ monad_witness_IO env
+ 
+ tcSetEnv :: TcEnv -> Either_TcM s a -> Either_TcM s a
+ tcSetEnv new_env m down old_env = m down new_env
+@@ -453,7 +453,7 @@
+ ~~~~~~~~~~~~~~~
+ \begin{code}
+ tcGetDefaultTys :: NF_TcM s [Type]
+-tcGetDefaultTys down env = return (getDefaultTys down)
++tcGetDefaultTys down env = return_ monad_witness_IO (getDefaultTys down)
+ 
+ tcSetDefaultTys :: [Type] -> TcM s r -> TcM s r
+ tcSetDefaultTys tys m down env = m (setDefaultTys down tys) env
+@@ -462,7 +462,7 @@
+ tcAddSrcLoc loc m down env = m (setLoc down loc) env
+ 
+ tcGetSrcLoc :: NF_TcM s SrcLoc
+-tcGetSrcLoc down env = return (getLoc down)
++tcGetSrcLoc down env = return_ monad_witness_IO (getLoc down)
+ 
+ tcSetErrCtxtM, tcAddErrCtxtM :: (TidyEnv -> NF_TcM s (TidyEnv, Message))
+ 			     -> TcM s a -> TcM s a
+@@ -485,7 +485,7 @@
+     	let (new_uniq_supply, uniq_s) = splitUniqSupply uniq_supply
+ 	    uniq		      = uniqFromSupply uniq_s
+ 	writeIORef u_var new_uniq_supply
+-	return uniq
++	return_ monad_witness_IO uniq
+   where
+     u_var = getUniqSupplyVar down
+ 
+@@ -495,7 +495,7 @@
+ 	let (new_uniq_supply, uniq_s) = splitUniqSupply uniq_supply
+ 	    uniqs		      = uniqsFromSupply n uniq_s
+ 	writeIORef u_var new_uniq_supply
+-	return uniqs
++	return_ monad_witness_IO uniqs
+   where
+     u_var = getUniqSupplyVar down
+ 
+@@ -504,7 +504,7 @@
+   = do	uniq_supply <- readIORef u_var
+ 	let (new_uniq_supply, uniq_s) = splitUniqSupply uniq_supply
+ 	writeIORef u_var new_uniq_supply
+-	return (initUs uniq_s m)
++	return_ monad_witness_IO (initUs uniq_s m)
+   where
+     u_var = getUniqSupplyVar down
+ \end{code}
+diff --git a/ghc/compiler/utils/Digraph.lhs b/ghc/compiler/utils/Digraph.lhs
+index b904fff793..398c3e280e 100644
+--- a/ghc/compiler/utils/Digraph.lhs
++++ b/ghc/compiler/utils/Digraph.lhs
+@@ -252,7 +252,7 @@
+                        chop m ts)
+ 
+ chop         :: Set s -> Forest Vertex -> ST s (Forest Vertex)
+-chop m []     = return []
++chop m []     = return_ monad_witness_ST []
+ chop m (Node v ts : us)
+               = contains m v >>= \visited ->
+                 if visited then
+@@ -261,7 +261,7 @@
+                   include m v >>= \_  ->
+                   chop m ts   >>= \as ->
+                   chop m us   >>= \bs ->
+-                  return (Node v as : bs)
++                  return_ monad_witness_ST (Node v as : bs)
+ \end{code}
+ 
+ 
+diff --git a/ghc/compiler/utils/FastString.lhs b/ghc/compiler/utils/FastString.lhs
+index 4f27ec4ba5..87a07de901 100644
+--- a/ghc/compiler/utils/FastString.lhs
++++ b/ghc/compiler/utils/FastString.lhs
+@@ -269,7 +269,7 @@
+ 	 (ByteArray _ barr#) ->  
+ 	   let f_str = FastString uid# len# barr# in
+            updTbl string_table ft h [f_str] >>
+-           ({- _trace ("new: " ++ show f_str)   $ -} return f_str)
++           ({- _trace ("new: " ++ show f_str)   $ -} return_ monad_witness_IO f_str)
+     ls -> 
+        -- non-empty `bucket', scan the list looking
+        -- entry with same length and compare byte by byte.
+@@ -280,8 +280,8 @@
+   	    (ByteArray _ barr#) ->  
+               let f_str = FastString uid# len# barr# in
+               updTbl string_table ft h (f_str:ls) >>
+-	      ( {- _trace ("new: " ++ show f_str)  $ -} return f_str)
+-	 Just v  -> {- _trace ("re-use: "++show v) $ -} return v)
++	      ( {- _trace ("new: " ++ show f_str)  $ -} return_ monad_witness_IO f_str)
++	 Just v  -> {- _trace ("re-use: "++show v) $ -} return_ monad_witness_IO v)
+   where
+    bucket_match [] _ _ = Nothing
+    bucket_match (v@(FastString _ l# ba#):ls) len# a# =
+@@ -309,7 +309,7 @@
+ 	 (ByteArray _ barr#) ->  
+ 	   let f_str = FastString uid# len# barr# in
+            updTbl string_table ft h [f_str]       >>
+-	   return f_str
++	   return_ monad_witness_IO f_str
+     ls -> 
+        -- non-empty `bucket', scan the list looking
+        -- entry with same length and compare byte by byte.
+@@ -319,8 +319,8 @@
+    	     (ByteArray _ barr#) ->  
+               let f_str = FastString uid# len# barr# in
+               updTbl string_table ft  h (f_str:ls) >>
+-	      ( {- _trace ("new: " ++ show f_str) $ -} return f_str)
+-	 Just v  -> {- _trace ("re-use: "++show v) $ -} return v)
++	      ( {- _trace ("new: " ++ show f_str) $ -} return_ monad_witness_IO f_str)
++	 Just v  -> {- _trace ("re-use: "++show v) $ -} return_ monad_witness_IO v)
+   where
+    bucket_match [] _ _ _ = Nothing
+    bucket_match (v@(FastString _ l# barr#):ls) start# len# fo# =
+@@ -349,7 +349,7 @@
+           let f_str = FastString uid# len# ba# in
+           updTbl string_table ft h [f_str]     >>
+           -- _trace ("new(b): " ++ show f_str)   $
+-	  return f_str
++	  return_ monad_witness_IO f_str
+     ls -> 
+        -- non-empty `bucket', scan the list looking
+        -- entry with same length and compare byte by byte. 
+@@ -361,10 +361,10 @@
+               let f_str = FastString uid# len# ba# in
+               updTbl string_table ft h (f_str:ls) >>
+ 	      -- _trace ("new(b): " ++ show f_str)   $
+-	      return f_str
++	      return_ monad_witness_IO f_str
+ 	 Just v  -> 
+               -- _trace ("re-use(b): "++show v) $
+-	      return v
++	      return_ monad_witness_IO v
+   )
+  where
+    btm = error ""
+@@ -467,7 +467,7 @@
+   else
+    unsafePerformIO (
+     _ccall_ strcmp (ByteArray bottom b1#) (ByteArray bottom b2#)	>>= \ (I# res) ->
+-    return (
++    return_ monad_witness_IO (
+     if      res <#  0# then LT
+     else if res ==# 0# then EQ
+     else		    GT
+@@ -478,7 +478,7 @@
+ cmpFS (CharStr bs1 len1) (CharStr bs2 len2)
+   = unsafePerformIO (
+     _ccall_ strcmp ba1 ba2	>>= \ (I# res) ->
+-    return (
++    return_ monad_witness_IO (
+     if      res <#  0# then LT
+     else if res ==# 0# then EQ
+     else		    GT
+@@ -489,7 +489,7 @@
+ cmpFS (FastString _ len1 bs1) (CharStr bs2 len2)
+  = unsafePerformIO (
+     _ccall_ strcmp ba1 ba2	>>= \ (I# res) ->
+-    return (
++    return_ monad_witness_IO (
+      if      res <#  0# then LT
+      else if res ==# 0# then EQ
+      else		     GT
+@@ -568,7 +568,7 @@
+ 
+ #else
+ hPutFS handle (FastString _ l# ba#)
+-  | l# ==# 0#  = return ()
++  | l# ==# 0#  = return_ monad_witness_IO ()
+   | otherwise  = hPutBufBA handle (ByteArray bottom ba#) (I# l#)
+  where
+   bottom = error "hPutFS.ba"
+@@ -576,7 +576,7 @@
+ --ToDo: avoid silly code duplic.
+ 
+ hPutFS handle (CharStr a# l#)
+-  | l# ==# 0#  = return ()
++  | l# ==# 0#  = return_ monad_witness_IO ()
+   | otherwise  = hPutBuf handle (A# a#) (I# l#)
+ 
+ 
+diff --git a/ghc/compiler/utils/PrimPacked.lhs b/ghc/compiler/utils/PrimPacked.lhs
+index 153ff5d303..b5c692525d 100644
+--- a/ghc/compiler/utils/PrimPacked.lhs
++++ b/ghc/compiler/utils/PrimPacked.lhs
+@@ -60,7 +60,7 @@
+ strLength a =
+  unsafePerformIO (
+     _ccall_ strlen a  >>= \ len@(I# _) ->
+-    return len
++    return_ monad_witness_IO len
+  )
+ 
+ \end{code}
+@@ -109,7 +109,7 @@
+   unsafePerformIO (
+     _casm_ `` %r= (char *)((char *)%0 + (int)%1); '' a start 
+                                                      >>= \ a_start ->
+-    return (copyPrefixStr a_start length))
++    return_ monad_witness_IO (copyPrefixStr a_start length))
+ \end{code}
+ 
+ pCopying a sub-string out of a ForeignObj
+@@ -215,7 +215,7 @@
+ eqStrPrefix a# barr# len# = 
+   unsafePerformIO (
+    _ccall_ strncmp (A# a#) (ByteArray bottom barr#) (I# len#) >>= \ (I# x#) ->
+-   return (x# ==# 0#))
++   return_ monad_witness_IO (x# ==# 0#))
+   where
+    bottom :: (Int,Int)
+    bottom = error "eqStrPrefix"
+@@ -224,7 +224,7 @@
+ eqCharStrPrefix a1# a2# len# = 
+   unsafePerformIO (
+    _ccall_ strncmp (A# a1#) (A# a2#) (I# len#) >>= \ (I# x#) ->
+-   return (x# ==# 0#))
++   return_ monad_witness_IO (x# ==# 0#))
+ 
+ eqStrPrefixBA :: ByteArray# -> ByteArray# -> Int# -> Int# -> Bool
+ eqStrPrefixBA b1# b2# start# len# = 
+@@ -234,7 +234,7 @@
+ 	  (I# start#) 
+           (ByteArray bottom b1#) 
+           (I# len#)                  >>= \ (I# x#) ->
+-   return (x# ==# 0#))
++   return_ monad_witness_IO (x# ==# 0#))
+   where
+    bottom :: (Int,Int)
+    bottom = error "eqStrPrefixBA"
+@@ -247,7 +247,7 @@
+ 	  (I# start#) 
+           (A# a#)
+           (I# len#)                  >>= \ (I# x#) ->
+-   return (x# ==# 0#))
++   return_ monad_witness_IO (x# ==# 0#))
+   where
+    bottom :: (Int,Int)
+    bottom = error "eqCharStrPrefixBA"
+@@ -260,7 +260,7 @@
+ 	  (I# start#) 
+           (ByteArray bottom barr#) 
+           (I# len#)                  >>= \ (I# x#) ->
+-   return (x# ==# 0#))
++   return_ monad_witness_IO (x# ==# 0#))
+   where
+    bottom :: (Int,Int)
+    bottom = error "eqStrPrefixFO"
+diff --git a/ghc/compiler/utils/SST.lhs b/ghc/compiler/utils/SST.lhs
+index 1887873793..79d5c84f64 100644
+--- a/ghc/compiler/utils/SST.lhs
++++ b/ghc/compiler/utils/SST.lhs
+@@ -91,7 +91,7 @@
+ -- that GHC has exceptions and ST is strict.
+ 
+ ioToSST io
+-  = \s -> case catch (io >>= return . Right) (return . Left) of { IO m ->
++  = \s -> case catch (io >>= return_ monad_witness_IO . Right) (return_ monad_witness_IO . Left) of { IO m ->
+ 	  case m s of {
+ 		(# s', r #) -> SST_R r s'
+ 	  } }
+diff --git a/ghc/compiler/utils/StringBuffer.lhs b/ghc/compiler/utils/StringBuffer.lhs
+index 41a8e0128f..c3f89fff5f 100644
+--- a/ghc/compiler/utils/StringBuffer.lhs
++++ b/ghc/compiler/utils/StringBuffer.lhs
+@@ -111,7 +111,7 @@
+         (I# read#) = read
+     in
+     _casm_ `` ((char *)%0)[(int)%1]=(char)0; '' a (I# (read# -# 1#)) >>= \ () ->
+-    return (StringBuffer a# read# 0# 0#)
++    return_ monad_witness_IO (StringBuffer a# read# 0# 0#)
+ #else
+     openFile fname ReadMode >>= \ hndl ->
+     hFileSize hndl          >>= \ len@(J# _ _ d#) ->
+@@ -145,7 +145,7 @@
+ unsafeWriteBuffer s@(StringBuffer a _ _ _) i# ch# =
+  unsafePerformIO (
+    _casm_ `` ((char *)%0)[(int)%1]=(char)%2; '' (A# a) (I# i#) (C# ch#) >>= \ () ->
+-   return s
++   return_ monad_witness_IO s
+  )
+ \end{code}
+ 
+diff --git a/ghc/lib/exts/GlaExts.lhs b/ghc/lib/exts/GlaExts.lhs
+index 2a673e2865..2c568bd839 100644
+--- a/ghc/lib/exts/GlaExts.lhs
++++ b/ghc/lib/exts/GlaExts.lhs
+@@ -86,7 +86,7 @@
+ seqPrimIO = (>>)
+ 
+ returnPrimIO :: a -> PrimIO a
+-returnPrimIO = return
++returnPrimIO = return_ monad_witness_IO
+ 
+ thenIO_Prim :: PrimIO a -> (a -> IO b) -> IO b
+ thenIO_Prim = (>>=)
+@@ -99,5 +99,5 @@
+ seqST = (>>)
+ 
+ returnST :: a -> ST s a
+-returnST = return
++returnST = return_ monad_witness_ST
+ \end{code}
+diff --git a/ghc/lib/exts/IOExts.lhs b/ghc/lib/exts/IOExts.lhs
+index 612b37dd38..719d277267 100644
+--- a/ghc/lib/exts/IOExts.lhs
++++ b/ghc/lib/exts/IOExts.lhs
+@@ -98,7 +98,7 @@
+ newtype IORef a = IORef (MutableVar RealWorld a) 
+     deriving Eq
+ 
+-newIORef v = stToIO (newVar v) >>= \ var -> return (IORef var)
++newIORef v = stToIO (newVar v) >>= \ var -> return_ monad_witness_IO (IORef var)
+ readIORef  (IORef var) = stToIO (readVar var)
+ writeIORef (IORef var) v = stToIO (writeVar var v)
+ #endif
+@@ -126,7 +126,7 @@
+ 
+ newIOArray ixs elt = 
+     stToIO (newArray ixs elt) >>= \arr -> 
+-    return (IOArray arr)
++    return_ monad_witness_IO (IOArray arr)
+ 
+ boundsIOArray (IOArray arr) = boundsOfArray arr
+ 
+@@ -138,7 +138,7 @@
+ 
+ thawIOArray arr = do 
+ 	marr <- stToIO (thawArray arr)
+-	return (IOArray marr)
++	return_ monad_witness_IO (IOArray marr)
+ #endif
+ \end{code}
+ 
+@@ -155,7 +155,7 @@
+     hPutStr stderr string
+     hPutChar stderr '\n'
+     _ccall_ PostTraceHook fd
+-    return expr
++    return_ monad_witness_IO expr
+ #endif
+ \end{code}
+ 
+diff --git a/ghc/lib/exts/Int.lhs b/ghc/lib/exts/Int.lhs
+index 28d5c27f3c..12b7207fe7 100644
+--- a/ghc/lib/exts/Int.lhs
++++ b/ghc/lib/exts/Int.lhs
+@@ -911,43 +911,43 @@
+ ltInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_ltInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ leInt64# :: Int64# -> Int64# -> Bool
+ leInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_leInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ eqInt64# :: Int64# -> Int64# -> Bool
+ eqInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_eqInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ neInt64# :: Int64# -> Int64# -> Bool
+ neInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_neInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ geInt64# :: Int64# -> Int64# -> Bool
+ geInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_geInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ gtInt64# :: Int64# -> Int64# -> Bool
+ gtInt64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_gtInt64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+ 
+ plusInt64# :: Int64# -> Int64# -> Int64#
+ plusInt64# a# b# = 
+diff --git a/ghc/lib/exts/LazyST.lhs b/ghc/lib/exts/LazyST.lhs
+index ee3925e6b8..225c8e6c00 100644
+--- a/ghc/lib/exts/LazyST.lhs
++++ b/ghc/lib/exts/LazyST.lhs
+@@ -51,7 +51,6 @@
+ 
+ instance Monad (ST s) where
+ 
+-        return a = ST $ \ s -> (a,s)
+         m >> k   =  m >>= \ _ -> k
+ 	fail s   = error s
+ 
+diff --git a/ghc/lib/exts/MutableArray.lhs b/ghc/lib/exts/MutableArray.lhs
+index 774b02f3f2..52f020f693 100644
+--- a/ghc/lib/exts/MutableArray.lhs
++++ b/ghc/lib/exts/MutableArray.lhs
+@@ -204,7 +204,7 @@
+ #ifdef WORDS_BIGENDIAN
+   return ( word32ToWord64 h + word32ToWord64 l * word32ToWord64 (maxBound_ bounded_witness_Word32::Word32))  
+ #else
+-  return ( word32ToWord64 l + word32ToWord64 h * word32ToWord64 (maxBound_ bounded_witness_Word32::Word32))  
++  return_ monad_witness_IO ( word32ToWord64 l + word32ToWord64 h * word32ToWord64 (maxBound_ bounded_witness_Word32::Word32))  
+ #endif
+ 
+ writeWord8Array  :: MutableByteArray RealWorld Int -> Int -> Word8  -> IO ()
+@@ -306,7 +306,7 @@
+ #ifdef WORDS_BIGENDIAN
+   return ( int32ToInt64 h + int32ToInt64 l * int32ToInt64 (maxBound_ bounded_witness_Int32::Int32))  
+ #else
+-  return ( int32ToInt64 l + int32ToInt64 h * int32ToInt64 (maxBound_ bounded_witness_Int32::Int32))  
++  return_ monad_witness_IO ( int32ToInt64 l + int32ToInt64 h * int32ToInt64 (maxBound_ bounded_witness_Int32::Int32))  
+ #endif
+ 
+ writeInt8Array  :: MutableByteArray RealWorld Int -> Int -> Int8  -> IO ()
+diff --git a/ghc/lib/exts/ST.lhs b/ghc/lib/exts/ST.lhs
+index e7d6fc87dc..29d36a31e0 100644
+--- a/ghc/lib/exts/ST.lhs
++++ b/ghc/lib/exts/ST.lhs
+@@ -9,6 +9,7 @@
+ module ST (
+ 
+ 	ST,
++	monad_witness_ST,
+ 
+ 	runST,				-- :: (forall s. ST s a) -> a
+ 	fixST,				-- :: (a -> ST s a) -> ST s a
+@@ -58,7 +59,7 @@
+     deriving Eq
+ 
+ newSTRef :: a -> ST s (STRef s a)
+-newSTRef v = newVar v >>= \ var -> return (STRef var)
++newSTRef v = newVar v >>= \ var -> return_ monad_witness_ST (STRef var)
+ 
+ readSTRef :: STRef s a -> ST s a
+ readSTRef (STRef var) = readVar var
+@@ -136,7 +137,7 @@
+ 
+ newSTArray ixs elt = 
+     newArray ixs elt >>= \arr -> 
+-    return (STArray arr)
++    return_ monad_witness_ST (STArray arr)
+ 
+ boundsSTArray (STArray arr) = boundsOfArray arr
+ 
+@@ -144,7 +145,7 @@
+ 
+ writeSTArray (STArray arr) ix elt = writeArray arr ix elt
+ 
+-thawSTArray arr = thawArray arr >>= \starr -> return (STArray starr)
++thawSTArray arr = thawArray arr >>= \starr -> return_ monad_witness_ST (STArray starr)
+ 
+ freezeSTArray (STArray arr) = freezeArray arr
+ 
+diff --git a/ghc/lib/exts/Word.lhs b/ghc/lib/exts/Word.lhs
+index 23dc7776e6..deb39c6478 100644
+--- a/ghc/lib/exts/Word.lhs
++++ b/ghc/lib/exts/Word.lhs
+@@ -1043,43 +1043,43 @@
+ ltWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_ltWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ leWord64# :: Word64# -> Word64# -> Bool
+ leWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_leWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ eqWord64# :: Word64# -> Word64# -> Bool
+ eqWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_eqWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ neWord64# :: Word64# -> Word64# -> Bool
+ neWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_neWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ geWord64# :: Word64# -> Word64# -> Bool
+ geWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_geWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+       
+ gtWord64# :: Word64# -> Word64# -> Bool
+ gtWord64# x# y# =  unsafePerformIO $ do
+ 	v <- _ccall_ stg_gtWord64 x# y# 
+ 	case (v::Int) of
+-	  0 -> return False
+-	  _ -> return True
++	  0 -> return_ monad_witness_IO False
++	  _ -> return_ monad_witness_IO True
+ 
+ plusInt64# :: Int64# -> Int64# -> Int64#
+ plusInt64# a# b# = 
+diff --git a/ghc/lib/std/Directory.lhs b/ghc/lib/std/Directory.lhs
+index 8f98dc5173..810b47ae72 100644
+--- a/ghc/lib/std/Directory.lhs
++++ b/ghc/lib/std/Directory.lhs
+@@ -124,7 +124,7 @@
+ createDirectory :: FilePath -> IO ()
+ createDirectory path = do
+     rc <- primCreateDirectory (primPackString path)
+-    if rc == 0 then return () else
++    if rc == 0 then return_ monad_witness_IO () else
+         constructErrorAndFailWithInfo "createDirectory" path
+ \end{code}
+ 
+@@ -167,7 +167,7 @@
+ removeDirectory path = do
+     rc <- primRemoveDirectory (primPackString path)
+     if rc == 0 then 
+-	return ()
++	return_ monad_witness_IO ()
+      else 
+         constructErrorAndFailWithInfo "removeDirectory" path
+ \end{code}
+@@ -205,7 +205,7 @@
+ removeFile path = do
+     rc <- primRemoveFile (primPackString path)
+     if rc == 0 then
+-        return ()
++        return_ monad_witness_IO ()
+      else
+         constructErrorAndFailWithInfo "removeFile" path
+ \end{code}
+@@ -253,7 +253,7 @@
+ renameDirectory opath npath = do
+     rc <- primRenameDirectory (primPackString opath) (primPackString npath)
+     if rc == 0 then
+-        return ()
++        return_ monad_witness_IO ()
+      else
+         constructErrorAndFailWithInfo "renameDirectory" ("old: " ++ opath ++ ",new: " ++ npath)
+ \end{code}
+@@ -299,7 +299,7 @@
+ renameFile opath npath = do
+     rc <- primRenameFile (primPackString opath) (primPackString npath)
+     if rc == 0 then
+-        return ()
++        return_ monad_witness_IO ()
+      else
+         constructErrorAndFailWithInfo	"renameFile" opath
+ \end{code}
+@@ -344,12 +344,12 @@
+        then do
+ 	  -- readDir__ implicitly performs closedir() when the
+ 	  -- end is reached.
+-	  return [] 
++	  return_ monad_witness_IO [] 
+        else do
+           str     <- primGetDirentDName dirent_ptr
+ 	  entry   <- primUnpackCString str
+ 	  entries <- loop dir
+-          return (entry:entries)
++          return_ monad_witness_IO (entry:entries)
+ \end{code}
+ 
+ If the operating system has a notion of current directories,
+@@ -381,7 +381,7 @@
+ 	then do
+             pwd <- primUnpackCString str
+             primFree str
+-            return pwd
++            return_ monad_witness_IO pwd
+     	else
+             constructErrorAndFail "getCurrentDirectory"
+ \end{code}
+@@ -417,7 +417,7 @@
+ setCurrentDirectory path = do
+     rc <- primSetCurrentDirectory (primPackString path)
+     if rc == 0 
+-	then return ()
++	then return_ monad_witness_IO ()
+ 	else constructErrorAndFailWithInfo "setCurrentDirectory" path
+ \end{code}
+ 
+@@ -430,14 +430,14 @@
+ doesDirectoryExist :: FilePath -> IO Bool
+ doesDirectoryExist name = 
+  catch
+-   (getFileStatus name >>= \ st -> return (isDirectory st))
+-   (\ _ -> return False)
++   (getFileStatus name >>= \ st -> return_ monad_witness_IO (isDirectory st))
++   (\ _ -> return_ monad_witness_IO False)
+ 
+ doesFileExist :: FilePath -> IO Bool
+ doesFileExist name = do 
+  catch
+-   (getFileStatus name >>= \ st -> return (not (isDirectory st)))
+-   (\ _ -> return False)
++   (getFileStatus name >>= \ st -> return_ monad_witness_IO (not (isDirectory st)))
++   (\ _ -> return_ monad_witness_IO False)
+ 
+ foreign import ccall "libHS_cbits.so" "const_F_OK" unsafe const_F_OK  :: Int
+ 
+@@ -455,7 +455,7 @@
+    fm = fileMode st
+    isect v = intersectFileMode v fm == v
+ 
+-  return (
++  return_ monad_witness_IO (
+     Permissions {
+       readable   = isect ownerReadMode,
+       writable   = isect ownerWriteMode,
+@@ -475,7 +475,7 @@
+ 
+     rc <- primChmod (primPackString name) mode
+     if rc == 0
+-	then return ()
++	then return_ monad_witness_IO ()
+ 	else ioError (IOError Nothing SystemError "setPermissions" "insufficient permissions")
+ \end{code}
+ 
+@@ -503,7 +503,7 @@
+     i1 <- malloc1
+     setFileMode i1 stat
+     secs <- cvtUnsigned i1
+-    return (TOD secs (fromInt_ num_witness 0))
++    return_ monad_witness_IO (TOD secs (fromInt_ num_witness 0))
+   where
+     malloc1 = IO $ \ s# ->
+ 	case newIntArray# 1# s# of 
+diff --git a/ghc/lib/std/IO.lhs b/ghc/lib/std/IO.lhs
+index 6670ff3172..8b3e225976 100644
+--- a/ghc/lib/std/IO.lhs
++++ b/ghc/lib/std/IO.lhs
+@@ -64,6 +64,7 @@
+     -- to export the Prelude io functions via IO (in addition to exporting them
+     -- from the prelude...for now.) 
+     IO,
++    monad_witness_IO,
+     FilePath,		       -- :: String
+     IOError,
+     ioError,		       -- :: IOError -> IO a
+@@ -197,8 +198,8 @@
+     rc       <- CCALL(inputReady) (haFO__ handle_) (msecs::Int)     -- ConcHask: SAFE, won't block
+     writeHandle handle handle_
+     case (rc::Int) of
+-      0 -> return False
+-      1 -> return True
++      0 -> return_ monad_witness_IO False
++      1 -> return_ monad_witness_IO True
+       _ -> constructErrorAndFail "hWaitForInput"
+ \end{code}
+ 
+@@ -213,17 +214,17 @@
+     intc     <- mayBlock fo (CCALL(fileGetc) fo)  -- ConcHask: UNSAFE, may block
+     writeHandle handle handle_
+     if intc /= ((-1)::Int)
+-     then return (chr intc)
++     then return_ monad_witness_IO (chr intc)
+      else constructErrorAndFail "hGetChar"
+ 
+ hGetLine :: Handle -> IO String
+ hGetLine h = do
+   c <- hGetChar h
+   if c == '\n' 
+-   then return "" 
++   then return_ monad_witness_IO "" 
+    else do
+      s <- hGetLine h
+-     return (c:s)
++     return_ monad_witness_IO (c:s)
+ 
+ \end{code}
+ 
+@@ -239,7 +240,7 @@
+     intc    <- mayBlock fo (CCALL(fileLookAhead) fo)  -- ConcHask: UNSAFE, may block
+     writeHandle handle handle_
+     if intc /= (-1)
+-     then return (chr intc)
++     then return_ monad_witness_IO (chr intc)
+      else constructErrorAndFail "hLookAhead"
+ 
+ \end{code}
+@@ -293,13 +294,13 @@
+    case (bytes::Int) of
+      -3 -> -- buffering has been turned off, use lazyReadChar instead
+            lazyReadChar handle fo
+-     -2 -> return ""
++     -2 -> return_ monad_witness_IO ""
+      -1 -> -- an error occurred, close the handle
+ 	  withHandle handle $ \ handle_ -> do
+           CCALL(closeFile) (haFO__ handle_) (0::Int){-don't bother flushing-}  -- ConcHask: SAFE, won't block.
+ 	  writeHandle handle (handle_ { haType__    = ClosedHandle,
+ 					haFO__      = nullFile__ })
+-	  return ""
++	  return_ monad_witness_IO ""
+      _ -> do
+       more <- unsafeInterleaveIO (lazyReadBlock handle fo)
+       stToIO (unpackNBytesAccST buf bytes more)
+@@ -309,13 +310,13 @@
+      case (bytes::Int) of
+        -3 -> -- buffering has been turned off, use lazyReadChar instead
+              lazyReadChar handle fo
+-       -2 -> return "" -- handle closed by someone else, stop reading.
++       -2 -> return_ monad_witness_IO "" -- handle closed by someone else, stop reading.
+        -1 -> -- an error occurred, close the handle
+   	     withHandle handle $ \ handle_ -> do
+              CCALL(closeFile) (haFO__ handle_) (0::Int){- don't bother flushing-}  -- ConcHask: SAFE, won't block
+ 	     writeHandle handle (handle_ { haType__    = ClosedHandle,
+ 					   haFO__      = nullFile__ })
+-	     return ""
++	     return_ monad_witness_IO ""
+        _ -> do
+           more <- unsafeInterleaveIO (lazyReadLine handle fo)
+           buf  <- CCALL(getBufStart) fo bytes  -- ConcHask: won't block
+@@ -329,16 +330,16 @@
+ 	    
+       -3 -> -- buffering is now line-buffered, use lazyReadLine instead
+ 	    lazyReadLine handle fo
+-      -2 -> return ""
++      -2 -> return_ monad_witness_IO ""
+       -1 -> -- error, silently close handle.
+  	 withHandle handle $ \ handle_ -> do
+          CCALL(closeFile) (haFO__ handle_) (0::Int){-don't bother flusing-}  -- ConcHask: SAFE, won't block
+ 	 writeHandle handle (handle_{ haType__  = ClosedHandle,
+ 				      haFO__    = nullFile__ })
+-	 return ""
++	 return_ monad_witness_IO ""
+       _ -> do
+ 	 more <- unsafeInterleaveIO (lazyReadChar handle fo)
+-         return (chr char : more)
++         return_ monad_witness_IO (chr char : more)
+ 
+ \end{code}
+ 
+@@ -362,7 +363,7 @@
+     rc       <- mayBlock fo (CCALL(filePutc) fo c)   -- ConcHask: UNSAFE, may block.
+     writeHandle handle handle_
+     if rc == 0
+-     then return ()
++     then return_ monad_witness_IO ()
+      else constructErrorAndFail "hPutChar"
+ 
+ \end{code}
+@@ -597,7 +598,7 @@
+ #else
+ writeChars :: Addr -> String -> IO ()
+ #endif
+-writeChars _fo ""    = return ()
++writeChars _fo ""    = return_ monad_witness_IO ()
+ writeChars fo (c:cs) = do
+   rc <- mayBlock fo (CCALL(filePutc) fo c)   -- ConcHask: UNSAFE, may block.
+   if rc == 0 
+@@ -641,8 +642,8 @@
+ \begin{code}
+ try            :: IO a -> IO (Either IOError a)
+ try f          =  catch (do r <- f
+-                            return (Right r))
+-                        (return . Left)
++                            return_ monad_witness_IO (Right r))
++                        (return_ monad_witness_IO . Left)
+ 
+ bracket        :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+ bracket before after m = do
+@@ -650,7 +651,7 @@
+         rs <- try (m x)
+         after x
+         case rs of
+-           Right r -> return r
++           Right r -> return_ monad_witness_IO r
+            Left  e -> ioError e
+ 
+ -- variant of the above where middle computation doesn't want x
+@@ -660,7 +661,7 @@
+          rs <- try m
+          after x
+          case rs of
+-            Right r -> return r
++            Right r -> return_ monad_witness_IO r
+             Left  e -> ioError e
+ \end{code}
+ 
+@@ -719,7 +720,7 @@
+ readLn          :: Read a => IO a
+ readLn          =  do l <- getLine
+                       r <- readIO l
+-                      return r
++                      return_ monad_witness_IO r
+ 
+ #endif /* ndef HEAD */
+ 
+diff --git a/ghc/lib/std/Monad.lhs b/ghc/lib/std/Monad.lhs
+index fcb59a0a58..76e2daf2ce 100644
+--- a/ghc/lib/std/Monad.lhs
++++ b/ghc/lib/std/Monad.lhs
+@@ -76,32 +76,32 @@
+ %*********************************************************
+ 
+ \begin{code}
+-sequence       :: Monad m => [m a] -> m [a] 
+-sequence []     = return []
+-sequence (m:ms) = do { x <- m; xs <- sequence ms; return (x:xs) }
++sequence       :: Monad m => MonadWitness m -> [m a] -> m [a] 
++sequence monad_witness_ []     = return_ monad_witness_ []
++sequence monad_witness_ (m:ms) = do { x <- m; xs <- sequence monad_witness_ ms; return_ monad_witness_ (x:xs) }
+ 
+-sequence_        :: Monad m => [m a] -> m () 
+-sequence_        =  foldr (>>) (return ())
++sequence_        :: Monad m => MonadWitness m -> [m a] -> m () 
++sequence_ monad_witness_        =  foldr (>>) (return_ monad_witness_ ())
+ 
+-mapM            :: Monad m => (a -> m b) -> [a] -> m [b]
+-mapM f as       =  sequence (map f as)
++mapM            :: Monad m => MonadWitness m -> (a -> m b) -> [a] -> m [b]
++mapM monad_witness_ f as       =  sequence monad_witness_ (map f as)
+ 
+-mapM_           :: Monad m => (a -> m b) -> [a] -> m ()
+-mapM_ f as      =  sequence_ (map f as)
++mapM_           :: Monad m => MonadWitness m -> (a -> m b) -> [a] -> m ()
++mapM_ monad_witness_ f as      =  sequence_ monad_witness_ (map f as)
+ 
+-guard           :: MonadPlus m => Bool -> m ()
+-guard pred
+- | pred      = return ()
++guard           :: MonadPlus m => MonadWitness m -> Bool -> m ()
++guard monad_witness_ pred
++ | pred      = return_ monad_witness_ ()
+  | otherwise = mzero
+ 
+ -- This subsumes the list-based filter function.
+ 
+-filterM		:: (Monad m) => ( a -> m Bool ) -> [a] -> m [a]
+-filterM _predM []     = return []
+-filterM  predM (x:xs) = do
++filterM		:: (Monad m) => MonadWitness m -> ( a -> m Bool ) -> [a] -> m [a]
++filterM monad_witness_ _predM []     = return_ monad_witness_ []
++filterM monad_witness_  predM (x:xs) = do
+    flg <- predM x
+-   ys  <- filterM predM xs
+-   return (if flg then x:ys else ys)
++   ys  <- filterM monad_witness_ predM xs
++   return_ monad_witness_ (if flg then x:ys else ys)
+ 
+ -- This subsumes the list-based concat function.
+ 
+@@ -124,38 +124,38 @@
+ join             :: (Monad m) => m (m a) -> m a
+ join x           = x >>= id
+ 
+-mapAndUnzipM     :: (Monad m) => (a -> m (b,c)) -> [a] -> m ([b], [c])
+-mapAndUnzipM f xs = sequence (map f xs) >>= return . unzip
++mapAndUnzipM     :: (Monad m) => MonadWitness m -> (a -> m (b,c)) -> [a] -> m ([b], [c])
++mapAndUnzipM monad_witness_ f xs = sequence monad_witness_ (map f xs) >>= return_ monad_witness_ . unzip
+ 
+-zipWithM         :: (Monad m) => (a -> b -> m c) -> [a] -> [b] -> m [c]
+-zipWithM f xs ys = sequence (zipWith f xs ys)
++zipWithM         :: (Monad m) => MonadWitness m -> (a -> b -> m c) -> [a] -> [b] -> m [c]
++zipWithM monad_witness_ f xs ys = sequence monad_witness_ (zipWith f xs ys)
+ 
+-zipWithM_ :: (Monad m) => (a -> b -> m c) -> [a] -> [b] -> m ()
+-zipWithM_ f xs ys = sequence_ (zipWith f xs ys)
++zipWithM_ :: (Monad m) => MonadWitness m -> (a -> b -> m c) -> [a] -> [b] -> m ()
++zipWithM_ monad_witness_ f xs ys = sequence_ monad_witness_ (zipWith f xs ys)
+ 
+-foldM            :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
+-foldM _ a []     = return a
+-foldM f a (x:xs) = f a x >>= \fax -> foldM f fax xs
++foldM            :: (Monad m) => MonadWitness m -> (a -> b -> m a) -> a -> [b] -> m a
++foldM monad_witness_ _ a []     = return_ monad_witness_ a
++foldM monad_witness_ f a (x:xs) = f a x >>= \fax -> foldM monad_witness_ f fax xs
+ 
+-unless 		 :: (Monad m) => Bool -> m () -> m ()
+-unless p s 	 =  if p then return () else s
++unless 		 :: (Monad m) => MonadWitness m -> Bool -> m () -> m ()
++unless monad_witness_ p s 	 =  if p then return_ monad_witness_ () else s
+ 
+-when 		 :: (Monad m) => Bool -> m () -> m ()
+-when p s	 =  if p then s else return ()
++when 		 :: (Monad m) => MonadWitness m -> Bool -> m () -> m ()
++when monad_witness_ p s	 =  if p then s else return_ monad_witness_ ()
+ 
+-ap :: (Monad m) => m (a->b) -> m a -> m b
+-ap = liftM2 ($)
++ap :: (Monad m) => MonadWitness m -> m (a->b) -> m a -> m b
++ap monad_witness_ = liftM2 monad_witness_ ($)
+ 
+-liftM	:: (Monad m) => (a1 -> r) -> m a1 -> m r
+-liftM2	:: (Monad m) => (a1 -> a2 -> r) -> m a1 -> m a2 -> m r
+-liftM3	:: (Monad m) => (a1 -> a2 -> a3 -> r) -> m a1 -> m a2 -> m a3 -> m r
+-liftM4	:: (Monad m) => (a1 -> a2 -> a3 -> a4 -> r) -> m a1 -> m a2 -> m a3 -> m a4 -> m r
+-liftM5	:: (Monad m) => (a1 -> a2 -> a3 -> a4 -> a5 -> r) -> m a1 -> m a2 -> m a3 -> m a4 -> m a5 -> m r
++liftM	:: (Monad m) => MonadWitness m -> (a1 -> r) -> m a1 -> m r
++liftM2	:: (Monad m) => MonadWitness m -> (a1 -> a2 -> r) -> m a1 -> m a2 -> m r
++liftM3	:: (Monad m) => MonadWitness m -> (a1 -> a2 -> a3 -> r) -> m a1 -> m a2 -> m a3 -> m r
++liftM4	:: (Monad m) => MonadWitness m -> (a1 -> a2 -> a3 -> a4 -> r) -> m a1 -> m a2 -> m a3 -> m a4 -> m r
++liftM5	:: (Monad m) => MonadWitness m -> (a1 -> a2 -> a3 -> a4 -> a5 -> r) -> m a1 -> m a2 -> m a3 -> m a4 -> m a5 -> m r
+ 
+-liftM f m1	        = do { x1 <- m1; return (f x1) }
+-liftM2 f m1 m2 		= do { x1 <- m1; x2 <- m2; return (f x1 x2) }
+-liftM3 f m1 m2 m3 	= do { x1 <- m1; x2 <- m2; x3 <- m3; return (f x1 x2 x3) }
+-liftM4 f m1 m2 m3 m4	= do { x1 <- m1; x2 <- m2; x3 <- m3; x4 <- m4; return (f x1 x2 x3 x4) }
+-liftM5 f m1 m2 m3 m4 m5 = do { x1 <- m1; x2 <- m2; x3 <- m3; x4 <- m4; x5 <- m5; return (f x1 x2 x3 x4 x5) }
++liftM monad_witness_ f m1	        = do { x1 <- m1; return_ monad_witness_ (f x1) }
++liftM2 monad_witness_ f m1 m2 		= do { x1 <- m1; x2 <- m2; return_ monad_witness_ (f x1 x2) }
++liftM3 monad_witness_ f m1 m2 m3 	= do { x1 <- m1; x2 <- m2; x3 <- m3; return_ monad_witness_ (f x1 x2 x3) }
++liftM4 monad_witness_ f m1 m2 m3 m4	= do { x1 <- m1; x2 <- m2; x3 <- m3; x4 <- m4; return_ monad_witness_ (f x1 x2 x3 x4) }
++liftM5 monad_witness_ f m1 m2 m3 m4 m5 = do { x1 <- m1; x2 <- m2; x3 <- m3; x4 <- m4; x5 <- m5; return_ monad_witness_ (f x1 x2 x3 x4 x5) }
+ 
+ \end{code}
+diff --git a/ghc/lib/std/PrelArr.lhs b/ghc/lib/std/PrelArr.lhs
+index 331bc263f9..efa324dd3f 100644
+--- a/ghc/lib/std/PrelArr.lhs
++++ b/ghc/lib/std/PrelArr.lhs
+@@ -143,7 +143,7 @@
+ 
+ fill_it_in :: Ix ix => MutableArray s ix elt -> [(ix, elt)] -> ST s ()
+ fill_it_in arr lst
+-  = foldr fill_one_in (return ()) lst
++  = foldr fill_one_in (return_ monad_witness_ST ()) lst
+   where  -- **** STRICT **** (but that's OK...)
+     fill_one_in (i, v) rst
+       = writeArray arr i v >> rst
+@@ -164,7 +164,7 @@
+ -- zap_with_f: reads an elem out first, then uses "f" on that and the new value
+ 
+ zap_with_f f arr lst
+-  = foldr zap_one (return ()) lst
++  = foldr zap_one (return_ monad_witness_ST ()) lst
+   where
+     zap_one (i, new_v) rst = do
+         old_v <- readArray  arr i
+diff --git a/ghc/lib/std/PrelBase.lhs b/ghc/lib/std/PrelBase.lhs
+index 0ef20ea8b8..40cd74a233 100644
+--- a/ghc/lib/std/PrelBase.lhs
++++ b/ghc/lib/std/PrelBase.lhs
+@@ -86,15 +86,22 @@
+ class  Functor f  where
+     fmap         :: (a -> b) -> f a -> f b
+ 
++data MonadWitness m = MonadWitness (forall a. a -> m a)
++
+ class  Monad m  where
++    monad_witness :: MonadWitness m
+     (>>=)       :: m a -> (a -> m b) -> m b
+     (>>)        :: m a -> m b -> m b
+     return      :: a -> m a
+     fail	:: String -> m a
+ 
+     m >> k      =  m >>= \_ -> k
++    return      = return_ monad_witness
+     fail s      = error s
+ 
++return_ :: MonadWitness m -> a -> m a
++return_ (MonadWitness return) = return
++
+ \end{code}
+ 
+ 
+@@ -239,11 +246,14 @@
+     fmap = map
+ 
+ instance  Monad []  where
++    monad_witness       = monad_witness_List
+     m >>= k             = foldr ((++) . k) [] m
+     m >> k              = foldr ((++) . (\ _ -> k)) [] m
+-    return x            = [x]
+     fail _		= []
+ 
++monad_witness_List       = MonadWitness return_List
++return_List x            = [x]
++
+ instance  (Show a) => Show [a]  where
+     showsPrec _         = showList
+     showList  ls	= showList__ (showsPrec 0) ls
+diff --git a/ghc/lib/std/PrelConc.lhs b/ghc/lib/std/PrelConc.lhs
+index 9801d77d89..f0bb02f2c8 100644
+--- a/ghc/lib/std/PrelConc.lhs
++++ b/ghc/lib/std/PrelConc.lhs
+@@ -35,7 +35,7 @@
+ import PrelBase
+ import PrelErr ( parError, seqError )
+ import PrelST	  	( liftST )
+-import PrelIOBase	( IO(..), MVar(..), unsafePerformIO )
++import PrelIOBase	( IO(..), monad_witness_IO, MVar(..), unsafePerformIO )
+ import PrelBase		( Int(..) )
+ 
+ infixr 0 `par`, `fork`
+@@ -86,7 +86,7 @@
+ par  _ y = y
+ #endif
+ 
+-fork x y = unsafePerformIO (forkIO (x `seq` return ())) `seq` y
++fork x y = unsafePerformIO (forkIO (x `seq` return_ monad_witness_IO ())) `seq` y
+ 
+ \end{code}
+ 
+@@ -131,21 +131,21 @@
+ newMVar value =
+     newEmptyMVar	>>= \ mvar ->
+     putMVar mvar value	>>
+-    return mvar
++    return_ monad_witness_IO mvar
+ 
+ readMVar :: MVar a -> IO a
+ 
+ readMVar mvar =
+     takeMVar mvar	>>= \ value ->
+     putMVar mvar value	>>
+-    return value
++    return_ monad_witness_IO value
+ 
+ swapMVar :: MVar a -> a -> IO a
+ 
+ swapMVar mvar new =
+     takeMVar mvar	>>= \ old ->
+     putMVar mvar new	>>
+-    return old
++    return_ monad_witness_IO old
+ 
+ {- 
+  Low-level op. for checking whether an MVar is filled-in or not.
+diff --git a/ghc/lib/std/PrelHandle.lhs b/ghc/lib/std/PrelHandle.lhs
+index 8bf178e8d4..11a21f7f8c 100644
+--- a/ghc/lib/std/PrelHandle.lhs
++++ b/ghc/lib/std/PrelHandle.lhs
+@@ -25,6 +25,7 @@
+ import PrelBounded      ()   -- get at Bounded Int instance.
+ import PrelNum		( toInteger )
+ import PrelWeak		( addForeignFinaliser )
++import PrelST		( monad_witness_ST )
+ #if __CONCURRENT_HASKELL__
+ import PrelConc
+ #endif
+@@ -91,7 +92,7 @@
+ 
+ -- Use ordinary MutableVars for non-concurrent Haskell
+ newHandle hc  = stToIO (newVar	hc 	>>= \ h ->
+-		        return (Handle h))
++		        return_ monad_witness_ST (Handle h))
+ 
+    -- of questionable value to install this exception
+    -- handler, but let's do it in the non-concurrent
+@@ -99,7 +100,7 @@
+ withHandle (Handle h) act = do
+    h_ <- stToIO (readVar h)
+    v  <- catchException (act h_) (\ ex -> stToIO (writeVar h h_) >> throw ex)
+-   return v
++   return_ monad_witness_IO v
+ 
+ writeHandle (Handle h) hc = stToIO (writeVar h hc)
+ #endif
+@@ -231,7 +232,7 @@
+ 	     -- that anything buffered on stdout is flushed prior to reading from stdin.
+ 	     -- 
+ 	    hConnectTerms stdout hdl
+-	    return hdl
++	    return_ monad_witness_IO hdl
+        _ -> do ioError <- constructError "stdin"
+                newHandle (mkErrorHandle__ ioError)
+   )
+@@ -261,7 +262,7 @@
+ 	    -- that anything buffered on stdout is flushed prior to writing to
+ 	    -- stderr.
+ 	    hConnectTo stdout hdl
+-	    return hdl
++	    return_ monad_witness_IO hdl
+ 
+        _ -> do ioError <- constructError "stderr"
+                newHandle (mkErrorHandle__ ioError)
+@@ -439,7 +440,7 @@
+                 rc <- CCALL(fileSize) (haFO__ handle_) d#  -- ConcHask: SAFE, won't block
+                 writeHandle handle handle_
+                 if rc == (0::Int) then
+-		   return result
++		   return_ monad_witness_IO result
+                  else
+ 		   constructErrorAndFail "hFileSize"
+ #endif
+@@ -458,8 +459,8 @@
+     rc      <- mayBlock fo (CCALL(fileEOF) fo)  -- ConcHask: UNSAFE, may block
+     writeHandle handle handle_
+     case rc of
+-      0 -> return False
+-      1 -> return True
++      0 -> return_ monad_witness_IO False
++      1 -> return_ monad_witness_IO True
+       _ -> constructErrorAndFail "hIsEOF"
+ 
+ isEOF :: IO Bool
+@@ -559,7 +560,7 @@
+     rc	    <- mayBlock fo (CCALL(flushFile) fo)   -- ConcHask: UNSAFE, may block
+     writeHandle handle handle_
+     if rc == 0 then 
+-       return ()
++       return_ monad_witness_IO ()
+      else
+        constructErrorAndFail "hFlush"
+ 
+@@ -594,7 +595,7 @@
+     posn    <- CCALL(getFilePosn) (haFO__ handle_)   -- ConcHask: SAFE, won't block
+     writeHandle handle handle_
+     if posn /= -1 then
+-      return (HandlePosn handle posn)
++      return_ monad_witness_IO (HandlePosn handle posn)
+      else
+       constructErrorAndFail "hGetPosn"
+ 
+@@ -605,7 +606,7 @@
+     rc     <- mayBlock fo (CCALL(setFilePosn) fo posn)    -- ConcHask: UNSAFE, may block
+     writeHandle handle handle_
+     if rc == 0 then 
+-       return ()
++       return_ monad_witness_IO ()
+      else
+ 	constructErrorAndFail "hSetPosn"
+ \end{code}
+@@ -648,7 +649,7 @@
+ #endif
+     writeHandle handle handle_
+     if rc == 0 then 
+-       return ()
++       return_ monad_witness_IO ()
+      else
+ 	constructErrorAndFail "hSeek"
+   where
+@@ -685,13 +686,13 @@
+           ioError theError
+       ClosedHandle -> do
+ 	  writeHandle handle handle_
+-	  return False
++	  return_ monad_witness_IO False
+       SemiClosedHandle -> do
+ 	  writeHandle handle handle_
+-	  return False
++	  return_ monad_witness_IO False
+       _ -> do
+ 	  writeHandle handle handle_
+-	  return True
++	  return_ monad_witness_IO True
+ 
+ hIsClosed :: Handle -> IO Bool
+ hIsClosed handle =
+@@ -702,10 +703,10 @@
+           ioError theError
+       ClosedHandle -> do
+ 	  writeHandle handle handle_
+-	  return True
++	  return_ monad_witness_IO True
+       _ -> do
+ 	  writeHandle handle handle_
+-	  return False
++	  return_ monad_witness_IO False
+ 
+ {- not defined, nor exported, but mentioned
+    here for documentation purposes:
+@@ -732,7 +733,7 @@
+           ioe_closedHandle "hIsReadable" handle
+       htype -> do
+ 	  writeHandle handle handle_
+-	  return (isReadable htype)
++	  return_ monad_witness_IO (isReadable htype)
+   where
+     isReadable ReadHandle      = True
+     isReadable ReadWriteHandle = True
+@@ -753,7 +754,7 @@
+           ioe_closedHandle "hIsWritable" handle
+       htype -> do
+ 	  writeHandle handle handle_
+-	  return (isWritable htype)
++	  return_ monad_witness_IO (isWritable htype)
+   where
+     isWritable AppendHandle    = True
+     isWritable WriteHandle     = True
+@@ -769,11 +770,11 @@
+ getBMode__ fo = do
+   rc <- CCALL(getBufferMode) fo    -- ConcHask: SAFE, won't block
+   case (rc::Int) of
+-    0  -> return (NoBuffering, 0)
+-    -1 -> return (LineBuffering, default_buffer_size)
+-    -2 -> return (BlockBuffering Nothing, default_buffer_size)
+-    -3 -> return (NoBuffering, 0)		-- only happens on un-stat()able files.
+-    n  -> return (BlockBuffering (Just n), n)
++    0  -> return_ monad_witness_IO (NoBuffering, 0)
++    -1 -> return_ monad_witness_IO (LineBuffering, default_buffer_size)
++    -2 -> return_ monad_witness_IO (BlockBuffering Nothing, default_buffer_size)
++    -3 -> return_ monad_witness_IO (NoBuffering, 0)		-- only happens on un-stat()able files.
++    n  -> return_ monad_witness_IO (BlockBuffering (Just n), n)
+  where
+    default_buffer_size :: Int
+    default_buffer_size = (const_BUFSIZ - 1)
+@@ -799,7 +800,7 @@
+           -}
+ 	  let v = haBufferMode__ handle_
+ 	  writeHandle handle handle_
+-	  return v  -- could be stricter..
++	  return_ monad_witness_IO v  -- could be stricter..
+ 
+ \end{code}
+ 
+@@ -819,13 +820,13 @@
+           ioe_closedHandle "hIsSeekable" handle
+       AppendHandle -> do
+ 	  writeHandle handle handle_
+-	  return False
++	  return_ monad_witness_IO False
+       _ -> do
+ 	  rc <- CCALL(seekFileP) (haFO__ handle_)   -- ConcHask: SAFE, won't block
+ 	  writeHandle handle handle_
+ 	  case (rc::Int) of
+-            0 -> return False
+-            1 -> return True
++            0 -> return_ monad_witness_IO False
++            1 -> return_ monad_witness_IO True
+             _ -> constructErrorAndFail "hIsSeekable"
+ \end{code}
+ 
+@@ -844,7 +845,7 @@
+ hSetEcho handle on = do
+     isT   <- hIsTerminalDevice handle
+     if not isT
+-     then return ()
++     then return_ monad_witness_IO ()
+      else
+       withHandle handle $ \ handle_ -> do
+       case haType__ handle_ of 
+@@ -858,14 +859,14 @@
+             rc <- CCALL(setTerminalEcho) (haFO__ handle_) ((if on then 1 else 0)::Int)  -- ConcHask: SAFE, won't block
+ 	    writeHandle handle handle_
+ 	    if rc /= ((-1)::Int)
+-	     then return ()
++	     then return_ monad_witness_IO ()
+ 	     else constructErrorAndFail "hSetEcho"
+ 
+ hGetEcho :: Handle -> IO Bool
+ hGetEcho handle = do
+     isT   <- hIsTerminalDevice handle
+     if not isT
+-     then return False
++     then return_ monad_witness_IO False
+      else
+        withHandle handle $ \ handle_ -> do
+        case haType__ handle_ of 
+@@ -879,8 +880,8 @@
+             rc <- CCALL(getTerminalEcho) (haFO__ handle_)  -- ConcHask: SAFE, won't block
+ 	    writeHandle handle handle_
+ 	    case (rc::Int) of
+-	      1 -> return True
+-	      0 -> return False
++	      1 -> return_ monad_witness_IO True
++	      0 -> return_ monad_witness_IO False
+ 	      _ -> constructErrorAndFail "hSetEcho"
+ 
+ hIsTerminalDevice :: Handle -> IO Bool
+@@ -897,8 +898,8 @@
+           rc <- CCALL(isTerminalDevice) (haFO__ handle_)   -- ConcHask: SAFE, won't block
+ 	  writeHandle handle handle_
+ 	  case (rc::Int) of
+-	    1 -> return True
+-	    0 -> return False
++	    1 -> return_ monad_witness_IO True
++	    0 -> return_ monad_witness_IO False
+ 	    _ -> constructErrorAndFail "hIsTerminalDevice"
+ \end{code}
+ 
+@@ -940,7 +941,7 @@
+     writeHandle handle handle_
+     if rc == ((-1)::Int)
+      then constructErrorAndFail "hUngetChar"
+-     else return ()
++     else return_ monad_witness_IO ()
+ 
+ \end{code}
+ 
+@@ -971,7 +972,7 @@
+ 	hClose handle
+         if rc < (0::Int)
+ 	 then constructErrorAndFail "slurpFile"
+-	 else return (chunk, rc)
++	 else return_ monad_witness_IO (chunk, rc)
+ 
+ #ifndef __HUGS__ /* Hugs' Prelude doesn't need this */
+ hFillBufBA :: Handle -> ByteArray Int -> Int -> IO Int
+@@ -990,7 +991,7 @@
+ #endif
+     writeHandle handle handle_
+     if rc >= (0::Int)
+-     then return rc
++     then return_ monad_witness_IO rc
+      else constructErrorAndFail "hFillBufBA"
+ #endif
+ 
+@@ -1006,7 +1007,7 @@
+     rc      <- mayBlock fo (CCALL(readChunk) fo buf sz)    -- ConcHask: UNSAFE, may block.
+     writeHandle handle handle_
+     if rc >= 0
+-     then return rc
++     then return_ monad_witness_IO rc
+      else constructErrorAndFail "hFillBuf"
+ 
+ \end{code}
+@@ -1022,7 +1023,7 @@
+     rc      <- mayBlock fo (CCALL(writeBuf) fo buf len)  -- ConcHask: UNSAFE, may block.
+     writeHandle handle handle_
+     if rc == (0::Int)
+-     then return ()
++     then return_ monad_witness_IO ()
+      else constructErrorAndFail "hPutBuf"
+ 
+ #ifndef __HUGS__ /* An_ one Hugs doesn't provide */
+@@ -1033,7 +1034,7 @@
+     rc      <- mayBlock fo (CCALL(writeBufBA) fo buf len)  -- ConcHask: UNSAFE, may block.
+     writeHandle handle handle_
+     if rc == (0::Int)
+-     then return ()
++     then return_ monad_witness_IO ()
+      else constructErrorAndFail "hPutBuf"
+ #endif
+ \end{code}
+@@ -1055,7 +1056,7 @@
+       _ -> do
+           fd <- CCALL(getFileFd) (haFO__ handle_)
+ 	  writeHandle handle handle_
+-	  return fd
++	  return_ monad_witness_IO fd
+ \end{code}
+ 
+ 
+@@ -1234,9 +1235,9 @@
+ 
+ -- Hugs does actually have the primops needed to implement these
+ -- but, like GHC, the primops don't actually do anything...
+-threadDelay     _ = return ()
+-threadWaitRead  _ = return ()
+-threadWaitWrite _ = return ()
++threadDelay     _ = return_ monad_witness_IO ()
++threadWaitRead  _ = return_ monad_witness_IO ()
++threadWaitWrite _ = return_ monad_witness_IO ()
+ #endif
+ 
+ \end{code}
+diff --git a/ghc/lib/std/PrelIOBase.lhs b/ghc/lib/std/PrelIOBase.lhs
+index 32c255860e..35bd8a478c 100644
+--- a/ghc/lib/std/PrelIOBase.lhs
++++ b/ghc/lib/std/PrelIOBase.lhs
+@@ -67,18 +67,20 @@
+ unIO (IO a) = a
+ 
+ instance  Functor IO where
+-   fmap f x = x >>= (return . f)
++   fmap f x = x >>= (return_ monad_witness_IO . f)
+ 
+ instance  Monad IO  where
+-    {-# INLINE return #-}
+     {-# INLINE (>>)   #-}
+     {-# INLINE (>>=)  #-}
++    monad_witness = monad_witness_IO
+     m >> k      =  m >>= \ _ -> k
+-    return x	= IO $ \ s -> (# s, x #)
+ 
+     m >>= k     = bindIO m k
+     fail s	= error s -- not ioError?
+ 
++monad_witness_IO = MonadWitness return_IO
++return_IO x	= IO $ \ s -> (# s, x #)
++
+     -- not required but worth having around
+ fixIO 		:: (a -> IO a) -> IO a
+ fixIO m         = stToIO (fixST (ioToST . m))
+@@ -350,7 +352,7 @@
+       Nothing -> ""
+       Just m  -> ' ':m)
+  in
+- return (IOError Nothing iot call_site msg)
++ return_ monad_witness_IO (IOError Nothing iot call_site msg)
+ \end{code}
+ 
+ File names are specified using @FilePath@, a OS-dependent
+@@ -492,12 +494,12 @@
+ mkBuffer__ fo sz_in_bytes = do
+  chunk <- 
+   case sz_in_bytes of
+-    0 -> return nullAddr  -- this has the effect of overwriting the pointer to the old buffer.
++    0 -> return_ monad_witness_IO nullAddr  -- this has the effect of overwriting the pointer to the old buffer.
+     _ -> do
+      chunk <- CCALL(allocMemory__) sz_in_bytes
+      if chunk == nullAddr
+       then ioError (IOError Nothing ResourceExhausted "mkBuffer__" "not enough virtual memory")
+-      else return chunk
++      else return_ monad_witness_IO chunk
+  CCALL(setBuf) fo chunk sz_in_bytes
+ 
+ \end{code}
+diff --git a/ghc/lib/std/PrelMain.lhs b/ghc/lib/std/PrelMain.lhs
+index 05aae47814..f6a0b87adc 100644
+--- a/ghc/lib/std/PrelMain.lhs
++++ b/ghc/lib/std/PrelMain.lhs
+@@ -39,7 +39,7 @@
+ 
+ reportError :: String -> IO ()
+ reportError str = do
+-   (hFlush stdout) `catchException` (\ _ -> return ())
++   (hFlush stdout) `catchException` (\ _ -> return_ monad_witness_IO ())
+    let bs@(ByteArray (_,len) _) = packString str
+    _ccall_ writeErrString__ (``&ErrorHdrHook''::Addr) bs len
+    _ccall_ stg_exit (1::Int)
+diff --git a/ghc/lib/std/PrelMaybe.lhs b/ghc/lib/std/PrelMaybe.lhs
+index 20de4cc9c2..503072f56c 100644
+--- a/ghc/lib/std/PrelMaybe.lhs
++++ b/ghc/lib/std/PrelMaybe.lhs
+@@ -23,15 +23,18 @@
+     fmap f (Just a)      = Just (f a)
+ 
+ instance  Monad Maybe  where
++    monad_witness       = monad_witness_Maybe
+     (Just x) >>= k      = k x
+     Nothing  >>= _      = Nothing
+ 
+     (Just _) >>  k      = k
+     Nothing  >>  _      = Nothing
+ 
+-    return              = Just
+     fail _		= Nothing
+ 
++monad_witness_Maybe       = MonadWitness return_Maybe
++return_Maybe              = Just
++
+ \end{code}
+ 
+ 
+diff --git a/ghc/lib/std/PrelPack.lhs b/ghc/lib/std/PrelPack.lhs
+index f126c56b42..e7a6a5d624 100644
+--- a/ghc/lib/std/PrelPack.lhs
++++ b/ghc/lib/std/PrelPack.lhs
+@@ -73,14 +73,14 @@
+      
+ unpackCStringST  :: Addr{- ptr. to NUL terminated string-} -> ST s [Char]
+ unpackCStringST a@(A# addr)
+-  | a == nullAddr  = return []
++  | a == nullAddr  = return_ monad_witness_ST []
+   | otherwise	   = unpack 0#
+   where
+     unpack nh
+-      | ch `eqChar#` '\0'# = return []
++      | ch `eqChar#` '\0'# = return_ monad_witness_ST []
+       | otherwise	   = do
+ 		ls <- unpack (nh +# 1#)
+-		return ((C# ch ) : ls)
++		return_ monad_witness_ST ((C# ch ) : ls)
+       where
+ 	ch = indexCharOffAddr# addr nh
+ 
+@@ -119,11 +119,11 @@
+ unpackNBytesST# addr# l#   = unpackNBytesAccST# addr# l# []
+ 
+ unpackNBytesAccST# :: Addr# -> Int# -> [Char] -> ST s [Char]
+-unpackNBytesAccST# _addr 0#   rest = return rest
++unpackNBytesAccST# _addr 0#   rest = return_ monad_witness_ST rest
+ unpackNBytesAccST#  addr len# rest = unpack rest (len# -# 1#)
+   where
+     unpack acc i# 
+-      | i# <# 0#  = return acc
++      | i# <# 0#  = return_ monad_witness_ST acc
+       | otherwise  = 
+ 	 case indexCharOffAddr# addr i# of
+ 	  ch -> unpack (C# ch : acc) (i# -# 1#)
+@@ -214,7 +214,7 @@
+   fill_in :: MutableByteArray s Int -> Int# -> [Char] -> ST s ()
+   fill_in arr_in# idx [] =
+    write_ps_array arr_in# idx (chr# 0#) >>
+-   return ()
++   return_ monad_witness_ST ()
+ 
+   fill_in arr_in# idx (C# c : cs) =
+    write_ps_array arr_in# idx c	 >>
+diff --git a/ghc/lib/std/PrelRead.lhs b/ghc/lib/std/PrelRead.lhs
+index dc1142c5c9..1f99fd401d 100644
+--- a/ghc/lib/std/PrelRead.lhs
++++ b/ghc/lib/std/PrelRead.lhs
+@@ -22,7 +22,7 @@
+ import Monad
+ 
+ -- needed for readIO.
+-import PrelIOBase ( IO, userError )
++import PrelIOBase ( IO, monad_witness_IO, userError )
+ import PrelException ( ioError )
+ \end{code}
+ 
+@@ -82,13 +82,13 @@
+   read_s str = do
+     (x,str1) <- reads str
+     ("","")  <- lex str1
+-    return x
++    return_ monad_witness_List x
+ 
+   -- raises an exception instead of an error
+ readIO          :: Read a => String -> IO a
+-readIO s        =  case (do { (x,t) <- reads s ; ("","") <- lex t ; return x }) of
++readIO s        =  case (do { (x,t) <- reads s ; ("","") <- lex t ; return_ monad_witness_List x }) of
+ #ifndef NEW_READS_REP
+-			[x]    -> return x
++			[x]    -> return_ monad_witness_IO x
+ 			[]     -> ioError (userError "Prelude.readIO: no parse")
+ 			_      -> ioError (userError "Prelude.readIO: ambiguous parse")
+ #else
+@@ -106,7 +106,7 @@
+ 				("(",s) <- lex r
+ 				(x,t)   <- optional s
+ 				(")",u) <- lex t
+-				return (x,u)
++				return_ monad_witness_List (x,u)
+ 
+ 
+ readList__ :: ReadS a -> ReadS [a]
+@@ -116,12 +116,12 @@
+ 		       ("[",s) <- lex r
+ 		       readl s)
+   where readl  s = 
+-           (do { ("]",t) <- lex s ; return ([],t) }) ++
+-	   (do { (x,t) <- readx s ; (xs,u) <- readl2 t ; return (x:xs,u) })
++           (do { ("]",t) <- lex s ; return_ monad_witness_List ([],t) }) ++
++	   (do { (x,t) <- readx s ; (xs,u) <- readl2 t ; return_ monad_witness_List (x:xs,u) })
+ 
+ 	readl2 s = 
+-	   (do { ("]",t) <- lex s ; return ([],t) }) ++
+-	   (do { (",",t) <- lex s ; (x,u) <- readx t ; (xs,v) <- readl2 u ; return (x:xs,v) })
++	   (do { ("]",t) <- lex s ; return_ monad_witness_List ([],t) }) ++
++	   (do { (",",t) <- lex s ; (x,u) <- readx t ; (xs,v) <- readl2 u ; return_ monad_witness_List (x:xs,v) })
+ 
+ \end{code}
+ 
+@@ -141,37 +141,37 @@
+ \begin{code}
+ lex                   :: ReadS String
+ 
+-lex ""                = return ("","")
++lex ""                = return_ monad_witness_List ("","")
+ lex (c:s) | isSpace c = lex (dropWhile isSpace s)
+ lex ('\'':s)          = do
+ 	    (ch, '\'':t) <- lexLitChar s
+-	    guard (ch /= "'")
+-	    return ('\'':ch++"'", t)
++	    guard monad_witness_List (ch /= "'")
++	    return_ monad_witness_List ('\'':ch++"'", t)
+ lex ('"':s)           = do
+ 	    (str,t) <- lexString s
+-	    return ('"':str, t)
++	    return_ monad_witness_List ('"':str, t)
+ 
+           where
+-	    lexString ('"':s) = return ("\"",s)
++	    lexString ('"':s) = return_ monad_witness_List ("\"",s)
+             lexString s = do
+ 		    (ch,t)  <- lexStrItem s
+ 		    (str,u) <- lexString t
+-		    return (ch++str, u)
++		    return_ monad_witness_List (ch++str, u)
+ 
+ 	    
+-            lexStrItem ('\\':'&':s) = return ("\\&",s)
++            lexStrItem ('\\':'&':s) = return_ monad_witness_List ("\\&",s)
+             lexStrItem ('\\':c:s) | isSpace c = do
+-			('\\':t) <- return (dropWhile isSpace s)
+-			return ("\\&",t)
++			('\\':t) <- return_ monad_witness_List (dropWhile isSpace s)
++			return_ monad_witness_List ("\\&",t)
+ 	    lexStrItem s            = lexLitChar s
+      
+-lex (c:s) | isSingle c = return ([c],s)
++lex (c:s) | isSingle c = return_ monad_witness_List ([c],s)
+           | isSym c    = do
+-		(sym,t) <- return (span isSym s)
+-		return (c:sym,t)
++		(sym,t) <- return_ monad_witness_List (span isSym s)
++		return_ monad_witness_List (c:sym,t)
+           | isAlpha c  = do
+-		(nam,t) <- return (span isIdChar s)
+-		return (c:nam, t)
++		(nam,t) <- return_ monad_witness_List (span isIdChar s)
++		return_ monad_witness_List (c:nam, t)
+           | isDigit c  = do
+ 	         let
+ 		  (pred, s', isDec) =
+@@ -182,9 +182,9 @@
+ 		      ('X':rs) -> (isHexDigit, rs, False)
+ 		      _	       -> (isDigit, s, True)
+ 
+-		 (ds,s)  <- return (span pred s')
++		 (ds,s)  <- return_ monad_witness_List (span pred s')
+ 		 (fe,t)  <- lexFracExp isDec s
+-		 return (c:ds++fe,t)
++		 return_ monad_witness_List (c:ds++fe,t)
+           | otherwise  = mzero    -- bad character
+              where
+               isSingle c =  c `elem` ",;()[]{}_`"
+@@ -194,20 +194,20 @@
+               lexFracExp True ('.':cs)   = do
+ 			(ds,t) <- lex0Digits cs
+ 			(e,u)  <- lexExp t
+-			return ('.':ds++e,u)
+-              lexFracExp _ s        = return ("",s)
++			return_ monad_witness_List ('.':ds++e,u)
++              lexFracExp _ s        = return_ monad_witness_List ("",s)
+ 
+               lexExp (e:s) | e `elem` "eE" = 
+ 	          (do
+-		    (c:t) <- return s
+-		    guard (c `elem` "+-")
++		    (c:t) <- return_ monad_witness_List s
++		    guard monad_witness_List (c `elem` "+-")
+ 		    (ds,u) <- lexDecDigits t
+-		    return (e:c:ds,u))	    ++
++		    return_ monad_witness_List (e:c:ds,u))	    ++
+ 		  (do
+ 		    (ds,t) <- lexDecDigits s
+-		    return (e:ds,t))
++		    return_ monad_witness_List (e:ds,t))
+ 
+-              lexExp s = return ("",s)
++              lexExp s = return_ monad_witness_List ("",s)
+ 
+ lexDigits	     :: ReadS String
+ lexDigits            = lexDecDigits
+@@ -223,19 +223,19 @@
+ 
+ -- 0 or more digits
+ lex0Digits               :: ReadS String 
+-lex0Digits  s            =  return (span isDigit s)
++lex0Digits  s            =  return_ monad_witness_List (span isDigit s)
+ 
+ nonnull                 :: (Char -> Bool) -> ReadS String
+ nonnull p s             = do
+-	    (cs@(_:_),t) <- return (span p s)
+-	    return (cs,t)
++	    (cs@(_:_),t) <- return_ monad_witness_List (span p s)
++	    return_ monad_witness_List (cs,t)
+ 
+ lexLitChar              :: ReadS String
+ lexLitChar ('\\':s)     =  do
+ 	    (esc,t) <- lexEsc s
+-	    return ('\\':esc, t)
++	    return_ monad_witness_List ('\\':esc, t)
+        where
+-        lexEsc (c:s)       | c `elem` "abfnrtv\\\"'" = return ([c],s)
++        lexEsc (c:s)       | c `elem` "abfnrtv\\\"'" = return_ monad_witness_List ([c],s)
+         lexEsc s@(d:_)     | isDigit d               = lexDecDigits s
+         lexEsc ('o':d:s) | isDigit d                 = lexOctDigits (d:s)
+         lexEsc ('O':d:s) | isDigit d                 = lexOctDigits (d:s)
+@@ -246,15 +246,15 @@
+         lexEsc _                                   = mzero
+ 
+         fromAsciiLab (x:y:z:ls) | isUpper y && (isUpper z || isDigit z) &&
+-				   [x,y,z] `elem` asciiEscTab = return ([x,y,z], ls)
++				   [x,y,z] `elem` asciiEscTab = return_ monad_witness_List ([x,y,z], ls)
+         fromAsciiLab (x:y:ls)   | isUpper y &&
+-				   [x,y]   `elem` asciiEscTab = return ([x,y], ls)
++				   [x,y]   `elem` asciiEscTab = return_ monad_witness_List ([x,y], ls)
+         fromAsciiLab _					      = mzero
+ 				   
+         asciiEscTab = "DEL" : asciiTab
+ 
+ 
+-lexLitChar (c:s)        =  return ([c],s)
++lexLitChar (c:s)        =  return_ monad_witness_List ([c],s)
+ lexLitChar ""           =  mzero
+ \end{code}
+ 
+@@ -270,57 +270,57 @@
+     	    	    	    (\r -> do
+ 				('\'':s,t) <- lex r
+ 				(c,"\'")   <- readLitChar s
+-				return (c,t))
++				return_ monad_witness_List (c,t))
+ 
+     readList = readParen False (\r -> do
+ 				('"':s,t) <- lex r
+ 				(l,_)	  <- readl s
+-				return (l,t))
+-	       where readl ('"':s)	= return ("",s)
++				return_ monad_witness_List (l,t))
++	       where readl ('"':s)	= return_ monad_witness_List ("",s)
+ 		     readl ('\\':'&':s)	= readl s
+ 		     readl s		= do
+ 			    (c,t)  <- readLitChar s 
+ 			    (cs,u) <- readl t
+-			    return (c:cs,u)
++			    return_ monad_witness_List (c:cs,u)
+ 
+ instance Read Bool where
+     readsPrec _ = readParen False
+ 			(\r ->
+ 			   lex r >>= \ lr ->
+-			   (do { ("True", rest)  <- return lr ; return (True,  rest) }) ++
+-			   (do { ("False", rest) <- return lr ; return (False, rest) }))
++			   (do { ("True", rest)  <- return_ monad_witness_List lr ; return_ monad_witness_List (True,  rest) }) ++
++			   (do { ("False", rest) <- return_ monad_witness_List lr ; return_ monad_witness_List (False, rest) }))
+ 		
+ 
+ instance Read Ordering where
+     readsPrec _ = readParen False
+ 			(\r -> 
+ 			   lex r >>= \ lr ->
+-			   (do { ("LT", rest) <- return lr ; return (LT,  rest) }) ++
+-			   (do { ("EQ", rest) <- return lr ; return (EQ, rest) })  ++
+-			   (do { ("GT", rest) <- return lr ; return (GT, rest) }))
++			   (do { ("LT", rest) <- return_ monad_witness_List lr ; return_ monad_witness_List (LT,  rest) }) ++
++			   (do { ("EQ", rest) <- return_ monad_witness_List lr ; return_ monad_witness_List (EQ, rest) })  ++
++			   (do { ("GT", rest) <- return_ monad_witness_List lr ; return_ monad_witness_List (GT, rest) }))
+ 
+ instance Read a => Read (Maybe a) where
+     readsPrec _ = readParen False
+ 			(\r -> 
+ 			    lex r >>= \ lr ->
+-			    (do { ("Nothing", rest) <- return lr ; return (Nothing, rest)}) ++
++			    (do { ("Nothing", rest) <- return_ monad_witness_List lr ; return_ monad_witness_List (Nothing, rest)}) ++
+ 			    (do 
+-				("Just", rest1) <- return lr
++				("Just", rest1) <- return_ monad_witness_List lr
+ 				(x, rest2)	<- reads rest1
+-				return (Just x, rest2)))
++				return_ monad_witness_List (Just x, rest2)))
+ 
+ instance (Read a, Read b) => Read (Either a b) where
+     readsPrec _ = readParen False
+ 			(\r ->
+ 			    lex r >>= \ lr ->
+ 			    (do 
+-				("Left", rest1) <- return lr
++				("Left", rest1) <- return_ monad_witness_List lr
+ 				(x, rest2)	<- reads rest1
+-				return (Left x, rest2)) ++
++				return_ monad_witness_List (Left x, rest2)) ++
+ 			    (do 
+-				("Right", rest1) <- return lr
++				("Right", rest1) <- return_ monad_witness_List lr
+ 				(x, rest2)	<- reads rest1
+-				return (Right x, rest2)))
++				return_ monad_witness_List (Right x, rest2)))
+ 
+ instance  Read Int  where
+     readsPrec _ x = readSigned readDec x
+@@ -340,7 +340,7 @@
+ 				(x,s)   <- reads r
+ 				("%",t) <- lex s
+ 				(y,u)   <- reads t
+-				return (x%y,u))
++				return_ monad_witness_List (x%y,u))
+ 
+ instance  (Read a) => Read [a]  where
+     readsPrec _         = readList
+@@ -350,7 +350,7 @@
+                             (\r -> do
+ 				("(",s) <- lex r
+ 				(")",t) <- lex s
+-				return ((),t))
++				return_ monad_witness_List ((),t))
+ 
+ instance  (Read a, Read b) => Read (a,b)  where
+     readsPrec _ = readParen False
+@@ -360,7 +360,7 @@
+ 			        (",",u) <- lex t
+ 			        (y,v)   <- readsPrec 0 u
+ 			        (")",w) <- lex v
+-				return ((x,y), w))
++				return_ monad_witness_List ((x,y), w))
+ 
+ instance (Read a, Read b, Read c) => Read (a, b, c) where
+     readsPrec _ = readParen False
+@@ -372,7 +372,7 @@
+ 			        (",",f) <- lex e
+ 			        (z,g)   <- readsPrec 0 f
+ 			        (")",h) <- lex g
+-				return ((x,y,z), h))
++				return_ monad_witness_List ((x,y,z), h))
+ 
+ instance (Read a, Read b, Read c, Read d) => Read (a, b, c, d) where
+     readsPrec _ = readParen False
+@@ -386,7 +386,7 @@
+ 			        (",",h) <- lex g
+ 			        (z,h)   <- readsPrec 0 h
+ 			        (")",i) <- lex h
+-				return ((w,x,y,z), i))
++				return_ monad_witness_List ((w,x,y,z), i))
+ 
+ instance (Read a, Read b, Read c, Read d, Read e) => Read (a, b, c, d, e) where
+     readsPrec _ = readParen False
+@@ -402,7 +402,7 @@
+ 			        (",",j) <- lex i
+ 			        (z,k)   <- readsPrec 0 j
+ 			        (")",l) <- lex k
+-				return ((v,w,x,y,z), l))
++				return_ monad_witness_List ((v,w,x,y,z), l))
+ \end{code}
+ 
+ 
+@@ -418,38 +418,38 @@
+ readLitChar []		=  mzero
+ readLitChar ('\\':s)	=  readEsc s
+ 	where
+-	readEsc ('a':s)	 = return ('\a',s)
+-	readEsc ('b':s)	 = return ('\b',s)
+-	readEsc ('f':s)	 = return ('\f',s)
+-	readEsc ('n':s)	 = return ('\n',s)
+-	readEsc ('r':s)	 = return ('\r',s)
+-	readEsc ('t':s)	 = return ('\t',s)
+-	readEsc ('v':s)	 = return ('\v',s)
+-	readEsc ('\\':s) = return ('\\',s)
+-	readEsc ('"':s)	 = return ('"',s)
+-	readEsc ('\'':s) = return ('\'',s)
++	readEsc ('a':s)	 = return_ monad_witness_List ('\a',s)
++	readEsc ('b':s)	 = return_ monad_witness_List ('\b',s)
++	readEsc ('f':s)	 = return_ monad_witness_List ('\f',s)
++	readEsc ('n':s)	 = return_ monad_witness_List ('\n',s)
++	readEsc ('r':s)	 = return_ monad_witness_List ('\r',s)
++	readEsc ('t':s)	 = return_ monad_witness_List ('\t',s)
++	readEsc ('v':s)	 = return_ monad_witness_List ('\v',s)
++	readEsc ('\\':s) = return_ monad_witness_List ('\\',s)
++	readEsc ('"':s)	 = return_ monad_witness_List ('"',s)
++	readEsc ('\'':s) = return_ monad_witness_List ('\'',s)
+ 	readEsc ('^':c:s) | c >= '@' && c <= '_'
+-			 = return (chr (ord c - ord '@'), s)
++			 = return_ monad_witness_List (chr (ord c - ord '@'), s)
+ 	readEsc s@(d:_) | isDigit d
+ 			 = do
+ 			  (n,t) <- readDec s
+-			  return (chr n,t)
++			  return_ monad_witness_List (chr n,t)
+ 	readEsc ('o':s)  = do
+ 			  (n,t) <- readOct s
+-			  return (chr n,t)
++			  return_ monad_witness_List (chr n,t)
+ 	readEsc ('x':s)	 = do
+ 			  (n,t) <- readHex s
+-			  return (chr n,t)
++			  return_ monad_witness_List (chr n,t)
+ 
+ 	readEsc s@(c:_) | isUpper c
+ 			 = let table = ('\DEL', "DEL") : zip ['\NUL'..] asciiTab
+ 			   in case [(c,s') | (c, mne) <- table,
+ 					     ([],s') <- [match mne s]]
+-			      of (pr:_) -> return pr
++			      of (pr:_) -> return_ monad_witness_List pr
+ 				 []	-> mzero
+ 	readEsc _	 = mzero
+ 
+-readLitChar (c:s)	=  return (c,s)
++readLitChar (c:s)	=  return_ monad_witness_List (c,s)
+ 
+ match			:: (Eq a) => [a] -> [a] -> ([a],[a])
+ match (x:xs) (y:ys) | x == y  =  match xs ys
+@@ -491,7 +491,7 @@
+ readInt :: (Integral a) => a -> (Char -> Bool) -> (Char -> Int) -> ReadS a
+ readInt radix isDig digToInt s = do
+     (ds,r) <- nonnull isDig s
+-    return (foldl1 (\n d -> n * radix + d) (map (fromInt_ num_witness . digToInt) ds), r)
++    return_ monad_witness_List (foldl1 (\n d -> n * radix + d) (map (fromInt_ num_witness . digToInt) ds), r)
+ 
+ {-# SPECIALISE readSigned ::
+ 		ReadS Int     -> ReadS Int,
+@@ -503,11 +503,11 @@
+ 				      (do
+ 				        ("-",s) <- lex r
+ 					(x,t)   <- read'' s
+-					return (-x,t))
++					return_ monad_witness_List (-x,t))
+ 			   read'' r = do
+ 			       (str,s) <- lex r
+ 		      	       (n,"")  <- readPos str
+-			       return (n,s)
++			       return_ monad_witness_List (n,s)
+ \end{code}
+ 
+ The functions readFloat below uses rational arithmetic
+@@ -522,7 +522,7 @@
+ readFloat :: (RealFloat a) => ReadS a
+ readFloat r = do
+     (x,t) <- readRational r
+-    return (fromRational x,t)
++    return_ monad_witness_List (fromRational x,t)
+ 
+ readRational :: ReadS Rational -- NB: doesn't handle leading "-"
+ 
+@@ -530,30 +530,30 @@
+    (do 
+       (n,d,s) <- readFix r
+       (k,t)   <- readExp s
+-      return ((n%fromInt_ num_witness 1)*fromInt_ num_witness 10^^(k-d), t )) ++
++      return_ monad_witness_List ((n%fromInt_ num_witness 1)*fromInt_ num_witness 10^^(k-d), t )) ++
+    (do
+       ("NaN",t) <- lex r
+-      return (fromInt_ num_witness 0/fromInt_ num_witness 0,t) ) ++
++      return_ monad_witness_List (fromInt_ num_witness 0/fromInt_ num_witness 0,t) ) ++
+    (do
+       ("Infinity",t) <- lex r
+-      return (fromInt_ num_witness 1/fromInt_ num_witness 0,t) )
++      return_ monad_witness_List (fromInt_ num_witness 1/fromInt_ num_witness 0,t) )
+  where
+      readFix r = do
+ 	(ds,s)  <- lexDecDigits r
+ 	(ds',t) <- lexDotDigits s
+-	return (read (ds++ds'), length ds', t)
++	return_ monad_witness_List (read (ds++ds'), length ds', t)
+ 
+      readExp (e:s) | e `elem` "eE" = readExp' s
+-     readExp s			   = return (0,s)
++     readExp s			   = return_ monad_witness_List (0,s)
+ 
+      readExp' ('+':s) = readDec s
+      readExp' ('-':s) = do
+ 			(k,t) <- readDec s
+-			return (-k,t)
++			return_ monad_witness_List (-k,t)
+      readExp' s	      = readDec s
+ 
+      lexDotDigits ('.':s) = lex0Digits s
+-     lexDotDigits s       = return ("",s)
++     lexDotDigits s       = return_ monad_witness_List ("",s)
+ 
+ readRational__ :: String -> Rational -- we export this one (non-std)
+ 				    -- NB: *does* handle a leading "-"
+@@ -563,7 +563,7 @@
+       xs       -> read_me xs
+   where
+     read_me s
+-      = case (do { (x,t) <- readRational s ; ("","") <- lex t ; return x }) of
++      = case (do { (x,t) <- readRational s ; ("","") <- lex t ; return_ monad_witness_List x }) of
+ #ifndef NEW_READS_REP
+ 	  [x] -> x
+ 	  []  -> error ("readRational__: no parse:"        ++ top_s)
+diff --git a/ghc/lib/std/PrelST.lhs b/ghc/lib/std/PrelST.lhs
+index 6addc5cbe9..69b4063f89 100644
+--- a/ghc/lib/std/PrelST.lhs
++++ b/ghc/lib/std/PrelST.lhs
+@@ -31,10 +31,9 @@
+       (# new_s, f r #) }
+ 
+ instance Monad (ST s) where
+-    {-# INLINE return #-}
+     {-# INLINE (>>)   #-}
+     {-# INLINE (>>=)  #-}
+-    return x = ST $ \ s -> (# s, x #)
++    monad_witness = monad_witness_ST
+     m >> k   =  m >>= \ _ -> k
+ 
+     (ST m) >>= k
+@@ -43,6 +42,9 @@
+ 	case (k r) of { ST k2 ->
+ 	(k2 new_s) }}
+ 
++monad_witness_ST = MonadWitness return_ST
++return_ST x = ST $ \ s -> (# s, x #)
++
+ data STret s a = STret (State# s) a
+ 
+ -- liftST is useful when we want a lifted result from an ST computation.  See
+diff --git a/ghc/lib/std/PrelWeak.lhs b/ghc/lib/std/PrelWeak.lhs
+index 901a385726..d36a62c5e5 100644
+--- a/ghc/lib/std/PrelWeak.lhs
++++ b/ghc/lib/std/PrelWeak.lhs
+@@ -31,7 +31,7 @@
+ addFinaliser :: key -> IO () -> IO ()
+ addFinaliser key finaliser = do
+    mkWeakPtr key finaliser		-- throw it away
+-   return ()
++   return_ monad_witness_IO ()
+ 
+ addForeignFinaliser :: ForeignObj -> IO () -> IO ()
+ addForeignFinaliser (ForeignObj fo) finaliser = addFinaliser fo finaliser
+diff --git a/ghc/lib/std/Prelude.lhs b/ghc/lib/std/Prelude.lhs
+index 010b188a89..0e3db25caf 100644
+--- a/ghc/lib/std/Prelude.lhs
++++ b/ghc/lib/std/Prelude.lhs
+@@ -26,6 +26,7 @@
+ 
+     Bool(..),
+     Maybe(..),
++    monad_witness_Maybe,
+     Either(..),
+     Ordering(..), 
+     Char, String, Int(..), Integer, Float, Double, IO,
+@@ -33,9 +34,11 @@
+     num_witness_Int,
+     num_witness_Integer,
+     num_witness_Float,
++    monad_witness_IO,
+     Rational,
+     num_witness_Ratio,
+     []((:), []),
++    monad_witness_List,
+     
+     module PrelTup,
+         -- Includes tuple types + fst, snd, curry, uncurry
+@@ -59,6 +62,7 @@
+ 
+ 	-- From Monad
+     Monad(..),
++    return_,
+     Functor(..), 
+     mapM, mapM_, sequence, sequence_, (=<<),
+ 
+diff --git a/ghc/lib/std/Time.lhs b/ghc/lib/std/Time.lhs
+index 27e746b6fc..e3cf0db63a 100644
+--- a/ghc/lib/std/Time.lhs
++++ b/ghc/lib/std/Time.lhs
+@@ -99,7 +99,7 @@
+       showString $ unsafePerformIO $ do
+ 	    buf <- allocChars 38 -- exactly enough for error message
+ 	    str <- _ccall_ showTime (I# s#) d# buf
+-	    return (unpackCString str)
++	    return_ monad_witness_IO (unpackCString str)
+ 
+     showList = showList__ (showsPrec 0)
+ #endif
+@@ -203,7 +203,7 @@
+ 	then do
+ 	    sec  <- cvtUnsigned i1
+ 	    nsec <- cvtUnsigned i2
+-	    return (TOD sec (nsec * fromInt_ num_witness_Integer 1000))
++	    return_ monad_witness_IO (TOD sec (nsec * fromInt_ num_witness_Integer 1000))
+     	else
+ 	    constructErrorAndFail "getClockTime"
+   where
+@@ -261,7 +261,7 @@
+ 	    diff_sec  = (int2Integer (indexIntOffAddr# ptr# 0#))
+ 	    diff_psec = psec
+        	  in
+-          return (TOD (c_sec + diff_sec) (c_psec + diff_psec))
++          return_ monad_witness_IO (TOD (c_sec + diff_sec) (c_psec + diff_psec))
+      else
+           error "Time.addToClockTime: can't perform conversion of TimeDiff"
+ #endif
+@@ -374,7 +374,7 @@
+        zone  <-  _ccall_ ZONE tm
+        tz    <-  _ccall_ GMTOFF tm
+        let tzname = unpackCString zone
+-       return (CalendarTime (1900+year) mon mday hour min sec psec 
++       return_ monad_witness_IO (CalendarTime (1900+year) mon mday hour min sec psec 
+             		    (toEnum_ enum_witness wday) yday tzname tz (isdst /= (0::Int)))
+ 
+ toUTCTime :: ClockTime -> CalendarTime
+@@ -394,7 +394,7 @@
+ 	    year  <- _casm_ ``%r = ((struct tm *)%0)->tm_year;'' tm
+ 	    wday  <- _casm_ ``%r = ((struct tm *)%0)->tm_wday;'' tm
+ 	    yday  <- _casm_ ``%r = ((struct tm *)%0)->tm_yday;'' tm
+-            return (CalendarTime (1900+year) mon mday hour min sec psec 
++            return_ monad_witness_IO (CalendarTime (1900+year) mon mday hour min sec psec 
+             		  (toEnum_ enum_witness wday) yday "UTC" 0 False)
+ 
+ toClockTime :: CalendarTime -> ClockTime
+@@ -409,7 +409,7 @@
+ 	    ptr <- _ccall_ toClockSec year mon mday hour min sec isDst res
+             let (A# ptr#) = ptr
+             if ptr /= nullAddr
+-             then return (TOD (int2Integer (indexIntOffAddr# ptr# 0#)) psec)
++             then return_ monad_witness_IO (TOD (int2Integer (indexIntOffAddr# ptr# 0#)) psec)
+ 	     else error "Time.toClockTime: can't perform conversion"
+         )
+     where

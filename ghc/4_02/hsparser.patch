@@ -1,6 +1,6 @@
 --- a/ghc/compiler/parser/hsparser.y
 +++ b/ghc/compiler/parser/hsparser.y
-@@ -785,7 +785,7 @@ constr	:  forall constr_context DARROW constr_after_context	{ $$ = mkconstrex (
+@@ -785,7 +785,7 @@
          |  forall constr_after_context	                        { $$ = mkconstrex ( $1, Lnil, $2 ); }
  	;
  
@@ -9,7 +9,7 @@
         | FORALL tyvars1 DOT                             { $$ = $2; }
         ;
  
-@@ -1105,7 +1105,7 @@ rbind  	: qvar					{ punningNowIllegal();	       }
+@@ -1105,7 +1105,7 @@
  	;	
  
  texps	:  exp					{ $$ = lsing($1); }

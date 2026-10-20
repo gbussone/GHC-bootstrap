@@ -1,0 +1,577 @@
+--- a/ghc/lib/exts/Int.lhs
++++ b/ghc/lib/exts/Int.lhs
+@@ -260,6 +260,7 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Int8 where
++    enum_witness      = enum_witness_Int8
+     succ i
+       | i == maxBound_ bounded_witness_Int8 = succError "Int8"
+       | otherwise     = i+1
+@@ -267,21 +268,23 @@
+       | i == minBound = predError "Int8"
+       | otherwise     = i-1
+ 
+-    toEnum x
+-      | x >= toInt (minBound::Int8) && x <= toInt (maxBound_ bounded_witness_Int8::Int8) 
+-      = intToInt8 x
+-      | otherwise
+-      = toEnumError "Int8" x (minBound::Int8,maxBound_ bounded_witness_Int8::Int8)
+-
+     fromEnum           = int8ToInt
+-    enumFrom e1        = map toEnum [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int8::Int8)]
++    enumFrom e1        = map toEnum [fromEnum e1 .. fromEnum (maxBound::Int8)]
++    enumFrom e1        = map (toEnum_ enum_witness_Int8) [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int8::Int8)]
+     enumFromThen e1 e2 = 
+-             map toEnum [fromEnum e1, fromEnum e2 .. fromEnum (last::Int8)]
++             map (toEnum_ enum_witness_Int8) [fromEnum e1, fromEnum e2 .. fromEnum (last::Int8)]
+ 		where 
+ 		   last 
+ 		     | e2 < e1   = minBound
+ 		     | otherwise = maxBound_ bounded_witness_Int8
+ 
++enum_witness_Int8 = EnumWitness toEnum_Int8
++toEnum_Int8 x
++  | x >= toInt (minBound::Int8) && x <= toInt (maxBound_ bounded_witness_Int8::Int8) 
++  = intToInt8 x
++  | otherwise
++  = toEnumError "Int8" x (minBound::Int8,maxBound_ bounded_witness_Int8::Int8)
++
+ instance Read Int8 where
+     readsPrec p s = [ (intToInt8 x,r) | (x,r) <- readsPrec p s ]
+ 
+@@ -414,6 +417,7 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Int16 where
++    enum_witness      = enum_witness_Int16
+     succ i
+       | i == maxBound_ bounded_witness_Int16 = succError "Int16"
+       | otherwise     = i+1
+@@ -422,20 +426,21 @@
+       | i == minBound = predError "Int16"
+       | otherwise     = i-1
+ 
+-    toEnum x
+-      | x >= toInt (minBound::Int16) && x <= toInt (maxBound_ bounded_witness_Int16::Int16) 
+-      = intToInt16 x
+-      | otherwise
+-      = toEnumError "Int16" x (minBound::Int16, maxBound_ bounded_witness_Int16::Int16)
+-
+     fromEnum         = int16ToInt
+ 
+-    enumFrom e1        = map toEnum [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int16::Int16)]
+-    enumFromThen e1 e2 = map toEnum [fromEnum e1, fromEnum e2 .. fromEnum (last::Int16)]
++    enumFrom e1        = map (toEnum_ enum_witness_Int16) [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int16::Int16)]
++    enumFromThen e1 e2 = map (toEnum_ enum_witness_Int16) [fromEnum e1, fromEnum e2 .. fromEnum (last::Int16)]
+ 			  where last 
+ 			          | e2 < e1   = minBound
+ 				  | otherwise = maxBound_ bounded_witness_Int16
+ 
++enum_witness_Int16 = EnumWitness toEnum_Int16
++toEnum_Int16 x
++  | x >= toInt (minBound::Int16) && x <= toInt (maxBound_ bounded_witness_Int16::Int16) 
++  = intToInt16 x
++  | otherwise
++  = toEnumError "Int16" x (minBound::Int16, maxBound_ bounded_witness_Int16::Int16)
++
+ instance Read Int16 where
+     readsPrec p s = [ (intToInt16 x,r) | (x,r) <- readsPrec p s ]
+ 
+@@ -575,6 +580,7 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Int32 where
++    enum_witness      = enum_witness_Int32
+     succ i
+       | i == maxBound_ bounded_witness_Int32 = succError "Int32"
+       | otherwise     = i+1
+@@ -583,23 +589,24 @@
+       | i == minBound = predError "Int32"
+       | otherwise     = i-1
+ 
+-    toEnum x
+-        -- with Int having the same range as Int32, the following test
+-	-- shouldn't fail. However, having it here 
+-      | x >= toInt (minBound::Int32) && x <= toInt (maxBound_ bounded_witness_Int32::Int32) 
+-      = intToInt32 x
+-      | otherwise
+-      = toEnumError "Int32" x (minBound::Int32, maxBound_ bounded_witness_Int32::Int32)
+-
+     fromEnum           = int32ToInt
+ 
+-    enumFrom e1        = map toEnum [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int32::Int32)]
+-    enumFromThen e1 e2 = map toEnum [fromEnum e1, fromEnum e2 .. fromEnum (last::Int32)]
++    enumFrom e1        = map (toEnum_ enum_witness_Int32) [fromEnum e1 .. fromEnum (maxBound_ bounded_witness_Int32::Int32)]
++    enumFromThen e1 e2 = map (toEnum_ enum_witness_Int32) [fromEnum e1, fromEnum e2 .. fromEnum (last::Int32)]
+ 			  where 
+ 			    last
+ 			     | e2 < e1   = minBound
+ 			     | otherwise = maxBound_ bounded_witness_Int32
+ 
++enum_witness_Int32 = EnumWitness toEnum_Int32
++toEnum_Int32 x
++    -- with Int having the same range as Int32, the following test
++	-- shouldn't fail. However, having it here 
++  | x >= toInt (minBound::Int32) && x <= toInt (maxBound_ bounded_witness_Int32::Int32) 
++  = intToInt32 x
++  | otherwise
++  = toEnumError "Int32" x (minBound::Int32, maxBound_ bounded_witness_Int32::Int32)
++
+ instance Read Int32 where
+     readsPrec p s = [ (intToInt32 x,r) | (x,r) <- readsPrec p s ]
+ 
+@@ -1029,6 +1036,7 @@
+ -- Code that's independent of Int64 rep.
+ -- 
+ instance Enum Int64 where
++    enum_witness      = enum_witness_Int64
+     succ i
+       | i == maxBound_ bounded_witness_Int64 = succError "Int64"
+       | otherwise     = i+1
+@@ -1037,7 +1045,6 @@
+       | i == minBound = predError "Int64"
+       | otherwise     = i-1
+ 
+-    toEnum    i = intToInt64 i
+     fromEnum  x
+       | x >= intToInt64 (minBound::Int) && x <= intToInt64 (maxBound_ bounded_witness_Int::Int)
+       = int64ToInt x
+@@ -1055,6 +1062,9 @@
+ 
+     enumFromThenTo e1 e2 e3 = map integerToInt64 [int64ToInteger e1, int64ToInteger e2 .. int64ToInteger e3]
+ 
++enum_witness_Int64 = EnumWitness toEnum_Int64
++toEnum_Int64    i = intToInt64 i
++
+ 
+ instance Show Int64 where
+     showsPrec p i64 = showsPrec p (int64ToInteger i64)
+diff --git a/ghc/lib/exts/Word.lhs b/ghc/lib/exts/Word.lhs
+index b127049b8e..8e2bd3e548 100644
+--- a/ghc/lib/exts/Word.lhs
++++ b/ghc/lib/exts/Word.lhs
+@@ -286,6 +286,7 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Word8 where
++    enum_witness      = enum_witness_Word8
+     succ w	    
+       | w == maxBound_ bounded_witness_Word8 = succError "Word8"
+       | otherwise     = w+1
+@@ -293,21 +294,22 @@
+       | w == minBound = predError "Word8"
+       | otherwise     = w-1
+ 
+-    toEnum   i@(I# i#)  
+-      | i >= toInt (minBound::Word8) && i <= toInt (maxBound_ bounded_witness_Word8::Word8) 
+-      = W8# (intToWord8# i#)
+-      | otherwise
+-      = toEnumError "Word8" i (minBound::Word8,maxBound_ bounded_witness_Word8::Word8)
+-
+     fromEnum  (W8# w) = I# (word2Int# w)
+-    enumFrom c        = map toEnum [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word8::Word8)]
+-    enumFromThen c d  = map toEnum [fromEnum c, fromEnum d .. fromEnum last]
++    enumFrom c        = map (toEnum_ enum_witness_Word8) [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word8::Word8)]
++    enumFromThen c d  = map (toEnum_ enum_witness_Word8) [fromEnum c, fromEnum d .. fromEnum last]
+ 		        where 
+ 			 last :: Word8
+ 		         last 
+ 			  | d < c     = minBound
+ 			  | otherwise = maxBound_ bounded_witness_Word8
+ 
++enum_witness_Word8 = EnumWitness toEnum_Word8
++toEnum_Word8   i@(I# i#)  
++  | i >= toInt (minBound::Word8) && i <= toInt (maxBound_ bounded_witness_Word8::Word8) 
++  = W8# (intToWord8# i#)
++  | otherwise
++  = toEnumError "Word8" i (minBound::Word8,maxBound_ bounded_witness_Word8::Word8)
++
+ instance Read Word8 where
+     readsPrec _ = readDec
+ 
+@@ -467,6 +469,7 @@
+   inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Word16 where
++    enum_witness      = enum_witness_Word16
+     succ w	    
+       | w == maxBound_ bounded_witness_Word16 = succError "Word16"
+       | otherwise     = w+1
+@@ -474,21 +477,22 @@
+       | w == minBound = predError "Word16"
+       | otherwise     = w-1
+ 
+-    toEnum   i@(I# i#)  
+-      | i >= toInt (minBound::Word16) && i <= toInt (maxBound_ bounded_witness_Word16::Word16)
+-      = W16# (intToWord16# i#)
+-      | otherwise
+-      = toEnumError "Word16" i (minBound::Word16,maxBound_ bounded_witness_Word16::Word16)
+-
+     fromEnum  (W16# w) = I# (word2Int# w)
+-    enumFrom c       = map toEnum [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word16::Word16)]
+-    enumFromThen c d = map toEnum [fromEnum c, fromEnum d .. fromEnum last]
++    enumFrom c       = map (toEnum_ enum_witness_Word16) [fromEnum c .. fromEnum (maxBound_ bounded_witness_Word16::Word16)]
++    enumFromThen c d = map (toEnum_ enum_witness_Word16) [fromEnum c, fromEnum d .. fromEnum last]
+ 		       where 
+ 			 last :: Word16
+ 		         last 
+ 			  | d < c     = minBound
+ 			  | otherwise = maxBound_ bounded_witness_Word16
+ 
++enum_witness_Word16 = EnumWitness toEnum_Word16
++toEnum_Word16   i@(I# i#)  
++  | i >= toInt (minBound::Word16) && i <= toInt (maxBound_ bounded_witness_Word16::Word16)
++  = W16# (intToWord16# i#)
++  | otherwise
++  = toEnumError "Word16" i (minBound::Word16,maxBound_ bounded_witness_Word16::Word16)
++
+ instance Read Word16 where
+   readsPrec _ = readDec
+ 
+@@ -651,6 +655,7 @@
+     inRange (m,n) i      = m <= i && i <= n
+ 
+ instance Enum Word32 where
++    enum_witness      = enum_witness_Word32
+     succ w	    
+       | w == maxBound_ bounded_witness_Word32 = succError "Word32"
+       | otherwise     = w+1
+@@ -660,11 +665,6 @@
+ 
+      -- the toEnum/fromEnum will fail if the mapping isn't legal,
+      -- use the intTo* & *ToInt coercion functions to 'bypass' these range checks.
+-    toEnum   x
+-      | x >= 0    = intToWord32 x
+-      | otherwise
+-      = toEnumError "Word32" x (minBound::Word32,maxBound_ bounded_witness_Word32::Word32)
+-
+     fromEnum   x
+       | x <= intToWord32 (maxBound_ bounded_witness_Int::Int)
+       = word32ToInt x
+@@ -700,6 +700,12 @@
+         | increasing = \ x -> x + diff1
+         | otherwise  = \ x -> x - diff2
+ 
++enum_witness_Word32 = EnumWitness toEnum_Word32
++toEnum_Word32   x
++  | x >= 0    = intToWord32 x
++  | otherwise
++  = toEnumError "Word32" x (minBound::Word32,maxBound_ bounded_witness_Word32::Word32)
++
+ 
+ eftt32 :: Bool -> Word32 -> (Word32 -> Word32) -> (Word32-> Bool) -> [Word32]
+ eftt32 increasing init stepper done = go init
+@@ -1144,6 +1150,7 @@
+ #endif
+ 
+ instance Enum Word64 where
++    enum_witness      = enum_witness_Word64
+     succ w	    
+       | w == maxBound_ bounded_witness_Word64 = succError "Word64"
+       | otherwise     = w+1
+@@ -1151,11 +1158,6 @@
+       | w == minBound = predError "Word64"
+       | otherwise     = w-1
+ 
+-    toEnum i
+-      | i >= 0    = intToWord64 i
+-      | otherwise 
+-      = toEnumError "Word64" i (minBound::Word64,maxBound_ bounded_witness_Word64::Word64)
+-
+     fromEnum w
+       | w <= intToWord64 (maxBound_ bounded_witness_Int::Int)
+       = word64ToInt w
+@@ -1173,6 +1175,12 @@
+ 
+     enumFromThenTo e1 e2 e3 = map integerToWord64 [word64ToInteger e1, word64ToInteger e2 .. word64ToInteger e3]
+ 
++enum_witness_Word64 = EnumWitness toEnum_Word64
++toEnum_Word64 i
++  | i >= 0    = intToWord64 i
++  | otherwise 
++  = toEnumError "Word64" i (minBound::Word64,maxBound_ bounded_witness_Word64::Word64)
++
+ instance Show Word64 where
+   showsPrec p x = showsPrec p (word64ToInteger x)
+ 
+diff --git a/ghc/lib/std/Ix.lhs b/ghc/lib/std/Ix.lhs
+index 5f121d8542..4e25621d64 100644
+--- a/ghc/lib/std/Ix.lhs
++++ b/ghc/lib/std/Ix.lhs
+@@ -89,7 +89,7 @@
+ ----------------------------------------------------------------------
+ instance Ix Bool where -- as derived
+     range   (l,u) 
+-      | l <= u    = map toEnum [fromEnum l .. fromEnum u]
++      | l <= u    = map (toEnum_ enum_witness) [fromEnum l .. fromEnum u]
+       | otherwise = []
+     index   (l,_) i = fromEnum i - fromEnum l
+     inRange (l,u) i = fromEnum i >= fromEnum l && fromEnum i <= fromEnum u
+@@ -97,7 +97,7 @@
+ ----------------------------------------------------------------------
+ instance Ix Ordering where -- as derived
+     range   (l,u)
+-      | l <= u    = map toEnum [fromEnum l .. fromEnum u]
++      | l <= u    = map (toEnum_ enum_witness) [fromEnum l .. fromEnum u]
+       | otherwise = []
+     index   (l,_) i = fromEnum i - fromEnum l
+     inRange (l,u) i = fromEnum i >= fromEnum l && fromEnum i <= fromEnum u
+diff --git a/ghc/lib/std/PrelBase.lhs b/ghc/lib/std/PrelBase.lhs
+index 6108deb11d..e5517a61f7 100644
+--- a/ghc/lib/std/PrelBase.lhs
++++ b/ghc/lib/std/PrelBase.lhs
+@@ -105,7 +105,10 @@
+ %*********************************************************
+ 
+ \begin{code}
++data EnumWitness a = EnumWitness (Int -> a)
++
+ class  Enum a	where
++    enum_witness	:: EnumWitness a
+     succ, pred		:: a -> a
+     toEnum              :: Int -> a
+     fromEnum            :: a -> Int
+@@ -114,11 +117,16 @@
+     enumFromTo		:: a -> a -> [a]	-- [n..m]
+     enumFromThenTo	:: a -> a -> a -> [a]	-- [n,n'..m]
+ 
+-    succ		= toEnum . (+1) . fromEnum
+-    pred		= toEnum . (+(-1)) . fromEnum
+-    enumFromTo n m      =  map toEnum [fromEnum n .. fromEnum m]
++    enum_witness	= EnumWitness toEnum
++    succ		= toEnum_ enum_witness . (+1) . fromEnum
++    pred		= toEnum_ enum_witness . (+(-1)) . fromEnum
++    toEnum		= toEnum_ enum_witness
++    enumFromTo n m      =  map (toEnum_ enum_witness) [fromEnum n .. fromEnum m]
+     enumFromThenTo n n' m
+-                        =  map toEnum [fromEnum n, fromEnum n' .. fromEnum m]
++                        =  map (toEnum_ enum_witness) [fromEnum n, fromEnum n' .. fromEnum m]
++
++toEnum_ :: EnumWitness a -> Int -> a
++toEnum_ (EnumWitness toEnum) = toEnum
+ 
+ class  (Eq a, Show a) => Num a  where
+     (+), (-), (*)	:: a -> a -> a
+@@ -137,7 +145,7 @@
+ 
+ \begin{code}
+ chr :: Int -> Char
+-chr = toEnum
++chr = toEnum_ enum_witness_Char
+ ord :: Char -> Int
+ ord = fromEnum
+ 
+@@ -334,16 +342,19 @@
+     compare () () = EQ
+ 
+ instance Enum () where
++    enum_witness = enum_witness_Unit
+     succ x      = error "Prelude.Enum.succ{()}: not possible"
+     pred x      = error "Prelude.Enum.pred{()}: not possible"
+-    toEnum 0    = ()
+-    toEnum _	= error "Prelude.Enum.toEnum{()}: argument not 0"
+     fromEnum () = 0
+     enumFrom () 	= [()]
+     enumFromThen () () 	= [()]
+     enumFromTo () () 	= [()]
+     enumFromThenTo () () () = [()]
+ 
++enum_witness_Unit = EnumWitness toEnum_Unit
++toEnum_Unit 0    = ()
++toEnum_Unit _	= error "Prelude.Enum.toEnum{()}: argument not 0"
++
+ instance  Show ()  where
+     showsPrec _ () = showString "()"
+     showList ls    = showList__ (showsPrec 0) ls
+@@ -372,6 +383,7 @@
+ data Char = C# Char#	deriving (Eq, Ord)
+ 
+ instance  Enum Char  where
++    enum_witness = enum_witness_Char
+     succ     c@(C# c#)
+        | not (ord# c# ==# 255#) = C# (chr# (ord# c# +# 1#))
+        | otherwise	        = error ("Prelude.Enum.succ{Char}: tried to take `succ' of maxBound")
+@@ -379,8 +391,6 @@
+        | not (ord# c# ==# 0#)   = C# (chr# (ord# c# -# 1#))
+        | otherwise	        = error ("Prelude.Enum.pred{Char}: tried to to take `pred' of minBound")
+ 
+-    toEnum   (I# i) | i >=# 0# && i <=# 255# =  C# (chr# i)
+-		    | otherwise = error ("Prelude.Enum.toEnum{Char}: out of range: " ++ show (I# i))
+     fromEnum (C# c) =  I# (ord# c)
+ 
+     enumFrom   (C# c)	       = efttCh (ord# c)  1#   (># 255#)
+@@ -396,6 +406,10 @@
+ 	| c1 `leChar#` c2 = efttCh (ord# c1) (ord# c2 -# ord# c1) (># (ord# c3))
+ 	| otherwise       = efttCh (ord# c1) (ord# c2 -# ord# c1) (<# (ord# c3))
+ 
++enum_witness_Char = EnumWitness toEnum_Char
++toEnum_Char   (I# i) | i >=# 0# && i <=# 255# =  C# (chr# i)
++		    | otherwise = error ("Prelude.Enum.toEnum{Char}: out of range: " ++ show (I# i))
++
+ efttCh :: Int# -> Int# -> (Int# -> Bool) -> [Char]
+ efttCh init step done 
+   = go init
+@@ -461,7 +475,7 @@
+   | isAscii c         = c
+     -- fall-through to the slower stuff.
+   | isLower c	&& c /= '\xDF' && c /= '\xFF'
+-  = toEnum (fromEnum c - fromEnum 'a' + fromEnum 'A')
++  = toEnum_ enum_witness_Char (fromEnum c - fromEnum 'a' + fromEnum 'A')
+   | otherwise
+   = c
+ 
+@@ -470,7 +484,7 @@
+ toLower c@(C# c#)
+   | isAsciiUpper c = C# (chr# (ord# c# +# 32#))
+   | isAscii c      = c
+-  | isUpper c	   =  toEnum (fromEnum c - fromEnum 'A' 
++  | isUpper c	   =  toEnum_ enum_witness_Char (fromEnum c - fromEnum 'A' 
+                                               + fromEnum 'a')
+   | otherwise	   =  c
+ 
+@@ -519,6 +533,7 @@
+ maxBound_Int =   2147483647
+ 
+ instance  Enum Int  where
++    enum_witness        = enum_witness_Int
+     succ x  
+        | x == maxBound_ bounded_witness_Int  = error "Prelude.Enum.succ{Int}: tried to take `succ' of maxBound"
+        | otherwise      = x+1
+@@ -526,7 +541,6 @@
+        | x == minBound  = error "Prelude.Enum.pred{Int}: tried to take `pred' of minBound"
+        | otherwise      = x-1
+ 
+-    toEnum   x = x
+     fromEnum x = x
+ 
+ #ifndef USE_FOLDR_BUILD
+@@ -553,6 +567,9 @@
+ 	let g x = if x <= y then x `c` g (x `plusInt` 1) else n in g x)
+ #endif
+ 
++enum_witness_Int = EnumWitness toEnum_Int
++toEnum_Int   x = x
++
+ efttInt :: Bool -> Int# -> Int# -> (Int# -> Bool) -> [Int]
+ efttInt increasing init step done = go init
+   where
+@@ -708,8 +725,8 @@
+ 
+ intToDigit :: Int -> Char
+ intToDigit i
+- | i >= 0  && i <=  9   =  toEnum (fromEnum '0' + i)
+- | i >= 10 && i <= 15   =  toEnum (fromEnum 'a' + i - 10)
++ | i >= 0  && i <=  9   =  toEnum_ enum_witness_Char (fromEnum '0' + i)
++ | i >= 10 && i <= 15   =  toEnum_ enum_witness_Char (fromEnum 'a' + i - 10)
+  | otherwise		=  error ("Char.intToDigit: not a digit " ++ show i)
+ 
+ \end{code}
+diff --git a/ghc/lib/std/PrelNum.lhs b/ghc/lib/std/PrelNum.lhs
+index 70e826c37a..2980262019 100644
+--- a/ghc/lib/std/PrelNum.lhs
++++ b/ghc/lib/std/PrelNum.lhs
+@@ -267,9 +267,9 @@
+ 		   -- Case-ified by WDP 94/10
+ 
+ instance  Enum Integer  where
++    enum_witness	 = enum_witness_Integer
+     succ x		 = x + 1
+     pred x		 = x - 1
+-    toEnum n		 =  toInteger n
+     fromEnum n		 =  toInt n
+     enumFrom n           =  n : enumFrom (n + 1)
+     enumFromThen e1 e2   =  en' e1 (e2 - e1)
+@@ -282,6 +282,9 @@
+ 	     pred | m >= n    = (<= p)
+ 	          | otherwise = (>= p)
+ 
++enum_witness_Integer = EnumWitness toEnum_Integer
++toEnum_Integer n		 =  toInteger n
++
+ instance  Show Integer  where
+     showsPrec   x = showSignedInteger x
+     showList = showList__ (showsPrec 0) 
+diff --git a/ghc/lib/std/PrelNumExtra.lhs b/ghc/lib/std/PrelNumExtra.lhs
+index 7fb14a89ad..05c2579659 100644
+--- a/ghc/lib/std/PrelNumExtra.lhs
++++ b/ghc/lib/std/PrelNumExtra.lhs
+@@ -379,25 +379,31 @@
+ 
+ \begin{code}
+ instance  Enum Float  where
++    enum_witness   = enum_witness_Float
+     succ x	   = x + 1
+     pred x	   = x - 1
+-    toEnum         =  fromIntegral
+     fromEnum       =  fromInteger . truncate   -- may overflow
+     enumFrom	   =  numericEnumFrom
+     enumFromTo     =  numericEnumFromTo
+     enumFromThen   =  numericEnumFromThen
+     enumFromThenTo =  numericEnumFromThenTo
+ 
++enum_witness_Float = EnumWitness toEnum_Float
++toEnum_Float         =  fromIntegral
++
+ instance  Enum Double  where
++    enum_witness   = enum_witness_Double
+     succ x	   = x + 1
+     pred x	   = x - 1
+-    toEnum         =  fromIntegral
+     fromEnum       =  fromInteger . truncate   -- may overflow
+     enumFrom	   =  numericEnumFrom
+     enumFromTo     =  numericEnumFromTo
+     enumFromThen   =  numericEnumFromThen
+     enumFromThenTo =  numericEnumFromThenTo
+ 
++enum_witness_Double = EnumWitness toEnum_Double
++toEnum_Double         =  fromIntegral
++
+ numericEnumFrom		:: (Fractional a) => a -> [a]
+ numericEnumFrom		=  iterate (+1)
+ 
+@@ -481,16 +487,21 @@
+ 			    where (q,r) = quotRem x y
+ 
+ instance  (Integral a)	=> Enum (Ratio a)  where
++    enum_witness        =  enum_witness_Ratio
+     succ x	        =  x + 1
+     pred x	        =  x - 1
+ 
+-    toEnum n            =  fromIntegral n :% 1
+     fromEnum            =  fromInteger . truncate
+ 
+     enumFrom		=  bounded_iterator True (1)
+     enumFromThen n m	=  bounded_iterator (diff >= 0) diff n 
+ 			  where diff = m - n
+ 
++enum_witness_Ratio :: Integral a => EnumWitness (Ratio a)
++enum_witness_Ratio = EnumWitness toEnum_Ratio
++toEnum_Ratio :: Integral a => Int -> Ratio a
++toEnum_Ratio n            =  fromIntegral n :% fromInt 1
++
+ 
+ bounded_iterator :: (Ord a, Num a) => Bool -> a -> a -> [a]
+ bounded_iterator inc step v 
+diff --git a/ghc/lib/std/Time.lhs b/ghc/lib/std/Time.lhs
+index b4adb2160c..e3eaa743d2 100644
+--- a/ghc/lib/std/Time.lhs
++++ b/ghc/lib/std/Time.lhs
+@@ -375,7 +375,7 @@
+        tz    <-  _ccall_ GMTOFF tm
+        let tzname = unpackCString zone
+        return (CalendarTime (1900+year) mon mday hour min sec psec 
+-            		    (toEnum wday) yday tzname tz (isdst /= (0::Int)))
++            		    (toEnum_ enum_witness wday) yday tzname tz (isdst /= (0::Int)))
+ 
+ toUTCTime :: ClockTime -> CalendarTime
+ toUTCTime  (TOD (J# _ s# d#) psec) = unsafePerformIO $ do
+@@ -395,7 +395,7 @@
+ 	    wday  <- _casm_ ``%r = ((struct tm *)%0)->tm_wday;'' tm
+ 	    yday  <- _casm_ ``%r = ((struct tm *)%0)->tm_yday;'' tm
+             return (CalendarTime (1900+year) mon mday hour min sec psec 
+-            		  (toEnum wday) yday "UTC" 0 False)
++            		  (toEnum_ enum_witness wday) yday "UTC" 0 False)
+ 
+ toClockTime :: CalendarTime -> ClockTime
+ toClockTime (CalendarTime year mon mday hour min sec psec _wday _yday _tzname tz isdst) =

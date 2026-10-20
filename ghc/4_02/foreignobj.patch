@@ -1,0 +1,24 @@
+--- a/ghc/compiler/HsVersions.h
++++ b/ghc/compiler/HsVersions.h
+@@ -40,7 +40,7 @@
+ # define _MutableArray GlaExts.MutableArray
+ # define _RealWorld GlaExts.RealWorld
+ # define _ST GlaExts.ST
+-# define _ForeignObj Foreign.ForeignObj
++# define _ForeignObj PrelForeign.ForeignObj
+ # define _runST ST.runST
+ # define seqStrictlyST seqST
+ # define thenStrictlyST thenST
+diff --git a/ghc/compiler/utils/FastString.lhs b/ghc/compiler/utils/FastString.lhs
+index b0a12b18e2..4f27ec4ba5 100644
+--- a/ghc/compiler/utils/FastString.lhs
++++ b/ghc/compiler/utils/FastString.lhs
+@@ -91,7 +91,7 @@
+ 
+ -- ForeignObj is now exported abstractly.
+ #if __GLASGOW_HASKELL__ >= 303
+-import qualified PrelForeign as Foreign  ( ForeignObj(..) )
++import qualified PrelForeign  ( ForeignObj(..) )
+ #else
+ import Foreign		( ForeignObj(..) )
+ #endif

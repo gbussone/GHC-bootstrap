@@ -1,0 +1,714 @@
+--- a/ghc/compiler/absCSyn/CLabel.lhs
++++ b/ghc/compiler/absCSyn/CLabel.lhs
+@@ -114,7 +114,7 @@
+ data IdLabelInfo
+   = Closure		-- Label for (static???) closure
+ 
+-  | SRT                 -- Static reference table
++  | SRT_                 -- Static reference table
+ 
+   | InfoTbl		-- Info table for a closure; always read-only
+ 
+@@ -143,7 +143,7 @@
+   = CaseReturnPt
+   | CaseReturnInfo
+   | CaseVecTbl
+-  | CaseAlt ConTag
++  | CaseAlt_ ConTag
+   | CaseDefault
+   | CaseBitmap
+   deriving (Eq, Ord)
+@@ -172,12 +172,12 @@
+   | ClosureType
+   | VecTblType
+   | CodeType
+-  | DataType
++  | DataType_
+ \end{code}
+ 
+ \begin{code}
+ mkClosureLabel	      	id 		= IdLabel id  Closure
+-mkSRTLabel		id		= IdLabel id  SRT
++mkSRTLabel		id		= IdLabel id  SRT_
+ mkInfoTableLabel      	id 		= IdLabel id  InfoTbl
+ mkStdEntryLabel	      	id 		= IdLabel id  EntryStd
+ mkFastEntryLabel      	id arity	= ASSERT(arity > 0)
+@@ -195,7 +195,7 @@
+ mkReturnPtLabel uniq		= CaseLabel uniq CaseReturnPt
+ mkReturnInfoLabel uniq		= CaseLabel uniq CaseReturnInfo
+ mkVecTblLabel   uniq		= CaseLabel uniq CaseVecTbl
+-mkAltLabel      uniq tag	= CaseLabel uniq (CaseAlt tag)
++mkAltLabel      uniq tag	= CaseLabel uniq (CaseAlt_ tag)
+ mkDefaultLabel  uniq 		= CaseLabel uniq CaseDefault
+ mkBitmapLabel   uniq		= CaseLabel uniq CaseBitmap
+ 
+@@ -316,7 +316,7 @@
+      StaticClosure -> ClosureType
+      _		   -> CodeType
+ 
+-labelType _        = DataType
++labelType _        = DataType_
+ \end{code}
+ 
+ OLD?: These GRAN functions are needed for spitting out GRAN_FETCH() at the
+@@ -382,7 +382,7 @@
+   = hcat [pprUnique u, pp_cSEP, ptext SLIT("info")]
+ pprCLbl (CaseLabel u CaseVecTbl)
+   = hcat [pprUnique u, pp_cSEP, ptext SLIT("vtbl")]
+-pprCLbl (CaseLabel u (CaseAlt tag))
++pprCLbl (CaseLabel u (CaseAlt_ tag))
+   = hcat [pprUnique u, pp_cSEP, int tag, pp_cSEP, ptext SLIT("alt")]
+ pprCLbl (CaseLabel u CaseDefault)
+   = hcat [pprUnique u, pp_cSEP, ptext SLIT("dflt")]
+@@ -440,7 +440,7 @@
+ ppIdFlavor x = pp_cSEP <>
+ 	       (case x of
+ 		       Closure	    	-> ptext SLIT("closure")
+-		       SRT		-> ptext SLIT("srt")
++		       SRT_		-> ptext SLIT("srt")
+ 		       InfoTbl	    	-> ptext SLIT("info")
+ 		       EntryStd	    	-> ptext SLIT("entry")
+ 		       EntryFast arity	-> --false:ASSERT (arity > 0)
+diff --git a/ghc/compiler/absCSyn/Costs.lhs b/ghc/compiler/absCSyn/Costs.lhs
+index ac1735b55c..e7666de868 100644
+--- a/ghc/compiler/absCSyn/Costs.lhs
++++ b/ghc/compiler/absCSyn/Costs.lhs
+@@ -100,7 +100,7 @@
+ 
+ -- --------------------------------------------------------------------------
+ 
+-data Side = Lhs | Rhs
++data Side = Lhs | Rhs_
+ 	    deriving (Eq)
+ 
+ -- --------------------------------------------------------------------------
+@@ -120,25 +120,25 @@
+    CAssign (CReg _) (CAddr _)	-> Cost (1,0,0,0,0)  -- typ.: add %reg1,<adr>,%reg2
+ 
+    CAssign target_m source_m	-> addrModeCosts target_m Lhs +
+-				   addrModeCosts source_m Rhs
++				   addrModeCosts source_m Rhs_
+ 
+    CJump (CLbl _  _)		-> Cost (0,1,0,0,0)  -- no ld for call necessary
+ 
+-   CJump mode			-> addrModeCosts mode Rhs +
++   CJump mode			-> addrModeCosts mode Rhs_ +
+ 				   Cost (0,1,0,0,0)
+ 
+-   CFallThrough mode  -> addrModeCosts mode Rhs +		-- chu' 0.24
++   CFallThrough mode  -> addrModeCosts mode Rhs_ +		-- chu' 0.24
+ 			 Cost (0,1,0,0,0)
+ 
+    CReturn mode info  -> case info of
+-			  DirectReturn -> addrModeCosts mode Rhs +
++			  DirectReturn -> addrModeCosts mode Rhs_ +
+ 					  Cost (0,1,0,0,0)
+ 
+ 			    -- i.e. ld address to reg and call reg
+ 
+ 			  DynamicVectoredReturn mode' ->
+-					addrModeCosts mode Rhs +
+-					addrModeCosts mode' Rhs +
++					addrModeCosts mode Rhs_ +
++					addrModeCosts mode' Rhs_ +
+ 					Cost (0,1,1,0,0)
+ 
+ 			    {- generates code like this:
+@@ -148,7 +148,7 @@
+ 				    1 possb ld for mode
+ 				    1 call				-}
+ 
+-			  StaticVectoredReturn _ -> addrModeCosts mode Rhs +
++			  StaticVectoredReturn _ -> addrModeCosts mode Rhs_ +
+ 						  Cost (0,1,1,0,0)
+ 
+ 			    -- as above with mode' fixed to CLit
+@@ -195,7 +195,7 @@
+ 	   -- ^^HWL
+ 	-}
+ 	foldl (+) nullCosts [addrModeCosts mode Lhs | mode <- modes_res]  +
+-	foldl (+) nullCosts [addrModeCosts mode Rhs | mode <- modes_args]  +
++	foldl (+) nullCosts [addrModeCosts mode Rhs_ | mode <- modes_args]  +
+ 	primOpCosts primOp +
+ 	if primOpNeedsWrapper primOp then SAVE_COSTS + RESTORE_COSTS
+ 				     else nullCosts
+@@ -294,7 +294,7 @@
+ exprMacroCosts side macro mode_list =
+   let
+     arg_costs = foldl (+) nullCosts
+-		      (map (\ x -> addrModeCosts x Rhs) mode_list)
++		      (map (\ x -> addrModeCosts x Rhs_) mode_list)
+   in
+   arg_costs +
+   case macro of
+@@ -310,7 +310,7 @@
+ stmtMacroCosts macro modes =
+   let
+     arg_costs =	  foldl (+) nullCosts
+-			[addrModeCosts mode Rhs | mode <- modes]
++			[addrModeCosts mode Rhs_ | mode <- modes]
+   in
+   case macro of
+     ARGS_CHK_LOAD_NODE  ->  Cost (2, 1, 0, 0, 0)	 {- StgMacros.lh  -}
+diff --git a/ghc/compiler/absCSyn/PprAbsC.lhs b/ghc/compiler/absCSyn/PprAbsC.lhs
+index 15cd294bc7..07808f3bf5 100644
+--- a/ghc/compiler/absCSyn/PprAbsC.lhs
++++ b/ghc/compiler/absCSyn/PprAbsC.lhs
+@@ -206,7 +206,7 @@
+ 				       (ptext SLIT("break;"))) ]
+ 
+     -- Costs for addressing header of switch and cond. branching        -- HWL
+-    switch_head_cost = addrModeCosts discrim Rhs + (Cost (0, 1, 0, 0, 0))
++    switch_head_cost = addrModeCosts discrim Rhs_ + (Cost (0, 1, 0, 0, 0))
+ 
+ pprAbsC stmt@(COpStmt results op@(CCallOp _ _ _ _) args vol_regs) _
+   = pprCCall op args results vol_regs
+@@ -542,7 +542,7 @@
+ 	  InfoTblType -> ptext SLIT("I_")
+ 	  ClosureType -> ptext SLIT("C_")
+ 	  CodeType    -> ptext SLIT("F_")
+-	  DataType    -> ptext SLIT("D_") <>
++	  DataType_    -> ptext SLIT("D_") <>
+ 				   if isReadOnly clabel 
+ 				      then ptext SLIT("RO_") 
+ 				      else empty 
+@@ -624,7 +624,7 @@
+       -- We can just avoid some redundant clutter in the output.
+       MachInt n _ | n==fromInt 0 -> ppr_if_stmt (pprAmode discrim)
+ 				      deflt alt_code
+-				      (addrModeCosts discrim Rhs) c
++				      (addrModeCosts discrim Rhs_) c
+       other              -> let
+ 			       cond = hcat [ pprAmode discrim
+ 					   , ptext SLIT(" == ")
+@@ -646,7 +646,7 @@
+ 			    in
+ 			    ppr_if_stmt cond
+ 					 alt_code deflt
+-					 (addrModeCosts discrim Rhs) c
++					 (addrModeCosts discrim Rhs_) c
+ 
+ ppr_if_stmt pp_pred then_part else_part discrim_costs c
+   = vcat [
+diff --git a/ghc/compiler/basicTypes/Var.lhs b/ghc/compiler/basicTypes/Var.lhs
+index c97e107f51..db013bf6e4 100644
+--- a/ghc/compiler/basicTypes/Var.lhs
++++ b/ghc/compiler/basicTypes/Var.lhs
+@@ -61,7 +61,7 @@
+ type IdOrTyVar = Var
+ 
+ data Var
+-  = Var {
++  = Var_ {
+ 	varName    :: Name,
+ 	realUnique :: Int#,		-- Key for fast comparison
+ 					-- Identical to the Unique in the name,
+@@ -111,7 +111,7 @@
+ 
+ \begin{code}
+ varUnique :: Var -> Unique
+-varUnique (Var {realUnique = uniq}) = mkUniqueGrimily uniq
++varUnique (Var_ {realUnique = uniq}) = mkUniqueGrimily uniq
+ 
+ setVarUnique :: Var -> Unique -> Var
+ setVarUnique var uniq = var {realUnique = getKey uniq, 
+@@ -150,7 +150,7 @@
+ 
+ \begin{code}
+ mkTyVar :: Name -> Kind -> TyVar
+-mkTyVar name kind = Var { varName    = name
++mkTyVar name kind = Var_ { varName    = name
+ 			, realUnique = getKey (nameUnique name)
+ 			, varType    = kind
+ 			, varDetails = TyVar
+@@ -160,7 +160,7 @@
+ 			}
+ 
+ mkSysTyVar :: Unique -> Kind -> TyVar
+-mkSysTyVar uniq kind = Var { varName    = name
++mkSysTyVar uniq kind = Var_ { varName    = name
+ 			   , realUnique = getKey uniq
+ 			   , varType    = kind
+ 			   , varDetails = TyVar
+@@ -174,16 +174,16 @@
+ newMutTyVar :: Name -> Kind -> IO TyVar
+ newMutTyVar name kind = 
+   do loc <- newIORef Nothing
+-     return_ monad_witness_IO (Var { varName = name, 
++     return_ monad_witness_IO (Var_ { varName = name, 
+ 		   realUnique = getKey (nameUnique name),
+ 		   varType = kind, 
+ 		   varDetails = MutTyVar loc })
+ 
+ readMutTyVar :: TyVar -> IO (Maybe Type)
+-readMutTyVar (Var {varDetails = MutTyVar loc}) = readIORef loc
++readMutTyVar (Var_ {varDetails = MutTyVar loc}) = readIORef loc
+ 
+ writeMutTyVar :: TyVar -> Maybe Type -> IO ()
+-writeMutTyVar (Var {varDetails = MutTyVar loc}) val = writeIORef loc val
++writeMutTyVar (Var_ {varDetails = MutTyVar loc}) val = writeIORef loc val
+ 
+ makeTyVarImmutable :: TyVar -> TyVar
+ makeTyVarImmutable tyvar = tyvar { varDetails = TyVar}
+@@ -191,13 +191,13 @@
+ 
+ \begin{code}
+ isTyVar :: Var -> Bool
+-isTyVar (Var {varDetails = details}) = case details of
++isTyVar (Var_ {varDetails = details}) = case details of
+ 					TyVar      -> True
+ 					MutTyVar _ -> True
+ 					other	   -> False
+ 
+ isMutTyVar :: Var -> Bool
+-isMutTyVar (Var {varDetails = MutTyVar _}) = True
++isMutTyVar (Var_ {varDetails = MutTyVar _}) = True
+ isMutTyVar other			       = False
+ \end{code}
+ 
+@@ -232,19 +232,19 @@
+ setIdInfo var info = var {varInfo = info}
+ 
+ modifyIdInfo :: Id -> (IdInfo -> IdInfo) -> Id
+-modifyIdInfo var@(Var {varInfo = info}) fn = var {varInfo = fn info}
++modifyIdInfo var@(Var_ {varInfo = info}) fn = var {varInfo = fn info}
+ \end{code}
+ 
+ \begin{code}
+ mkId :: Name -> Type -> VarDetails -> IdInfo -> Id
+ mkId name ty details info
+-  = Var {varName = name, realUnique = getKey (nameUnique name), varType = ty, 
++  = Var_ {varName = name, realUnique = getKey (nameUnique name), varType = ty, 
+ 	 varDetails = details, varInfo = info}
+ \end{code}
+ 
+ \begin{code}
+ isId :: Var -> Bool
+-isId (Var {varDetails = details}) = case details of
++isId (Var_ {varDetails = details}) = case details of
+ 					VanillaId     -> True
+ 					ConstantId _  -> True
+ 					RecordSelId _ -> True
+diff --git a/ghc/compiler/coreSyn/CoreLint.lhs b/ghc/compiler/coreSyn/CoreLint.lhs
+index 226933e6e8..42c6b2dbfc 100644
+--- a/ghc/compiler/coreSyn/CoreLint.lhs
++++ b/ghc/compiler/coreSyn/CoreLint.lhs
+@@ -426,7 +426,7 @@
+     lintCoreExpr rhs
+ 
+ lintCoreAlt scrut_ty alt@(con, args, rhs)
+-  = addLoc (CaseAlt alt) (
++  = addLoc (CaseAlt__ alt) (
+ 
+     checkL (conOkForAlt con) (mkConAltMsg con)	`seqL`
+ 
+@@ -487,7 +487,7 @@
+   = RhsOf Id		-- The variable bound
+   | LambdaBodyOf Id	-- The lambda-binder
+   | BodyOfLetRec [Id]	-- One of the binders
+-  | CaseAlt CoreAlt	-- Pattern of a case alternative
++  | CaseAlt__ CoreAlt	-- Pattern of a case alternative
+   | AnExpr CoreExpr	-- Some expression
+   | ImportedUnfolding SrcLoc -- Some imported unfolding (ToDo: say which)
+ \end{code}
+@@ -605,7 +605,7 @@
+ dumpLoc (AnExpr e)
+   = (noSrcLoc, text "In the expression:" <+> ppr e)
+ 
+-dumpLoc (CaseAlt (con, args, rhs))
++dumpLoc (CaseAlt__ (con, args, rhs))
+   = (noSrcLoc, text "In a case pattern:" <+> parens (ppr con <+> ppr args))
+ 
+ dumpLoc (ImportedUnfolding locn)
+diff --git a/ghc/compiler/stgSyn/StgLint.lhs b/ghc/compiler/stgSyn/StgLint.lhs
+index 9a70947814..7425b12b35 100644
+--- a/ghc/compiler/stgSyn/StgLint.lhs
++++ b/ghc/compiler/stgSyn/StgLint.lhs
+@@ -89,7 +89,7 @@
+     binders = [b | (b,_) <- pairs]
+ 
+ lint_binds_help (binder, rhs)
+-  = addLoc (RhsOf binder) (
++  = addLoc (RhsOf_ binder) (
+ 	-- Check the rhs
+ 	lintStgRhs rhs    `thenL` \ maybe_rhs_ty ->
+ 
+@@ -115,7 +115,7 @@
+ lintStgRhs :: StgRhs -> LintM (Maybe Type)
+ 
+ lintStgRhs (StgRhsClosure _ _ _ _ _ binders expr)
+-  = addLoc (LambdaBodyOf binders) (
++  = addLoc (LambdaBodyOf_ binders) (
+     addInScopeVars binders (
+ 	lintStgExpr expr   `thenMaybeL` \ body_ty ->
+ 	returnL (Just (mkFunTys (map idType binders) body_ty))
+@@ -150,14 +150,14 @@
+ 
+ lintStgExpr (StgLet binds body)
+   = lintStgBinds binds		`thenL` \ binders ->
+-    addLoc (BodyOfLetRec binders) (
++    addLoc (BodyOfLetRec_ binders) (
+     addInScopeVars binders (
+ 	lintStgExpr body
+     ))
+ 
+ lintStgExpr (StgLetNoEscape _ _ binds body)
+   = lintStgBinds binds		`thenL` \ binders ->
+-    addLoc (BodyOfLetRec binders) (
++    addLoc (BodyOfLetRec_ binders) (
+     addInScopeVars binders (
+ 	lintStgExpr body
+     ))
+@@ -250,22 +250,22 @@
+ %************************************************************************
+ 
+ \begin{code}
+-type LintM a = [LintLocInfo] 	-- Locations
++type LintM a = [LintLocInfo_] 	-- Locations
+ 	    -> IdSet		-- Local vars in scope
+ 	    -> Bag ErrMsg	-- Error messages so far
+ 	    -> (a, Bag ErrMsg)	-- Result and error messages (if any)
+ 
+-data LintLocInfo
+-  = RhsOf Id		-- The variable bound
+-  | LambdaBodyOf [Id]	-- The lambda-binder
+-  | BodyOfLetRec [Id]	-- One of the binders
++data LintLocInfo_
++  = RhsOf_ Id		-- The variable bound
++  | LambdaBodyOf_ [Id]	-- The lambda-binder
++  | BodyOfLetRec_ [Id]	-- One of the binders
+ 
+-dumpLoc (RhsOf v) =
++dumpLoc (RhsOf_ v) =
+   (getSrcLoc v, ptext SLIT(" [RHS of ") <> pp_binders [v] <> char ']' )
+-dumpLoc (LambdaBodyOf bs) =
++dumpLoc (LambdaBodyOf_ bs) =
+   (getSrcLoc (head bs), ptext SLIT(" [in body of lambda with binders ") <> pp_binders bs <> char ']' )
+ 
+-dumpLoc (BodyOfLetRec bs) =
++dumpLoc (BodyOfLetRec_ bs) =
+   (getSrcLoc (head bs), ptext SLIT(" [in body of letrec with binders ") <> pp_binders bs <> char ']' )
+ 
+ 
+@@ -336,7 +336,7 @@
+ addErrL :: Message -> LintM ()
+ addErrL msg loc scope errs = ((), addErr errs msg loc)
+ 
+-addErr :: Bag ErrMsg -> Message -> [LintLocInfo] -> Bag ErrMsg
++addErr :: Bag ErrMsg -> Message -> [LintLocInfo_] -> Bag ErrMsg
+ 
+ addErr errs_so_far msg locs
+   = errs_so_far `snocBag` mk_msg locs
+@@ -344,7 +344,7 @@
+     mk_msg (loc:_) = let (l,hdr) = dumpLoc loc in addErrLocHdrLine l hdr msg
+     mk_msg []      = dontAddErrLoc "" msg
+ 
+-addLoc :: LintLocInfo -> LintM a -> LintM a
++addLoc :: LintLocInfo_ -> LintM a -> LintM a
+ addLoc extra_loc m loc scope errs
+   = m (extra_loc:loc) scope errs
+ 
+diff --git a/ghc/compiler/typecheck/TcSimplify.lhs b/ghc/compiler/typecheck/TcSimplify.lhs
+index 137c54a9e8..43c1f39a9d 100644
+--- a/ghc/compiler/typecheck/TcSimplify.lhs
++++ b/ghc/compiler/typecheck/TcSimplify.lhs
+@@ -319,7 +319,7 @@
+ 	-- present.
+ 
+ data NoInstanceAction
+-  = Stop		-- Fail; no error message
++  = Stop_		-- Fail; no error message
+ 			-- (Only used when tautology checking.)
+ 
+   | AddToIrreds		-- Just add the inst to the irreductible ones; don't 
+@@ -339,7 +339,7 @@
+ type Avails s = FiniteMap Inst Avail
+ 
+ data Avail
+-  = Avail
++  = Avail_
+ 	TcId		-- The "main Id"; that is, the Id for the Inst that 
+ 			-- caused this avail to be put into the finite map in the first place
+ 			-- It is this Id that is bound to the RHS.
+@@ -383,7 +383,7 @@
+ 
+ pprAvails avails = vcat (map pp (eltsFM avails))
+   where
+-    pp (Avail main_id rhs ids)
++    pp (Avail_ main_id rhs ids)
+       = ppr main_id <> colon <+> brackets (ppr ids) <+> pprRhs rhs
+ 
+ pprRhs NoRhs = text "<no rhs>"
+@@ -432,7 +432,7 @@
+     let
+        binds = foldFM add_bind EmptyMonoBinds avails
+ 
+-       add_bind _ (Avail main_id rhs ids) binds
++       add_bind _ (Avail_ main_id rhs ids) binds
+          = foldr add_synonym (add_rhs_bind rhs binds) ids
+ 	 where
+ 	   add_rhs_bind (Rhs rhs _) binds = binds `AndMonoBinds` VarMonoBind main_id rhs 
+@@ -523,7 +523,7 @@
+ 
+ 	    NoInstance ->    -- No such instance! 
+ 		    case no_instance_action of
+-			Stop        -> failTc		
++			Stop_        -> failTc		
+ 			AddToIrreds -> add_to_irreds
+     ;
+     Free ->	-- It's free and this isn't a top-level binding, so just chuck it upstairs
+@@ -572,7 +572,7 @@
+ 
+     -- The try-me to use when trying to identify tautologies
+     -- It blunders on reducing as much as possible
+-    try_me_taut inst = ReduceMe Stop	-- No error recovery
++    try_me_taut inst = ReduceMe Stop_	-- No error recovery
+ \end{code}
+ 
+ 
+@@ -590,14 +590,14 @@
+   | otherwise
+   = case lookupFM avails wanted of
+ 
+-      Just (Avail main_id (PassiveScSel rhs insts) ids) ->
++      Just (Avail_ main_id (PassiveScSel rhs insts) ids) ->
+ 	       foldl activate avails' insts	 -- Activate anything it needs
+ 	     where
+ 	       avails' = addToFM avails wanted avail'
+-	       avail'  = Avail main_id (Rhs rhs True) (wanted_id : ids)	-- Activate it
++	       avail'  = Avail_ main_id (Rhs rhs True) (wanted_id : ids)	-- Activate it
+ 
+-      Just (Avail main_id other_rhs ids) -> -- Just add to the synonyms list
+-	       addToFM avails wanted (Avail main_id other_rhs (wanted_id : ids))
++      Just (Avail_ main_id other_rhs ids) -> -- Just add to the synonyms list
++	       addToFM avails wanted (Avail_ main_id other_rhs (wanted_id : ids))
+ 
+       Nothing -> panic "activate"
+   where
+@@ -614,7 +614,7 @@
+ 	-- If we put the superclasses of "d" in avails, then we might end up
+ 	-- expressing "d1" in terms of "d", which would be a disaster.
+   where
+-    avail = Avail (instToId wanted) rhs []
++    avail = Avail_ (instToId wanted) rhs []
+ 
+     rhs | instBindingRequired wanted = Rhs rhs_expr False	-- Not superclass selection
+ 	| otherwise		     = NoRhs
+@@ -647,7 +647,7 @@
+ 	-- Solution: never put methods in avail till they are captured
+ 	-- in which case addFree isn't used
+ addFree avails free
+-  | isDict free = addToFM avails free (Avail (instToId free) NoRhs [])
++  | isDict free = addToFM avails free (Avail_ (instToId free) NoRhs [])
+   | otherwise   = avails
+ 
+ addGiven :: Avails s -> Inst -> NF_TcM s (Avails s)
+@@ -658,7 +658,7 @@
+ 	 -- and when typechecking instance decls we generate redundant "givens" too.
+     addAvail avails given avail
+   where
+-    avail = Avail (instToId given) NoRhs []
++    avail = Avail_ (instToId given) NoRhs []
+ 
+ addAvail avails wanted avail
+   = addSuperClasses (addToFM avails wanted avail) wanted
+@@ -687,7 +687,7 @@
+ 	in
+         case lookupFM avails super_dict of
+ 
+-	     Just (Avail main_id (Rhs rhs False {- not sc selection -}) ids) ->
++	     Just (Avail_ main_id (Rhs rhs False {- not sc selection -}) ids) ->
+ 		  -- Already there, but not as a superclass selector
+ 		  -- No need to look at its superclasses; since it's there
+ 		  --	already they must be already in avails
+@@ -696,16 +696,16 @@
+ 		  returnNF_Tc (activate avails' dict)
+ 		where
+ 	     	  avails' = addToFM avails super_dict avail
+-		  avail   = Avail main_id (Rhs sc_sel_rhs True) ids	-- Superclass selection
++		  avail   = Avail_ main_id (Rhs sc_sel_rhs True) ids	-- Superclass selection
+ 	
+-	     Just (Avail _ _ _) -> returnNF_Tc avails
++	     Just (Avail_ _ _ _) -> returnNF_Tc avails
+ 		  -- Already there; no need to do anything
+ 
+ 	     Nothing ->
+ 		  -- Not there at all, so add it, and its superclasses
+ 		  addAvail avails super_dict avail
+ 		where
+-		  avail   = Avail (instToId super_dict) 
++		  avail   = Avail_ (instToId super_dict) 
+ 				  (PassiveScSel sc_sel_rhs [dict])
+ 				  []
+ \end{code}
+diff --git a/ghc/compiler/utils/UniqFM.lhs b/ghc/compiler/utils/UniqFM.lhs
+index 92dd7396f8..d5bea33e39 100644
+--- a/ghc/compiler/utils/UniqFM.lhs
++++ b/ghc/compiler/utils/UniqFM.lhs
+@@ -729,10 +729,10 @@
+ This is the information used when computing new NodeUFMs.
+ 
+ \begin{code}
+-data Side = Leftt | Rightt -- NB: avoid 1.3 names "Left" and "Right"
++data Side_ = Leftt | Rightt -- NB: avoid 1.3 names "Left" and "Right"
+ data CommonRoot
+-  = LeftRoot  Side	-- which side is the right down ?
+-  | RightRoot Side	-- which side is the left down ?
++  = LeftRoot  Side_	-- which side is the right down ?
++  | RightRoot Side_	-- which side is the left down ?
+   | SameRoot		-- they are the same !
+   | NewRoot NodeUFMData	-- here's the new, common, root
+ 	    Bool	-- do you need to swap left and right ?
+@@ -779,7 +779,7 @@
+ 	| j3 _EQ_ j2 -> RightRoot (decideSide (j _LT_ j2))
+ 	| otherwise   -> NewRoot nd (j _GT_ j2)
+     where
+-	decideSide :: Bool -> Side
++	decideSide :: Bool -> Side_
+ 	decideSide True	 = Leftt
+ 	decideSide False = Rightt
+ \end{code}
+diff --git a/ghc/lib/exts/LazyST.lhs b/ghc/lib/exts/LazyST.lhs
+index 225c8e6c00..fbf45745e3 100644
+--- a/ghc/lib/exts/LazyST.lhs
++++ b/ghc/lib/exts/LazyST.lhs
+@@ -10,7 +10,7 @@
+ \begin{code}
+ module LazyST (
+ 
+-	ST,
++	ST_,
+ 
+ 	runST,
+ 	unsafeInterleaveST,
+@@ -21,7 +21,7 @@
+ 	ST.STRef,
+ 	newSTRef, readSTRef, writeSTRef,
+ 
+-	STArray,
++	STArray_,
+ 	newSTArray, readSTArray, writeSTArray, boundsSTArray, 
+ 	thawSTArray, freezeSTArray, unsafeFreezeSTArray, 
+ 	Ix,
+@@ -39,9 +39,9 @@
+ import Ix
+ import PrelGHC
+ 
+-newtype ST s a = ST (PrelST.State s -> (a,PrelST.State s))
++newtype ST_ s a = ST_ (PrelST.State s -> (a,PrelST.State s))
+ 
+-instance Functor (ST s) where
++instance Functor (ST_ s) where
+     fmap f m = ST $ \ s ->
+       let 
+        ST m_a = m
+@@ -49,7 +49,7 @@
+       in
+       (f r,new_s)
+ 
+-instance Monad (ST s) where
++instance Monad (ST_ s) where
+ 
+         m >> k   =  m >>= \ _ -> k
+ 	fail s   = error s
+@@ -63,8 +63,8 @@
+            k_a new_s
+ 
+ {-# NOINLINE runST #-}
+-runST :: (forall s. ST s a) -> a
+-runST st = case st of ST the_st -> let (r,_) = the_st (PrelST.S# realWorld#) in r
++runST :: (forall s. ST_ s a) -> a
++runST st = case st of ST_ the_st -> let (r,_) = the_st (PrelST.S# realWorld#) in r
+ \end{code}
+ 
+ %*********************************************************
+@@ -74,9 +74,9 @@
+ %*********************************************************
+ 
+ \begin{code}
+-newSTRef   :: a -> ST s (ST.STRef s a)
+-readSTRef  :: ST.STRef s a -> ST s a
+-writeSTRef :: ST.STRef s a -> a -> ST s ()
++newSTRef   :: a -> ST_ s (ST.STRef s a)
++readSTRef  :: ST.STRef s a -> ST_ s a
++writeSTRef :: ST.STRef s a -> a -> ST_ s ()
+ 
+ newSTRef   = strictToLazyST . ST.newSTRef
+ readSTRef  = strictToLazyST . ST.readSTRef
+@@ -91,15 +91,15 @@
+ %*********************************************************
+ 
+ \begin{code}
+-newtype STArray s ix elt = STArray (MutableArray s ix elt)
++newtype STArray_ s ix elt = STArray_ (MutableArray s ix elt)
+ 
+-newSTArray 	    :: Ix ix => (ix,ix) -> elt -> ST s (STArray s ix elt)
+-readSTArray   	    :: Ix ix => STArray s ix elt -> ix -> ST s elt 
+-writeSTArray	    :: Ix ix => STArray s ix elt -> ix -> elt -> ST s () 
+-boundsSTArray       :: Ix ix => STArray s ix elt -> (ix, ix)  
+-thawSTArray 	    :: Ix ix => Array ix elt -> ST s (STArray s ix elt)
+-freezeSTArray	    :: Ix ix => STArray s ix elt -> ST s (Array ix elt)
+-unsafeFreezeSTArray :: Ix ix => STArray s ix elt -> ST s (Array ix elt)
++newSTArray 	    :: Ix ix => (ix,ix) -> elt -> ST_ s (STArray_ s ix elt)
++readSTArray   	    :: Ix ix => STArray_ s ix elt -> ix -> ST_ s elt 
++writeSTArray	    :: Ix ix => STArray_ s ix elt -> ix -> elt -> ST_ s () 
++boundsSTArray       :: Ix ix => STArray_ s ix elt -> (ix, ix)  
++thawSTArray 	    :: Ix ix => Array ix elt -> ST_ s (STArray_ s ix elt)
++freezeSTArray	    :: Ix ix => STArray_ s ix elt -> ST_ s (Array ix elt)
++unsafeFreezeSTArray :: Ix ix => STArray_ s ix elt -> ST_ s (Array ix elt)
+ 
+ newSTArray ixs init   	= 
+ 	   strictToLazyST (newArray ixs init) >>= \arr ->
+@@ -115,7 +115,7 @@
+ freezeSTArray (STArray arr) = strictToLazyST (freezeArray arr)
+ unsafeFreezeSTArray (STArray arr) = strictToLazyST (unsafeFreezeArray arr)
+ 
+-strictToLazyST :: PrelST.ST s a -> ST s a
++strictToLazyST :: PrelST.ST s a -> ST_ s a
+ strictToLazyST m = ST $ \s ->
+         let 
+   	   pr = case s of { PrelST.S# s# -> PrelST.liftST m s# }
+@@ -124,11 +124,11 @@
+ 	in
+ 	(r, s')
+ 
+-lazyToStrictST :: ST s a -> PrelST.ST s a
+-lazyToStrictST (ST m) = PrelST.ST $ \s ->
++lazyToStrictST :: ST_ s a -> PrelST.ST s a
++lazyToStrictST (ST_ m) = PrelST.ST $ \s ->
+         case (m (PrelST.S# s)) of (a, PrelST.S# s') -> (# s', a #)
+ 
+-unsafeInterleaveST :: ST s a -> ST s a
++unsafeInterleaveST :: ST_ s a -> ST_ s a
+ unsafeInterleaveST = strictToLazyST . ST.unsafeInterleaveST . lazyToStrictST
+ 
+ \end{code}
+diff --git a/ghc/lib/std/PrelDynamic.lhs b/ghc/lib/std/PrelDynamic.lhs
+index c43b03e925..d2c5cbb095 100644
+--- a/ghc/lib/std/PrelDynamic.lhs
++++ b/ghc/lib/std/PrelDynamic.lhs
+@@ -14,19 +14,19 @@
+ import PrelBase
+ #endif
+ 
+-data Dynamic = Dynamic TypeRep Obj
++data Dynamic = Dynamic_ TypeRep Obj
+ 
+ data Obj = Obj  
+  -- dummy type to hold the dynamically typed value.
+ 
+ data TypeRep
+- = App TyCon   [TypeRep]
+- | Fun TypeRep TypeRep
++ = App_ TyCon_   [TypeRep]
++ | Fun_ TypeRep TypeRep
+    deriving ( Eq )
+ 
+ -- type constructors are 
+-data TyCon = TyCon Int String
++data TyCon_ = TyCon Int String
+ 
+-instance Eq TyCon where
++instance Eq TyCon_ where
+   (TyCon t1 _) == (TyCon t2 _) = t1 == t2
+ \end{code}

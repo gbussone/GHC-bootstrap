@@ -285,12 +285,8 @@
                 '';
                 ghc = throw "ghc";
                 gmp = self.packages.i686-linux.gmp_2_0_2;
-                bootstrap = true;
+                bootstrap = 0;
               };
-            in
-            pkgs.callPackage ./ghc/4_02 {
-              perl = pkgs_last_glibc_2_13.perl58;
-              gcc = pkgs_0_10_glibc.gcc295;
               happy = pkgs.callPackage ./ghc/4_02/happy.nix {
                 perl = pkgs_last_glibc_2_13.perl58;
                 gcc = pkgs_0_10_glibc.gcc295;
@@ -300,8 +296,35 @@
                 ghc = ghc;
                 gmp = self.packages.i686-linux.gmp_2_0_2;
               };
-              ghc = ghc;
+            in
+            pkgs.callPackage ./ghc/4_02 {
+              perl = pkgs_last_glibc_2_13.perl58;
+              gcc = pkgs_0_10_glibc.gcc295;
+              happy = happy;
+              ghc = pkgs.callPackage ./ghc/4_02 {
+                perl = pkgs_last_glibc_2_13.perl58;
+                gcc = pkgs_0_10_glibc.gcc295;
+                happy = happy;
+                ghc = pkgs.callPackage ./ghc/4_02 {
+                  perl = pkgs_last_glibc_2_13.perl58;
+                  gcc = pkgs_0_10_glibc.gcc295;
+                  happy = happy;
+                  ghc = pkgs.callPackage ./ghc/4_02 {
+                    perl = pkgs_last_glibc_2_13.perl58;
+                    gcc = pkgs_0_10_glibc.gcc295;
+                    happy = happy;
+                    ghc = ghc;
+                    gmp = self.packages.i686-linux.gmp_2_0_2;
+                    bootstrap = 1;
+                  };
+                  gmp = self.packages.i686-linux.gmp_2_0_2;
+                  bootstrap = 2;
+                };
+                gmp = self.packages.i686-linux.gmp_2_0_2;
+                bootstrap = 3;
+              };
               gmp = self.packages.i686-linux.gmp_2_0_2;
+              bootstrap = 4;
             };
 
           ghc_4_04 =
